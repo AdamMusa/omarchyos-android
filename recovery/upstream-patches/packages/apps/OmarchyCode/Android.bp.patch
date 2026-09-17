@@ -1,0 +1,176 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/Android.bp
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/Android.bp
+@@
+ android_app {
+-    name: "Terminal",
++    name: "OmarchyCode",
+     srcs: ["src/**/*.java"],
+-    static_libs: ["androidx.viewpager_viewpager"],
++    resource_dirs: ["res"],
++    static_libs: [
++        "androidx.viewpager_viewpager",
++        "omarchy-plugin-contract",
++    ],
+     jni_libs: ["libjni_terminal"],
+-    // TODO: enable proguard once development has settled down
+-    //LOCAL_PROGUARD_FLAG_FILES := proguard.flags
++    manifest: "AndroidManifest.xml",
++    certificate: "platform",
++    system_ext_specific: true,
++    platform_apis: true,
+     optimize: {
+         enabled: false,
+     },
+-    platform_apis: true,
+ }
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/Android.bp
+@@
+ android_app {
+@@
+ }
++
++cc_prebuilt_binary {
++    name: "omarchy_codex_cli",
++    srcs: ["prebuilts/codex/vendor/aarch64-unknown-linux-musl/bin/codex"],
++    stem: "codex",
++    relative_install_path: "omarchy-code/vendor/aarch64-unknown-linux-musl/bin",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_codex_code_mode_host",
++    srcs: ["prebuilts/codex/vendor/aarch64-unknown-linux-musl/bin/codex-code-mode-host"],
++    stem: "codex-code-mode-host",
++    relative_install_path: "omarchy-code/vendor/aarch64-unknown-linux-musl/bin",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_codex_rg",
++    srcs: ["prebuilts/codex/vendor/aarch64-unknown-linux-musl/codex-path/rg"],
++    stem: "rg",
++    relative_install_path: "omarchy-code/vendor/aarch64-unknown-linux-musl/codex-path",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_codex_bwrap",
++    srcs: ["prebuilts/codex/vendor/aarch64-unknown-linux-musl/codex-resources/bwrap"],
++    stem: "bwrap",
++    relative_install_path: "omarchy-code/vendor/aarch64-unknown-linux-musl/codex-resources",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_codex_zsh",
++    srcs: ["prebuilts/codex/vendor/aarch64-unknown-linux-musl/codex-resources/zsh/bin/zsh"],
++    stem: "zsh",
++    relative_install_path: "omarchy-code/vendor/aarch64-unknown-linux-musl/codex-resources/zsh/bin",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_claude_cli",
++    srcs: ["prebuilts/claude/claude.real"],
++    stem: "claude.real",
++    relative_install_path: "omarchy-code/claude",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_claude_musl_loader",
++    srcs: ["prebuilts/claude/musl/ld-musl-aarch64.so.1"],
++    stem: "ld-musl-aarch64.so.1",
++    relative_install_path: "omarchy-code/claude/musl",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
++
++cc_prebuilt_binary {
++    name: "omarchy_claude_musl_libc",
++    srcs: ["prebuilts/claude/musl/libc.musl-aarch64.so.1"],
++    stem: "libc.musl-aarch64.so.1",
++    relative_install_path: "omarchy-code/claude/musl",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    check_elf_files: false,
++    strip: { none: true },
++}
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/Android.bp
+@@
+     ],
+     jni_libs: ["libjni_terminal"],
++    use_embedded_native_libs: true,
+     manifest: "AndroidManifest.xml",
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/Android.bp
+@@
+     ],
+     jni_libs: ["libjni_terminal"],
+-    use_embedded_native_libs: true,
+     manifest: "AndroidManifest.xml",
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/Android.bp
+@@
+ cc_prebuilt_binary {
+     name: "omarchy_claude_musl_libc",
+@@
+     strip: { none: true },
+ }
++
++// Claude Code's embedded Bun resolver expects a Linux resolv.conf, while
++// Android deliberately routes DNS through netd instead. This tiny musl preload
++// redirects only that one pathname to a per-user file maintained from Android
++// LinkProperties by TerminalService.
++cc_library_shared {
++    name: "libomarchy_resolv_compat",
++    srcs: ["compat/resolv_compat.c"],
++    stem: "libomarchy_resolv_compat",
++    relative_install_path: "omarchy-code/claude",
++    compile_multilib: "64",
++    system_ext_specific: true,
++    system_shared_libs: [],
++    allow_undefined_symbols: true,
++    stl: "none",
++    cflags: [
++        "-Wall",
++        "-Werror",
++        "-fvisibility=default",
++    ],
++    strip: { none: true },
++}
+*** End Patch
+

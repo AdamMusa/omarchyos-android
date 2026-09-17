@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omarchy Core</string>
+    <string name="settings_eyebrow">OmarchyOS</string>
+    <string name="settings_title">Style &amp; extensions</string>
+    <string name="settings_description">One palette follows you through the system. Extensions stay isolated and can be switched off at any time.</string>
+    <string name="themes_label">Themes</string>
+    <string name="themes_description">Colors, light or dark mode, System UI, Settings, Launcher, and compatible apps change together.</string>
+    <string name="plugins_label">Extensions</string>
+    <string name="plugins_description">Only operating-system signed services can connect to the mobile shell.</string>
+    <string name="active">Active</string>
+    <string name="theme_mode_dark">Dark palette</string>
+    <string name="theme_mode_light">Light palette</string>
+    <string name="theme_accessibility">Use %1$s theme</string>
+    <string name="theme_accessibility_active">%1$s theme, active</string>
+    <string name="plugin_toggle_accessibility">Enable %1$s extension</string>
+    <string name="plugin_service_description">Isolated operating-system service</string>
+    <plurals name="theme_count">
+        <item quantity="one">%d installed</item>
+        <item quantity="other">%d installed</item>
+    </plurals>
+    <plurals name="plugin_count">
+        <item quantity="one">%d available</item>
+        <item quantity="other">%d available</item>
+    </plurals>
+    <string name="loading_plugins">Loading system extensions…</string>
+    <string name="signed_plugins_only">Theme packs contain colors only. Extensions run outside the shell process.</string>
+    <string name="no_themes">No trusted theme packs are installed.</string>
+    <string name="plugin_manager_unavailable">The extension manager is temporarily unavailable.</string>
+    <string name="theme_apply_failed">This theme could not be applied. The previous theme was restored.</string>
+    <string name="plugin_state_failed">The extension state could not be changed.</string>
+    <string name="plugin_enabled">Extension enabled.</string>
+    <string name="plugin_disabled">Extension disabled.</string>
+</resources>

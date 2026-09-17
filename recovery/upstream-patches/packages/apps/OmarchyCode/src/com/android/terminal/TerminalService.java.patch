@@ -1,0 +1,553 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+@@
+ public class TerminalService extends Service {
++    public static final String SESSION_CODEX = "codex";
++    public static final String SESSION_CLAUDE = "claude";
++    public static final String SESSION_SHELL = "shell";
++
+     private final SparseArray<Terminal> mTerminals = new SparseArray<Terminal>();
+@@
+-    public int createTerminal() {
++    public int getOrCreateTerminal(String sessionKind, String home, String workspace) {
++        for (int index = 0; index < mTerminals.size(); index++) {
++            Terminal terminal = mTerminals.valueAt(index);
++            if (terminal.getSessionKind().equals(sessionKind)) {
++                return terminal.key;
++            }
++        }
++        return createTerminal(sessionKind, home, workspace);
++    }
++
++    public int createTerminal(String sessionKind, String home, String workspace) {
+         // If our first terminal, start ourselves as long-lived service
+         if (mTerminals.size() == 0) {
+             startService(new Intent(this, TerminalService.class));
+         }
+ 
+-        final Terminal term = new Terminal();
++        String title;
++        String command;
++        switch (sessionKind) {
++            case SESSION_CODEX:
++                title = "Codex";
++                command = "exec /system_ext/bin/codex";
++                break;
++            case SESSION_CLAUDE:
++                title = "Claude Code";
++                command = "exec /system_ext/bin/claude";
++                break;
++            default:
++                sessionKind = SESSION_SHELL;
++                title = "Workspace";
++                command = "exec /system/bin/sh";
++                break;
++        }
++
++        final Terminal term = new Terminal(sessionKind, title, home, workspace, command);
+         term.start();
+         mTerminals.put(term.key, term);
+         return term.key;
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+@@
+ import android.os.Binder;
+ import android.os.IBinder;
++import android.os.Handler;
++import android.os.Looper;
++import android.util.Log;
+ import android.util.SparseArray;
++
++import java.io.File;
++import java.io.IOException;
+@@
+ public class TerminalService extends Service {
++    private static final String TAG = "OmarchyCode";
++    private static final long PUBLISH_POLL_MILLIS = 400;
++    private static final int MAX_PUBLISH_REQUEST_BYTES = 8 * 1024;
++
+     public static final String SESSION_CODEX = "codex";
+@@
+     private final SparseArray<Terminal> mTerminals = new SparseArray<Terminal>();
++    private final Handler mHandler = new Handler(Looper.getMainLooper());
++    private final Runnable mPublishPoller = new Runnable() {
++        @Override
++        public void run() {
++            consumePublishRequest();
++            mHandler.postDelayed(this, PUBLISH_POLL_MILLIS);
++        }
++    };
+@@
+     public class ServiceBinder extends Binder {
+@@
+     }
++
++    @Override
++    public void onCreate() {
++        super.onCreate();
++        mHandler.post(mPublishPoller);
++    }
++
++    @Override
++    public void onDestroy() {
++        mHandler.removeCallbacks(mPublishPoller);
++        super.onDestroy();
++    }
+@@
+     public SparseArray<Terminal> getTerminals() {
+         return mTerminals;
+     }
++
++    private void consumePublishRequest() {
++        File request = new File(HubActivity.homeDirectory(this),
++                ".omarchy/publish.request");
++        if (!request.isFile()) {
++            return;
++        }
++
++        try {
++            String[] fields = ProjectManifest.readText(request, MAX_PUBLISH_REQUEST_BYTES)
++                    .split("\\n", -1);
++            if (!request.delete()) {
++                Log.w(TAG, "Unable to remove consumed publish request");
++            }
++            if (fields.length != 3 || !fields[2].isEmpty()) {
++                throw new IOException("Malformed publish request");
++            }
++            String kind = fields[0];
++            if (!"app".equals(kind) && !"theme".equals(kind) && !"plugin".equals(kind)) {
++                throw new IOException("Unsupported publish request type");
++            }
++            if (fields[1].isEmpty()) {
++                throw new IOException("Missing publish path");
++            }
++
++            startActivity(new Intent(this, PublishActivity.class)
++                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
++                    .putExtra("kind", kind)
++                    .putExtra("path", fields[1]));
++        } catch (Exception exception) {
++            Log.e(TAG, "Ignoring invalid publish request", exception);
++            request.delete();
++        }
++    }
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+@@
+ import android.content.Intent;
++import android.net.ConnectivityManager;
++import android.net.LinkProperties;
++import android.net.Network;
+ import android.os.Binder;
+@@
+ import java.io.File;
++import java.io.FileOutputStream;
+ import java.io.IOException;
++import java.io.OutputStreamWriter;
++import java.net.InetAddress;
++import java.nio.charset.StandardCharsets;
++import java.util.LinkedHashSet;
++import java.util.Set;
+@@
+     private final SparseArray<Terminal> mTerminals = new SparseArray<Terminal>();
+     private final Handler mHandler = new Handler(Looper.getMainLooper());
++    private ConnectivityManager mConnectivityManager;
++    private ConnectivityManager.NetworkCallback mNetworkCallback;
+@@
+     public void onCreate() {
+         super.onCreate();
++        mConnectivityManager = getSystemService(ConnectivityManager.class);
++        refreshResolverConfig();
++        if (mConnectivityManager != null) {
++            mNetworkCallback = new ConnectivityManager.NetworkCallback() {
++                @Override
++                public void onAvailable(Network network) {
++                    refreshResolverConfig();
++                }
++
++                @Override
++                public void onLinkPropertiesChanged(Network network,
++                        LinkProperties linkProperties) {
++                    writeResolverConfig(linkProperties);
++                }
++
++                @Override
++                public void onLost(Network network) {
++                    refreshResolverConfig();
++                }
++            };
++            try {
++                mConnectivityManager.registerDefaultNetworkCallback(mNetworkCallback);
++            } catch (RuntimeException exception) {
++                Log.w(TAG, "Unable to watch Android DNS configuration", exception);
++            }
++        }
+         mHandler.post(mPublishPoller);
+     }
+@@
+     public void onDestroy() {
+         mHandler.removeCallbacks(mPublishPoller);
++        if (mConnectivityManager != null && mNetworkCallback != null) {
++            try {
++                mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
++            } catch (RuntimeException exception) {
++                Log.w(TAG, "Unable to stop Android DNS watcher", exception);
++            }
++        }
+         super.onDestroy();
+     }
+@@
+     public SparseArray<Terminal> getTerminals() {
+         return mTerminals;
+     }
++
++    private void refreshResolverConfig() {
++        LinkProperties properties = null;
++        if (mConnectivityManager != null) {
++            Network network = mConnectivityManager.getActiveNetwork();
++            if (network != null) {
++                properties = mConnectivityManager.getLinkProperties(network);
++            }
++        }
++        writeResolverConfig(properties);
++    }
++
++    private synchronized void writeResolverConfig(LinkProperties properties) {
++        Set<String> servers = new LinkedHashSet<>();
++        if (properties != null) {
++            for (InetAddress address : properties.getDnsServers()) {
++                if (address.isAnyLocalAddress() || address.isLoopbackAddress()) {
++                    continue;
++                }
++                String host = address.getHostAddress();
++                int scope = host.indexOf('%');
++                servers.add(scope >= 0 ? host.substring(0, scope) : host);
++            }
++        }
++
++        // Keep first-run CLI setup deterministic while the default network is
++        // still coming up. LinkProperties replace these as soon as Android has
++        // an active Wi-Fi or cellular network.
++        if (servers.isEmpty()) {
++            servers.add("1.1.1.1");
++            servers.add("8.8.8.8");
++        }
++
++        File target = new File(getFilesDir(), "resolv.conf");
++        File temporary = new File(getFilesDir(), "resolv.conf.tmp");
++        try (OutputStreamWriter writer = new OutputStreamWriter(
++                new FileOutputStream(temporary), StandardCharsets.US_ASCII)) {
++            for (String server : servers) {
++                writer.write("nameserver ");
++                writer.write(server);
++                writer.write('\n');
++            }
++            writer.write("options timeout:2 attempts:3 rotate\n");
++        } catch (IOException exception) {
++            Log.e(TAG, "Unable to write Android DNS compatibility file", exception);
++            temporary.delete();
++            return;
++        }
++
++        if (!temporary.renameTo(target)) {
++            Log.e(TAG, "Unable to publish Android DNS compatibility file");
++            temporary.delete();
++        }
++    }
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+@@
+     private ConnectivityManager mConnectivityManager;
+     private ConnectivityManager.NetworkCallback mNetworkCallback;
++    private HttpsConnectProxy mHttpsProxy;
+@@
+         super.onCreate();
++        try {
++            mHttpsProxy = HttpsConnectProxy.start(getFilesDir());
++        } catch (IOException exception) {
++            Log.e(TAG, "Unable to start authenticated HTTPS bridge", exception);
++        }
+         mConnectivityManager = getSystemService(ConnectivityManager.class);
+@@
+         if (mConnectivityManager != null && mNetworkCallback != null) {
+@@
+         }
++        if (mHttpsProxy != null) {
++            mHttpsProxy.close();
++        }
+         super.onDestroy();
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+@@
+ import android.os.Handler;
+ import android.os.Looper;
++import android.util.Base64;
+ import android.util.Log;
+ import android.util.SparseArray;
+ 
++import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.FileOutputStream;
+ import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
+ import java.io.OutputStreamWriter;
+ import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.ServerSocket;
++import java.net.Socket;
+ import java.nio.charset.StandardCharsets;
++import java.security.SecureRandom;
+ import java.util.LinkedHashSet;
++import java.util.Locale;
+ import java.util.Set;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
+@@
+     public void destroyTerminal(int key) {
+@@
+             stopService(new Intent(this, TerminalService.class));
+         }
+     }
++
++    /**
++     * Authenticated loopback CONNECT proxy for Linux runtimes that bypass
++     * Android's netd-backed resolver. Hostname resolution still happens
++     * through Android because this application creates the upstream socket.
++     */
++    private static final class HttpsConnectProxy implements AutoCloseable {
++        private static final int MAX_HEADER_BYTES = 16 * 1024;
++        private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
++
++        private final ServerSocket mServer;
++        private final ExecutorService mExecutor = Executors.newCachedThreadPool();
++        private final String mExpectedAuthorization;
++        private final File mConfigFile;
++        private volatile boolean mClosed;
++
++        static HttpsConnectProxy start(File filesDirectory) throws IOException {
++            byte[] secretBytes = new byte[32];
++            new SecureRandom().nextBytes(secretBytes);
++            StringBuilder secret = new StringBuilder(secretBytes.length * 2);
++            for (byte value : secretBytes) {
++                secret.append(String.format(Locale.US, "%02x", value & 0xff));
++            }
++
++            ServerSocket server = new ServerSocket();
++            server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 8);
++            File configFile = new File(filesDirectory, "https-proxy");
++            HttpsConnectProxy proxy = new HttpsConnectProxy(
++                    server, secret.toString(), configFile);
++            proxy.writeConfig();
++            proxy.mExecutor.execute(proxy::acceptLoop);
++            return proxy;
++        }
++
++        private HttpsConnectProxy(ServerSocket server, String secret, File configFile) {
++            mServer = server;
++            mConfigFile = configFile;
++            String credentials = "omarchy:" + secret;
++            mExpectedAuthorization = "Basic " + Base64.encodeToString(
++                    credentials.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
++        }
++
++        private void writeConfig() throws IOException {
++            String credentials = new String(Base64.decode(
++                    mExpectedAuthorization.substring("Basic ".length()), Base64.DEFAULT),
++                    StandardCharsets.UTF_8);
++            String value = "http://" + credentials + "@127.0.0.1:"
++                    + mServer.getLocalPort() + "\n";
++            File temporary = new File(mConfigFile.getParentFile(), "https-proxy.tmp");
++            try (FileOutputStream output = new FileOutputStream(temporary)) {
++                output.write(value.getBytes(StandardCharsets.US_ASCII));
++                output.getFD().sync();
++            }
++            if (!temporary.renameTo(mConfigFile)) {
++                temporary.delete();
++                throw new IOException("Unable to publish proxy configuration");
++            }
++            mConfigFile.setReadable(false, false);
++            mConfigFile.setWritable(false, false);
++            mConfigFile.setReadable(true, true);
++            mConfigFile.setWritable(true, true);
++        }
++
++        private void acceptLoop() {
++            while (!mClosed) {
++                try {
++                    Socket client = mServer.accept();
++                    mExecutor.execute(() -> handle(client));
++                } catch (IOException exception) {
++                    if (!mClosed) {
++                        close();
++                    }
++                }
++            }
++        }
++
++        private void handle(Socket client) {
++            try (Socket local = client) {
++                local.setSoTimeout(CONNECT_TIMEOUT_MILLIS);
++                InputStream input = local.getInputStream();
++                OutputStream output = local.getOutputStream();
++                String[] lines = readHeader(input).split("\\r\\n");
++                if (lines.length == 0 || !hasAuthorization(lines)) {
++                    respond(output, "407 Proxy Authentication Required",
++                            "Proxy-Authenticate: Basic realm=\"OmarchyCode\"\r\n");
++                    return;
++                }
++
++                String[] request = lines[0].split(" ", 3);
++                if (request.length != 3 || !"CONNECT".equals(request[0])) {
++                    respond(output, "405 Method Not Allowed", "");
++                    return;
++                }
++                HostAndPort target = parseTarget(request[1]);
++                if (target.port != 443) {
++                    respond(output, "403 Forbidden", "");
++                    return;
++                }
++
++                try (Socket upstream = new Socket()) {
++                    upstream.connect(new InetSocketAddress(target.host, target.port),
++                            CONNECT_TIMEOUT_MILLIS);
++                    upstream.setSoTimeout(0);
++                    local.setSoTimeout(0);
++                    respond(output, "200 Connection Established", "");
++
++                    mExecutor.execute(() -> copyAndClose(input, upstream));
++                    copy(upstream.getInputStream(), output);
++                }
++            } catch (IOException ignored) {
++                // Closed CLI tunnels are routine; the client reports
++                // actionable upstream connection errors to the user.
++            }
++        }
++
++        private boolean hasAuthorization(String[] lines) {
++            for (int index = 1; index < lines.length; index++) {
++                int separator = lines[index].indexOf(':');
++                if (separator <= 0) {
++                    continue;
++                }
++                String name = lines[index].substring(0, separator).trim();
++                String value = lines[index].substring(separator + 1).trim();
++                if ("Proxy-Authorization".equalsIgnoreCase(name)) {
++                    return mExpectedAuthorization.equals(value);
++                }
++            }
++            return false;
++        }
++
++        private static HostAndPort parseTarget(String authority) throws IOException {
++            int separator = authority.lastIndexOf(':');
++            if (separator <= 0 || separator == authority.length() - 1) {
++                throw new IOException("Invalid CONNECT authority");
++            }
++            String host = authority.substring(0, separator);
++            if (host.startsWith("[") && host.endsWith("]")) {
++                host = host.substring(1, host.length() - 1);
++            }
++            if (host.isEmpty() || host.length() > 253) {
++                throw new IOException("Invalid CONNECT host");
++            }
++            try {
++                return new HostAndPort(host,
++                        Integer.parseInt(authority.substring(separator + 1)));
++            } catch (NumberFormatException exception) {
++                throw new IOException("Invalid CONNECT port", exception);
++            }
++        }
++
++        private static String readHeader(InputStream input) throws IOException {
++            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
++            int state = 0;
++            while (bytes.size() < MAX_HEADER_BYTES) {
++                int value = input.read();
++                if (value < 0) {
++                    throw new IOException("Unexpected proxy request end");
++                }
++                bytes.write(value);
++                state = (state == 0 && value == '\r') ? 1
++                        : (state == 1 && value == '\n') ? 2
++                        : (state == 2 && value == '\r') ? 3
++                        : (state == 3 && value == '\n') ? 4 : 0;
++                if (state == 4) {
++                    return bytes.toString(StandardCharsets.US_ASCII.name());
++                }
++            }
++            throw new IOException("Proxy request header is too large");
++        }
++
++        private static void respond(OutputStream output, String status, String extraHeader)
++                throws IOException {
++            String response = "HTTP/1.1 " + status + "\r\n" + extraHeader
++                    + "Connection: keep-alive\r\n\r\n";
++            output.write(response.getBytes(StandardCharsets.US_ASCII));
++            output.flush();
++        }
++
++        private static void copyAndClose(InputStream input, Socket upstream) {
++            try {
++                copy(input, upstream.getOutputStream());
++            } catch (IOException ignored) {
++            } finally {
++                try {
++                    upstream.shutdownOutput();
++                } catch (IOException ignored) {
++                }
++            }
++        }
++
++        private static void copy(InputStream input, OutputStream output) throws IOException {
++            byte[] buffer = new byte[16 * 1024];
++            int count;
++            while ((count = input.read(buffer)) >= 0) {
++                output.write(buffer, 0, count);
++                output.flush();
++            }
++        }
++
++        @Override
++        public void close() {
++            mClosed = true;
++            try {
++                mServer.close();
++            } catch (IOException ignored) {
++            }
++            mExecutor.shutdownNow();
++            mConfigFile.delete();
++        }
++
++        private static final class HostAndPort {
++            final String host;
++            final int port;
++
++            HostAndPort(String host, int port) {
++                this.host = host;
++                this.port = port;
++            }
++        }
++    }
+ }
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalService.java
+@@
+-            server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 8);
++            server.bind(new InetSocketAddress(
++                    InetAddress.getByName("127.0.0.1"), 0), 8);
+*** End Patch
+

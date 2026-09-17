@@ -1,0 +1,7 @@
+runtime_resource_overlay {
+    name: "OmarchyThemeGruvboxCore",
+    theme: "OmarchyThemeGruvbox",
+    certificate: "platform",
+    product_specific: true,
+    sdk_version: "current",
+}

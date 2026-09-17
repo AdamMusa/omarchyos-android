@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Omarchy.Agent" parent="android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowLightStatusBar">@bool/agent_is_light</item>
+        <item name="android:windowLightNavigationBar">@bool/agent_is_light</item>
+        <item name="android:statusBarColor">@color/agent_surface</item>
+        <item name="android:navigationBarColor">@color/agent_navigation</item>
+        <item name="android:windowBackground">@color/agent_surface</item>
+        <item name="android:colorAccent">@color/agent_accent</item>
+    </style>
+</resources>

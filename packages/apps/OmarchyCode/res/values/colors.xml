@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="code_background">#080A10</color>
+    <color name="code_surface">#121722</color>
+    <color name="code_surface_pressed">#1A2230</color>
+    <color name="code_outline">#263044</color>
+    <color name="code_text">#F4F7FB</color>
+    <color name="code_text_secondary">#9BA7B8</color>
+    <color name="code_accent">#69E6C5</color>
+    <color name="code_violet">#A491FF</color>
+    <color name="code_blue">#6FB8FF</color>
+</resources>

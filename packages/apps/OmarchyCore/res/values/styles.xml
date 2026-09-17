@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Omarchy.Core" parent="android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/omarchy_surface</item>
+        <item name="android:navigationBarColor">@color/omarchy_navigation</item>
+        <item name="android:colorAccent">@color/omarchy_accent</item>
+        <item name="android:windowBackground">@color/omarchy_surface</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>

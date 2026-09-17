@@ -1,0 +1,10 @@
+# Omarchy Code keeps the normal Android application sandbox while receiving
+# one capability ordinary applications do not need: an isolated pseudo-terminal
+# for its on-device command-line tools.
+type omarchy_code_app, domain;
+typeattribute omarchy_code_app coredomain;
+
+app_domain(omarchy_code_app)
+net_domain(omarchy_code_app)
+platform_app_domain(omarchy_code_app)
+create_pty(omarchy_code_app)

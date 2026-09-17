@@ -1,0 +1,274 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_tool="$project_root/.tools/repo"
+fork_branch="omarchy/android-latest-release"
+
+core_projects=(
+  build/make
+  build/soong
+  device/generic/goldfish
+  device/google/cuttlefish
+  frameworks/base
+  frameworks/libs/systemui
+  packages/apps/Launcher3
+  packages/apps/Settings
+  packages/apps/ThemePicker
+)
+
+usage() {
+  cat <<'USAGE'
+Usage: ./omarchy <command> [argument]
+
+Commands:
+  doctor             Inspect this host and checkout without changing it
+  sync-core          Download the Android projects Omarchy modifies first
+  sync-full          Download the complete AOSP manifest
+  fork               Create the local Omarchy branch in fork-owned projects
+  build emulator     Build the native Android Emulator phone image (Linux)
+  build cuttlefish   Build the Cuttlefish phone image (Linux/KVM)
+  run emulator       Open the built image in the native Android Emulator
+  run cuttlefish     Start the built image with Cuttlefish WebRTC
+  test               Run fast repository and architecture checks
+USAGE
+}
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+ensure_repo() {
+  [[ -x "$repo_tool" ]] || die "Repo is missing. Re-run the project bootstrap."
+  [[ -d "$project_root/.repo" ]] || die "This directory is not initialized as an AOSP workspace."
+}
+
+host_os() {
+  uname -s
+}
+
+filesystem_personality() {
+  local project_device
+  project_device="$(df -P "$project_root" | awk 'NR == 2 {print $1}')"
+  diskutil info "$project_device" 2>/dev/null \
+    | awk -F: '/File System Personality/ {sub(/^[[:space:]]+/, "", $2); print $2}' \
+    || true
+}
+
+lunch_product() {
+  local product="$1"
+  if lunch "${product}-trunk_staging-userdebug"; then
+    return
+  fi
+
+  printf 'Current release config was unavailable; trying aosp_current.\n' >&2
+  if lunch "${product}-aosp_current-userdebug"; then
+    return
+  fi
+
+  printf 'Release-config target was unavailable; trying legacy lunch syntax.\n' >&2
+  lunch "${product}-userdebug"
+}
+
+doctor() {
+  ensure_repo
+
+  local os_name architecture available_kb available_gb
+  os_name="$(host_os)"
+  architecture="$(uname -m)"
+  available_kb="$(df -Pk "$project_root" | awk 'NR == 2 {print $4}')"
+  available_gb="$((available_kb / 1024 / 1024))"
+
+  printf 'Host: %s %s\n' "$os_name" "$architecture"
+  printf 'AOSP manifest: initialized\n'
+  printf 'Available disk: %s GiB\n' "$available_gb"
+
+  if [[ "$available_gb" -lt 400 ]]; then
+    printf 'Warning: a complete checkout plus build normally needs about 400 GiB free.\n'
+  fi
+
+  if [[ "$os_name" == "Linux" ]]; then
+    [[ -r /dev/kvm && -w /dev/kvm ]] \
+      && printf 'Cuttlefish virtualization: ready\n' \
+      || printf 'Cuttlefish virtualization: /dev/kvm is not available\n'
+  else
+    printf 'Android image builds: require Linux\n'
+    if command -v diskutil >/dev/null 2>&1; then
+      volume_personality="$(filesystem_personality)"
+      if [[ "$volume_personality" != *"Case-sensitive"* ]]; then
+        printf 'AOSP source filesystem: case-insensitive (full sync must use Linux or case-sensitive APFS)\n'
+      else
+        printf 'AOSP source filesystem: case-sensitive\n'
+      fi
+    fi
+    command -v emulator >/dev/null 2>&1 \
+      && printf 'Native Android Emulator: found\n' \
+      || printf 'Native Android Emulator: install Android Studio/SDK Emulator or set ANDROID_EMULATOR_BIN\n'
+  fi
+
+  local missing=0 project_path
+  for project_path in "${core_projects[@]}"; do
+    if [[ ! -e "$project_root/$project_path/.git" && ! -d "$project_root/$project_path/.git" ]]; then
+      printf 'Core project missing: %s\n' "$project_path"
+      missing=1
+    fi
+  done
+  [[ "$missing" -eq 0 ]] && printf 'Fork-owned Android projects: present\n'
+}
+
+sync_core() {
+  ensure_repo
+  "$repo_tool" sync -c -j"${OMARCHY_SYNC_JOBS:-4}" --no-tags --optimized-fetch \
+    "${core_projects[@]}"
+}
+
+sync_full() {
+  ensure_repo
+  if [[ "$(host_os)" == "Darwin" ]] && command -v diskutil >/dev/null 2>&1; then
+    volume_personality="$(filesystem_personality)"
+    if [[ "$volume_personality" != *"Case-sensitive"* ]]; then
+      die "A full AOSP checkout needs Linux or a case-sensitive APFS volume."
+    fi
+  fi
+  printf 'Downloading the complete AOSP manifest. This is a large checkout.\n'
+  "$repo_tool" sync -c -j"${OMARCHY_SYNC_JOBS:-4}" --no-tags --optimized-fetch
+}
+
+fork_projects() {
+  ensure_repo
+  "$repo_tool" start "$fork_branch" "${core_projects[@]}"
+  printf 'Fork branch created: %s\n' "$fork_branch"
+}
+
+build_image() {
+  local kind="${1:-}"
+  [[ "$(host_os)" == "Linux" ]] || die "AOSP images must be built on a Linux host."
+  [[ -f "$project_root/build/envsetup.sh" ]] || die "Run ./omarchy sync-full first."
+
+  # shellcheck disable=SC1091
+  source "$project_root/build/envsetup.sh"
+  case "$kind" in
+    emulator) lunch_product omarchy_sdk_phone64_arm64 ;;
+    cuttlefish) lunch_product omarchy_cf_arm64_only_phone ;;
+    *) die "build expects 'emulator' or 'cuttlefish'" ;;
+  esac
+  m -j"${OMARCHY_BUILD_JOBS:-$(getconf _NPROCESSORS_ONLN)}"
+}
+
+run_emulator() {
+  local emulator_bin product_out runtime_root runtime_images runtime_data
+  local system_image vendor_image ramdisk_image userdata_seed writable_data
+  emulator_bin="${ANDROID_EMULATOR_BIN:-$(command -v emulator || true)}"
+  if [[ -z "$emulator_bin" ]]; then
+    local emulator_candidate
+    for emulator_candidate in \
+      "${ANDROID_SDK_ROOT:-}/emulator/emulator" \
+      "${ANDROID_HOME:-}/emulator/emulator" \
+      "${HOME:-}/Library/Android/sdk/emulator/emulator"; do
+      if [[ -x "$emulator_candidate" ]]; then
+        emulator_bin="$emulator_candidate"
+        break
+      fi
+    done
+  fi
+  product_out="${ANDROID_PRODUCT_OUT:-$project_root/out/target/product/omarchy_sdk_phone64_arm64}"
+  runtime_root="${OMARCHY_EMULATOR_RUNTIME_DIR:-$project_root/out/emulator-runtime}"
+  runtime_images="$runtime_root/images"
+  runtime_data="$runtime_root/data"
+
+  [[ -n "$emulator_bin" && -x "$emulator_bin" ]] \
+    || die "Native Android Emulator not found; set ANDROID_EMULATOR_BIN."
+  [[ -f "$product_out/system-qemu.img" ]] \
+    || die "No launchable Omarchy emulator image found at $product_out. Build it on Linux first."
+  [[ -f "$product_out/vendor-qemu.img" && -f "$product_out/ramdisk-qemu.img" ]] \
+    || die "The Omarchy emulator vendor or ramdisk image is missing from $product_out."
+  [[ -f "$product_out/userdata.img" && -f "$product_out/kernel-ranchu" ]] \
+    || die "The Omarchy emulator kernel or initial data image is missing from $product_out."
+
+  system_image="$product_out/system-qemu.img"
+  vendor_image="$product_out/vendor-qemu.img"
+  ramdisk_image="$product_out/ramdisk-qemu.img"
+  userdata_seed="$product_out/userdata.img"
+  writable_data="$runtime_data/userdata-qemu.img"
+
+  mkdir -p "$runtime_images/system" "$runtime_data"
+  ln -sfn "$system_image" "$runtime_images/system.img"
+  ln -sfn "$vendor_image" "$runtime_images/vendor.img"
+  ln -sfn "$ramdisk_image" "$runtime_images/ramdisk.img"
+  ln -sfn "$userdata_seed" "$runtime_images/userdata.img"
+  ln -sfn "$product_out/kernel-ranchu" "$runtime_images/kernel-ranchu"
+  [[ -f "$product_out/system/build.prop" ]] \
+    && ln -sfn "$product_out/system/build.prop" "$runtime_images/system/build.prop"
+
+  local optional_image
+  for optional_image in advancedFeatures.ini encryptionkey.img VerifiedBootParams.textproto; do
+    [[ -e "$product_out/$optional_image" ]] \
+      && ln -sfn "$product_out/$optional_image" "$runtime_images/$optional_image"
+  done
+
+  if [[ "${OMARCHY_WIPE_DATA:-0}" == "1" ]]; then
+    rm -f "$writable_data" "$writable_data.qcow2"
+  fi
+  if [[ ! -f "$writable_data" ]]; then
+    printf 'Preparing persistent Omarchy phone data...\n'
+    cp -p "$userdata_seed" "$writable_data"
+  fi
+
+  ANDROID_PRODUCT_OUT="$runtime_images" "$emulator_bin" \
+    -sysdir "$runtime_images" \
+    -kernel "$runtime_images/kernel-ranchu" \
+    -ramdisk "$runtime_images/ramdisk.img" \
+    -data "$writable_data" \
+    -initdata "$runtime_images/userdata.img" \
+    -sdcard "$runtime_root/no-sdcard.img" \
+    -feature DynamicPartition \
+    -accel on \
+    -gpu host \
+    -memory "${OMARCHY_EMULATOR_MEMORY_MB:-4096}" \
+    -cores "${OMARCHY_EMULATOR_CORES:-4}" \
+    -skin "${OMARCHY_EMULATOR_SKIN:-1080x2400}" \
+    -dpi-device "${OMARCHY_EMULATOR_DENSITY:-420}" \
+    -prop "qemu.sf.lcd_density=${OMARCHY_EMULATOR_DENSITY:-420}" \
+    -port "${OMARCHY_EMULATOR_PORT:-5556}" \
+    -no-cache \
+    -no-snapshot \
+    -no-metrics \
+    -crash-report-mode disabled \
+    "$@"
+}
+
+run_cuttlefish() {
+  [[ "$(host_os)" == "Linux" ]] || die "Cuttlefish requires a Linux/KVM host."
+  [[ -f "$project_root/build/envsetup.sh" ]] || die "Run ./omarchy sync-full first."
+
+  # shellcheck disable=SC1091
+  source "$project_root/build/envsetup.sh"
+  lunch_product omarchy_cf_arm64_only_phone
+  command -v launch_cvd >/dev/null 2>&1 || die "Cuttlefish host tools are not built."
+  launch_cvd --daemon --start_webrtc=true "$@"
+  printf 'Cuttlefish is available at https://localhost:8443\n'
+}
+
+command_name="${1:-}"
+shift || true
+
+case "$command_name" in
+  doctor) doctor "$@" ;;
+  sync-core) sync_core "$@" ;;
+  sync-full) sync_full "$@" ;;
+  fork) fork_projects "$@" ;;
+  build) build_image "$@" ;;
+  run)
+    run_kind="${1:-}"
+    shift || true
+    case "$run_kind" in
+      emulator) run_emulator "$@" ;;
+      cuttlefish) run_cuttlefish "$@" ;;
+      *) die "run expects 'emulator' or 'cuttlefish'" ;;
+    esac
+    ;;
+  test) exec "$project_root/tests/test_project.sh" "$@" ;;
+  -h|--help|help|'') usage ;;
+  *) usage >&2; die "unknown command: $command_name" ;;
+esac

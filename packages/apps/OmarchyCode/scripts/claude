@@ -1,0 +1,14 @@
+#!/system/bin/sh
+CLAUDE_RUNTIME=/system_ext/bin/omarchy-code/claude
+export DISABLE_AUTOUPDATER=1
+export SHELL=/system/bin/sh
+export LD_PRELOAD=/system_ext/lib64/omarchy-code/claude/libomarchy_resolv_compat.so
+if [ -r "$HOME/../https-proxy" ]; then
+    HTTPS_PROXY=$(cat "$HOME/../https-proxy")
+    export HTTPS_PROXY
+    export HTTP_PROXY="$HTTPS_PROXY"
+    export CLAUDE_CODE_PROXY_RESOLVES_HOSTS=1
+fi
+exec "$CLAUDE_RUNTIME/musl/ld-musl-aarch64.so.1" \
+    --library-path "$CLAUDE_RUNTIME/musl" \
+    "$CLAUDE_RUNTIME/claude.real" "$@"

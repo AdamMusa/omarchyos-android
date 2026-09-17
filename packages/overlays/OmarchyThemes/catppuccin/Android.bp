@@ -1,0 +1,7 @@
+runtime_resource_overlay {
+    name: "OmarchyThemeCatppuccinCore",
+    theme: "OmarchyThemeCatppuccin",
+    certificate: "platform",
+    product_specific: true,
+    sdk_version: "current",
+}

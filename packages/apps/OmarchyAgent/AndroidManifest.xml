@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="os.omarchy.agent">
+
+    <uses-permission android:name="os.omarchy.permission.MANAGE_PLUGINS" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/ic_agent"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Omarchy.Agent"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".AgentActivity"
+            android:exported="true"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".AgentPluginService"
+            android:exported="true"
+            android:permission="os.omarchy.permission.MANAGE_PLUGINS"
+            android:process=":agent">
+            <intent-filter>
+                <action android:name="os.omarchy.intent.action.PLUGIN" />
+            </intent-filter>
+            <meta-data android:name="os.omarchy.plugin.SCHEMA_VERSION" android:value="1" />
+            <meta-data android:name="os.omarchy.plugin.ID" android:value="omarchy.agent" />
+            <meta-data android:name="os.omarchy.plugin.NAME" android:value="Agent" />
+            <meta-data
+                android:name="os.omarchy.plugin.DESCRIPTION"
+                android:value="Private assistant service for the installed Agent app" />
+            <meta-data android:name="os.omarchy.plugin.VERSION" android:value="1.0" />
+            <meta-data
+                android:name="os.omarchy.plugin.CAPABILITIES"
+                android:value="agent" />
+        </service>
+    </application>
+</manifest>

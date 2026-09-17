@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<overlay>
+    <item target="color/omarchy_surface" value="@color/omarchy_surface" />
+    <item target="color/omarchy_surface_elevated" value="@color/omarchy_surface_elevated" />
+    <item target="color/omarchy_surface_high" value="@color/omarchy_surface_high" />
+    <item target="color/omarchy_border" value="@color/omarchy_border" />
+    <item target="color/omarchy_text" value="@color/omarchy_text" />
+    <item target="color/omarchy_muted" value="@color/omarchy_muted" />
+    <item target="color/omarchy_accent" value="@color/omarchy_accent" />
+    <item target="color/omarchy_positive" value="@color/omarchy_positive" />
+    <item target="color/omarchy_warning" value="@color/omarchy_warning" />
+    <item target="color/omarchy_destructive" value="@color/omarchy_destructive" />
+    <item target="color/omarchy_navigation" value="@color/omarchy_navigation" />
+    <item target="bool/omarchy_is_light" value="@bool/omarchy_is_light" />
+</overlay>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="agent_surface">@android:color/system_surface_light</color>
+    <color name="agent_surface_elevated">@android:color/system_surface_container_light</color>
+    <color name="agent_navigation">@android:color/system_surface_container_low_light</color>
+    <color name="agent_border">@android:color/system_outline_variant_light</color>
+    <color name="agent_text">@android:color/system_on_surface_light</color>
+    <color name="agent_muted">@android:color/system_on_surface_variant_light</color>
+    <color name="agent_accent">@android:color/system_primary_light</color>
+    <color name="agent_user_text">@android:color/system_on_primary_light</color>
+</resources>

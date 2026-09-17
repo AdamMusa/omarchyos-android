@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep the phone dashboard compact. A user can still enlarge individual tiles in edit mode. -->
+    <string-array name="quick_settings_large_tiles_default_split" translatable="false" />
+
+    <!-- Education remains available from edit mode; opening the shade never produces coachmarks. -->
+    <bool name="config_disableDualShadeEducationalTooltips">true</bool>
+</resources>

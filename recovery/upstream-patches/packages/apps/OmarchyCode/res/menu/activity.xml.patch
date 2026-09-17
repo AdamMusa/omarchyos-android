@@ -1,0 +1,31 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/res/menu/activity.xml
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/res/menu/activity.xml
+@@
+ <menu xmlns:android="http://schemas.android.com/apk/res/android">
++    <item
++        android:id="@+id/menu_keyboard"
++        android:title="@string/menu_keyboard"
++        android:icon="@drawable/ic_keyboard"
++        android:showAsAction="always" />
+     <item
+         android:id="@+id/menu_new_tab"
+         android:title="@string/menu_new_tab"
+         android:icon="@android:drawable/ic_menu_add"
+-        android:showAsAction="always" />
++        android:showAsAction="ifRoom" />
+     <item
+         android:id="@+id/menu_close_tab"
+         android:title="@string/menu_close_tab"
+         android:icon="@android:drawable/ic_menu_close_clear_cancel"
+         android:showAsAction="ifRoom" />
++    <item
++        android:id="@+id/menu_home"
++        android:title="@string/menu_home"
++        android:icon="@drawable/ic_home"
++        android:showAsAction="never" />
+ </menu>
+*** End Patch
+

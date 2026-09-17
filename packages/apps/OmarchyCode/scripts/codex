@@ -1,0 +1,19 @@
+#!/system/bin/sh
+# Android's per-app UID sandbox is the outer execution boundary. Codex can
+# therefore work freely inside Code's private workspace without gaining access
+# to other apps or privileged phone services.
+CODEX_RUNTIME=/system_ext/bin/omarchy-code/vendor/aarch64-unknown-linux-musl
+export PATH="$CODEX_RUNTIME/codex-path:/system_ext/bin:/system/bin"
+
+case "${1:-}" in
+    login|logout|doctor|update|help|--help|-h|--version|-V)
+        exec "$CODEX_RUNTIME/bin/codex" "$@"
+        ;;
+    *)
+        exec "$CODEX_RUNTIME/bin/codex" \
+            --sandbox danger-full-access \
+            --ask-for-approval on-request \
+            --no-alt-screen \
+            "$@"
+        ;;
+esac

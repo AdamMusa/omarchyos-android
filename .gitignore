@@ -1,0 +1,7 @@
+/.repo/
+/.tools/
+/out/
+/.out-dir/
+/.idea/
+*.swp
+*.log

@@ -1,0 +1,16 @@
+// Copyright 2026 OmarchyOS
+// SPDX-License-Identifier: Apache-2.0
+
+android_app {
+    name: "OmarchyAgent",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    static_libs: ["omarchy-plugin-contract"],
+    manifest: "AndroidManifest.xml",
+    certificate: "platform",
+    sdk_version: "system_current",
+    product_specific: true,
+    optimize: {
+        enabled: true,
+    },
+}

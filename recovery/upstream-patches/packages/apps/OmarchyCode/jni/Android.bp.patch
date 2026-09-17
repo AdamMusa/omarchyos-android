@@ -1,0 +1,18 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/jni/Android.bp
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/Android.bp
+@@
+-    static_libs: ["libvterm"],
++    static_libs: ["libomarchy_vterm"],
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/Android.bp
+@@
+ cc_library_shared {
+     name: "libjni_terminal",
++    system_ext_specific: true,
+*** End Patch
+

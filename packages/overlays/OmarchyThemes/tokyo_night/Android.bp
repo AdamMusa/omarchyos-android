@@ -1,0 +1,7 @@
+runtime_resource_overlay {
+    name: "OmarchyThemeTokyoNightCore",
+    theme: "OmarchyThemeTokyoNight",
+    certificate: "platform",
+    product_specific: true,
+    sdk_version: "current",
+}

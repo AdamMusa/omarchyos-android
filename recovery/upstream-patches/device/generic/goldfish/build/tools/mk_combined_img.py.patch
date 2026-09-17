@@ -1,0 +1,28 @@
+# Codex apply_patch hunks for AOSP file: device/generic/goldfish/build/tools/mk_combined_img.py
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: device/generic/goldfish/build/tools/mk_combined_img.py
+@@
+-    # take a shortcut in build environment
+-    if os.path.exists(output_filename) and len(partitions) == 2:
+-        shell_command(['dd', "if=" + partitions[0]["path"], "of=" + output_filename,
+-                       "conv=notrunc,sync", "ibs=1024k", "obs=1024k", "seek=1"])
+-        shell_command(['dd', "if=" + partitions[1]["path"], "of=" + output_filename,
+-                       "conv=notrunc,sync", "ibs=1024k", "obs=1024k", "seek=2"])
+-        sys.exit(0)
+-    elif len(partitions) == 2:
++    # Always rebuild the combined image's partition table. Reusing an existing
++    # two-partition image leaves stale GPT boundaries when either input grows,
++    # which makes first-stage init reject otherwise-valid dynamic partitions.
++    if os.path.exists(output_filename):
++        os.remove(output_filename)
++
++    if len(partitions) == 2:
+         gptprefix = partitions[0]["sizeByMb"] + "_" + partitions[1]["sizeByMb"]
+         prebuilt_gpt_dir = os.path.dirname(os.path.abspath( __file__ )) + "/prebuilt/gpt/" + gptprefix
+         gpt_head = prebuilt_gpt_dir + "/head.img"
+-        gpt_tail = prebuilt_gpt_dir + "/head.img"
++        gpt_tail = prebuilt_gpt_dir + "/tail.img"
+*** End Patch
+

@@ -1,0 +1,14 @@
+# Codex apply_patch hunks for AOSP file: frameworks/base/packages/SystemUI/src/com/android/systemui/qs/panels/ui/viewmodel/toolbar/EditModeButtonViewModel.kt
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/src/com/android/systemui/qs/panels/ui/viewmodel/toolbar/EditModeButtonViewModel.kt
+@@
+     override suspend fun onActivated() {
+-        coroutineScope { launch { showTooltipsAsNeeded() } }
++        // Omarchy exposes editing as an explicit pencil action. Do not cover the shell with a
++        // first-run coachmark when the user merely opens Quick Settings.
++        qsPreferencesInteractor.setEditTooltipShown(true)
+     }
+*** End Patch
+

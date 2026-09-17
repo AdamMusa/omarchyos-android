@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="os.omarchy.theme.tokyo_night.core"
+    android:versionCode="1"
+    android:versionName="1.0">
+    <application android:hasCode="false" android:label="Tokyo Night">
+        <meta-data android:name="os.omarchy.plugin.SCHEMA_VERSION" android:value="1" />
+        <meta-data android:name="os.omarchy.plugin.ID" android:value="omarchy.theme.tokyo-night" />
+        <meta-data android:name="os.omarchy.plugin.NAME" android:value="Tokyo Night" />
+        <meta-data android:name="os.omarchy.plugin.DESCRIPTION" android:value="Deep indigo with a clear blue accent" />
+        <meta-data android:name="os.omarchy.plugin.VERSION" android:value="1.0" />
+        <meta-data android:name="os.omarchy.plugin.THEME_PACK" android:value="true" />
+        <meta-data android:name="os.omarchy.plugin.SEED_COLORS" android:value="7AA2F7,449DAB,AD8EE6" />
+        <meta-data android:name="os.omarchy.plugin.PREVIEW_COLORS" android:value="1A1B26,24283B,7AA2F7,C0CAF5" />
+        <meta-data android:name="os.omarchy.plugin.THEME_STYLE" android:value="TONAL_SPOT" />
+        <meta-data android:name="os.omarchy.plugin.THEME_MODE" android:value="dark" />
+    </application>
+    <overlay
+        android:category="os.omarchy.theme.core"
+        android:priority="1"
+        android:resourcesMap="@xml/overlays"
+        android:targetName="OmarchyThemeTokens"
+        android:targetPackage="os.omarchy.core" />
+</manifest>

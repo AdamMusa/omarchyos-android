@@ -1,0 +1,14 @@
+# Codex apply_patch hunks for AOSP file: device/generic/goldfish/sepolicy/system_ext/private/platform_app.te
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: device/generic/goldfish/sepolicy/system_ext/private/platform_app.te
+@@
+ set_prop(platform_app, bootanim_system_prop)
++
++# Goldfish's development image keeps platform-key tools in platform_app. Give
++# those tools isolated PTYs; production Omarchy products map Code to the
++# narrower omarchy_code_app domain declared alongside this emulator policy.
++create_pty(platform_app)
+*** End Patch
+

@@ -1,0 +1,167 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/jni/com_android_terminal_Terminal.cpp
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/com_android_terminal_Terminal.cpp
+@@
+ #include <fcntl.h>
+ #include <pty.h>
+ #include <cstdio>
++#include <cstdlib>
+ #include <termios.h>
+ #include <unistd.h>
+@@
+ #include <cstring>
++#include <string>
+@@
+ class Terminal {
+ public:
+-    Terminal(jobject callbacks);
++    Terminal(jobject callbacks, const char* home, const char* workspace, const char* command);
+@@
+     bool mKilled;
++
++    std::string mHome;
++    std::string mWorkspace;
++    std::string mCommand;
+@@
+-Terminal::Terminal(jobject callbacks) :
+-        mCallbacks(callbacks), mRows(25), mCols(80), mKilled(false),
++Terminal::Terminal(jobject callbacks, const char* home, const char* workspace,
++        const char* command) :
++        mMasterFd(-1), mChildPid(-1), mCallbacks(callbacks), mRows(25), mCols(80),
++        mKilled(false), mHome(home), mWorkspace(workspace), mCommand(command),
+         mScrollCur(0), mScrollSize(100) {
+@@
+ Terminal::~Terminal() {
+-    close(mMasterFd);
+-    ::kill(mChildPid, SIGHUP);
++    if (mMasterFd >= 0) {
++        close(mMasterFd);
++    }
++    if (mChildPid > 0) {
++        ::kill(mChildPid, SIGHUP);
++    }
+@@
+     mChildPid = forkpty(&mMasterFd, NULL, &termios, &size);
+     if (mChildPid == 0) {
+@@
+-        // We know execvp(2) won't actually try to modify this.
++        const std::string codexHome = mHome + "/.codex";
++        const std::string tempDir = mHome + "/tmp";
++        const std::string configHome = mHome + "/.config";
++        const std::string cacheHome = mHome + "/.cache";
++        setenv("HOME", mHome.c_str(), 1);
++        setenv("CODEX_HOME", codexHome.c_str(), 1);
++        setenv("TMPDIR", tempDir.c_str(), 1);
++        setenv("XDG_CONFIG_HOME", configHome.c_str(), 1);
++        setenv("XDG_CACHE_HOME", cacheHome.c_str(), 1);
++        setenv("PATH", "/system_ext/bin:/system_ext/bin/omarchy-code/vendor/"
++                "aarch64-unknown-linux-musl/codex-path:/system/bin", 1);
++        setenv("SHELL", "/system/bin/sh", 1);
++        setenv("TERM", "xterm-256color", 1);
++        setenv("COLORTERM", "truecolor", 1);
++        setenv("LANG", "C.UTF-8", 1);
++
++        if (chdir(mWorkspace.c_str()) != 0) {
++            fprintf(stderr_save, "Cannot enter workspace(%s) - %s\n",
++                    mWorkspace.c_str(), strerror(errno));
++            _exit(1);
++        }
++
++        // Commands originate from TerminalService's fixed allowlist, never user input.
+         char *shell = const_cast<char*>("/system/bin/sh");
+ #if USE_TEST_SHELL
+@@
+ #else
+-        char *args[2] = {shell, NULL};
++        char *arg1 = const_cast<char*>("-c");
++        char *arg2 = const_cast<char*>(mCommand.c_str());
++        char *args[4] = {shell, arg1, arg2, NULL};
+ #endif
+ 
+-        execvp(shell, args);
++        execv(shell, args);
+         fprintf(stderr_save, "Cannot exec(%s) - %s\n", shell, strerror(errno));
+         _exit(1);
++    } else if (mChildPid < 0) {
++        ALOGE("forkpty failed: %s", strerror(errno));
++        return 1;
+     }
+@@
+-static jlong com_android_terminal_Terminal_nativeInit(JNIEnv* env, jclass clazz, jobject callbacks) {
+-    return reinterpret_cast<jlong>(new Terminal(callbacks));
++static jlong com_android_terminal_Terminal_nativeInit(JNIEnv* env, jclass clazz, jobject callbacks,
++        jstring home, jstring workspace, jstring command) {
++    const char* homeChars = env->GetStringUTFChars(home, nullptr);
++    const char* workspaceChars = env->GetStringUTFChars(workspace, nullptr);
++    const char* commandChars = env->GetStringUTFChars(command, nullptr);
++    if (homeChars == nullptr || workspaceChars == nullptr || commandChars == nullptr) {
++        if (homeChars != nullptr) env->ReleaseStringUTFChars(home, homeChars);
++        if (workspaceChars != nullptr) env->ReleaseStringUTFChars(workspace, workspaceChars);
++        if (commandChars != nullptr) env->ReleaseStringUTFChars(command, commandChars);
++        return 0;
++    }
++
++    Terminal* terminal = new Terminal(callbacks, homeChars, workspaceChars, commandChars);
++    env->ReleaseStringUTFChars(home, homeChars);
++    env->ReleaseStringUTFChars(workspace, workspaceChars);
++    env->ReleaseStringUTFChars(command, commandChars);
++    return reinterpret_cast<jlong>(terminal);
+ }
+@@
+ static JNINativeMethod gMethods[] = {
+-    { "nativeInit", "(Lcom/android/terminal/TerminalCallbacks;)J", (void*)com_android_terminal_Terminal_nativeInit },
++    { "nativeInit", "(Lcom/android/terminal/TerminalCallbacks;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)J", (void*)com_android_terminal_Terminal_nativeInit },
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/com_android_terminal_Terminal.cpp
+@@
+     inline ~ScrollbackLine() {
+-        delete mCells;
++        delete[] mCells;
+@@
+     case VTERM_VALUETYPE_COLOR:
+-        return env->CallIntMethod(term->getCallbacks(), setTermPropIntMethod, prop,
++        return env->CallIntMethod(term->getCallbacks(), setTermPropColorMethod, prop,
+                 val->color.rgb.red, val->color.rgb.green, val->color.rgb.blue);
+@@
+-    delete mScroll;
++    for (dimen_t row = 0; row < mScrollCur; row++) {
++        delete mScroll[row];
++    }
++    delete[] mScroll;
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/com_android_terminal_Terminal.cpp
+@@
+         setenv("SHELL", "/system/bin/sh", 1);
++        setenv("PS1", "omarchy $ ", 1);
+         setenv("TERM", "xterm-256color", 1);
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/com_android_terminal_Terminal.cpp
+@@
+         const std::string tempDir = mHome + "/tmp";
+         const std::string configHome = mHome + "/.config";
+         const std::string cacheHome = mHome + "/.cache";
++        const std::string shellProfile = mHome + "/.mkshrc";
+@@
+         setenv("XDG_CACHE_HOME", cacheHome.c_str(), 1);
++        setenv("ENV", shellProfile.c_str(), 1);
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/jni/com_android_terminal_Terminal.cpp
+@@
+         const std::string cacheHome = mHome + "/.cache";
+         const std::string shellProfile = mHome + "/.mkshrc";
++        const std::string resolverConfig = mHome + "/../resolv.conf";
+@@
+         setenv("ENV", shellProfile.c_str(), 1);
++        setenv("OMARCHY_RESOLV_CONF", resolverConfig.c_str(), 1);
+*** End Patch
+

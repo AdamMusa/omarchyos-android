@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Agent</string>
+    <string name="title">Agent</string>
+    <string name="local_status">On device</string>
+    <string name="welcome">I can open Wi-Fi, Bluetooth, or system Settings locally. A signed provider can add broader capabilities later.</string>
+    <string name="composer_hint">Ask Agent</string>
+    <string name="send">Send</string>
+    <string name="provider_needed">That needs an Agent provider. OmarchyOS will never pretend a provider is connected when it is not.</string>
+</resources>

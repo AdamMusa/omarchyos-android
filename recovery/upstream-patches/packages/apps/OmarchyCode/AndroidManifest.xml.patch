@@ -1,0 +1,104 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/AndroidManifest.xml
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/AndroidManifest.xml
+@@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="com.android.terminal">
+ 
+-    <application android:label="@string/app_label"
+-         android:enabled="false">
++    <uses-permission android:name="android.permission.INTERNET" />
++    <uses-permission android:name="os.omarchy.permission.MANAGE_PLUGINS" />
++
++    <application
++        android:allowBackup="false"
++        android:enabled="true"
++        android:icon="@drawable/ic_code"
++        android:label="@string/app_label"
++        android:supportsRtl="true"
++        android:theme="@style/Theme.Omarchy.Code"
++        android:usesCleartextTraffic="false">
++
++        <activity
++            android:name=".HubActivity"
++            android:exported="true"
++            android:windowSoftInputMode="stateAlwaysHidden|adjustResize">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="android.intent.category.LAUNCHER" />
++            </intent-filter>
++        </activity>
+ 
+         <activity android:name=".TerminalActivity"
+-             android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
+-             android:exported="true">
+-            <intent-filter>
+-                <action android:name="android.intent.action.MAIN"/>
+-                <category android:name="android.intent.category.DEFAULT"/>
+-                <category android:name="android.intent.category.LAUNCHER"/>
+-            </intent-filter>
+-        </activity>
++            android:exported="false"
++            android:launchMode="singleTop"
++            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+ 
+-        <service android:name=".TerminalService"/>
++        <service
++            android:name=".TerminalService"
++            android:exported="false" />
++
++        <service
++            android:name=".CodePluginService"
++            android:exported="true"
++            android:permission="os.omarchy.permission.MANAGE_PLUGINS"
++            android:process=":plugin">
++            <intent-filter>
++                <action android:name="os.omarchy.intent.action.PLUGIN" />
++            </intent-filter>
++            <meta-data android:name="os.omarchy.plugin.SCHEMA_VERSION" android:value="1" />
++            <meta-data android:name="os.omarchy.plugin.ID" android:value="omarchy.code" />
++            <meta-data android:name="os.omarchy.plugin.NAME" android:value="Code" />
++            <meta-data
++                android:name="os.omarchy.plugin.DESCRIPTION"
++                android:value="Official Codex and Claude Code runtimes with an on-device workspace" />
++            <meta-data android:name="os.omarchy.plugin.VERSION" android:value="1.0" />
++            <meta-data
++                android:name="os.omarchy.plugin.CAPABILITIES"
++                android:value="service" />
++        </service>
+     </application>
+ 
+ </manifest>
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/AndroidManifest.xml
+@@
+         <activity android:name=".TerminalActivity"
+             android:exported="false"
+             android:launchMode="singleTop"
+             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
++
++        <activity
++            android:name=".PublishActivity"
++            android:exported="false"
++            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
++
++        <activity
++            android:name=".ProjectActivity"
++            android:exported="true"
++            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+@@
+         <service
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/AndroidManifest.xml
+@@
+     <uses-permission android:name="android.permission.INTERNET" />
++    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+     <uses-permission android:name="os.omarchy.permission.MANAGE_PLUGINS" />
+*** End Patch
+

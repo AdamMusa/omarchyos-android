@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="os.omarchy.theme.mint.core"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <application
+        android:hasCode="false"
+        android:label="Mint">
+        <meta-data android:name="os.omarchy.plugin.SCHEMA_VERSION" android:value="1" />
+        <meta-data android:name="os.omarchy.plugin.ID" android:value="omarchy.theme.mint" />
+        <meta-data android:name="os.omarchy.plugin.NAME" android:value="Mint" />
+        <meta-data
+            android:name="os.omarchy.plugin.DESCRIPTION"
+            android:value="OmarchyOS signature mint palette" />
+        <meta-data android:name="os.omarchy.plugin.VERSION" android:value="1.0" />
+        <meta-data android:name="os.omarchy.plugin.THEME_PACK" android:value="true" />
+        <meta-data
+            android:name="os.omarchy.plugin.SEED_COLORS"
+            android:value="62E6C3,72A7FF,AA8DFF" />
+        <meta-data
+            android:name="os.omarchy.plugin.PREVIEW_COLORS"
+            android:value="090D12,141C22,62E6C3,F1FFF9" />
+        <meta-data android:name="os.omarchy.plugin.THEME_STYLE" android:value="VIBRANT" />
+        <meta-data android:name="os.omarchy.plugin.THEME_MODE" android:value="dark" />
+    </application>
+
+    <overlay
+        android:category="os.omarchy.theme.core"
+        android:priority="1"
+        android:resourcesMap="@xml/overlays"
+        android:targetName="OmarchyThemeTokens"
+        android:targetPackage="os.omarchy.core" />
+</manifest>

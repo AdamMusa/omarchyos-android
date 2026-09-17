@@ -1,0 +1,65 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/res/layout/activity.xml
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/res/layout/activity.xml
+@@
+-<androidx.viewpager.widget.ViewPager
+-    xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:id="@+id/pager"
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     android:layout_width="match_parent"
+-    android:layout_height="match_parent">
++    android:layout_height="match_parent"
++    android:background="@color/code_background"
++    android:fitsSystemWindows="true"
++    android:orientation="vertical">
+ 
+-    <androidx.viewpager.widget.PagerTitleStrip
+-        android:id="@+id/titles"
++    <android.widget.Toolbar
++        android:id="@+id/toolbar"
+         android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_gravity="top" />
++        android:layout_height="56dp"
++        android:background="@color/code_surface"
++        android:elevation="0dp"
++        android:navigationIcon="@android:drawable/ic_media_previous"
++        android:popupTheme="@android:style/ThemeOverlay.Material.Dark"
++        android:subtitle="@string/terminal_hint"
++        android:subtitleTextColor="@color/code_text_secondary"
++        android:titleTextColor="@color/code_text" />
++
++    <androidx.viewpager.widget.ViewPager
++        android:id="@+id/pager"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1"
++        android:background="@drawable/bg_terminal" />
+ 
+-</androidx.viewpager.widget.ViewPager>
++</LinearLayout>
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/res/layout/activity.xml
+@@
+-        android:navigationIcon="@android:drawable/ic_media_previous"
++        android:navigationIcon="@*android:drawable/ic_ab_back_material"
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/res/layout/activity.xml
+@@
+-        android:navigationIcon="@*android:drawable/ic_ab_back_material"
+         android:popupTheme="@style/AppTheme.ToolbarPopup"
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/res/layout/activity.xml
+@@
+-        android:navigationIcon="@*android:drawable/ic_ab_back_material"
+         android:popupTheme="@android:style/ThemeOverlay.Material.Dark"
+*** End Patch
+

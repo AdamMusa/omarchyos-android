@@ -1,0 +1,13 @@
+// Copyright 2026 OmarchyOS
+// SPDX-License-Identifier: Apache-2.0
+
+java_library {
+    name: "omarchy-plugin-contract",
+    srcs: [
+        "aidl/**/*.aidl",
+        "src/**/*.java",
+    ],
+    sdk_version: "system_current",
+    installable: false,
+    visibility: ["//visibility:public"],
+}

@@ -1,0 +1,41 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/Settings/AndroidManifest.xml
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/Settings/AndroidManifest.xml
+@@
+     <uses-permission android:name="android.permission.REQUEST_NETWORK_SCORES" />
++    <uses-permission android:name="os.omarchy.permission.MANAGE_PLUGINS" />
+@@
+         <service
+             android:name=".appfunctions.DeviceStateAppFunctionService"
+@@
+             </intent-filter>
+         </service>
++
++        <!-- Omarchy-owned Settings entry point. The implementation remains in a
++             separately updatable, platform-signed package. -->
++        <activity
++            android:name=".omarchy.OmarchySettingsActivity"
++            android:exported="true"
++            android:icon="@drawable/ic_settings_omarchy"
++            android:label="@string/omarchy_settings_title"
++            android:theme="@android:style/Theme.NoDisplay">
++            <intent-filter>
++                <action android:name="com.android.settings.action.IA_SETTINGS" />
++            </intent-filter>
++            <meta-data
++                android:name="com.android.settings.category"
++                android:value="com.android.settings.category.ia.system" />
++            <meta-data
++                android:name="com.android.settings.icon"
++                android:resource="@drawable/ic_settings_omarchy" />
++            <meta-data
++                android:name="com.android.settings.summary"
++                android:resource="@string/omarchy_settings_summary" />
++            <meta-data android:name="com.android.settings.order" android:value="-70" />
++        </activity>
+ 
+         <!-- This is the longest AndroidManifest.xml ever. -->
+*** End Patch
+

@@ -1,0 +1,33 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/src/com/android/terminal/Terminal.java
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/Terminal.java
+@@
+-    public Terminal() {
+-        mNativePtr = nativeInit(mCallbacks);
++    private final String mSessionKind;
++
++    public Terminal(String sessionKind, String title, String home, String workspace,
++            String command) {
++        mSessionKind = sessionKind;
++        mNativePtr = nativeInit(mCallbacks, home, workspace, command);
+         key = sNumber++;
+-        mTitle = TAG + " " + key;
++        mTitle = title;
+         mThread = new Thread(mTitle) {
+@@
+     public String getTitle() {
+@@
+         return mTitle;
+     }
++
++    public String getSessionKind() {
++        return mSessionKind;
++    }
+@@
+-    private static native long nativeInit(TerminalCallbacks callbacks);
++    private static native long nativeInit(TerminalCallbacks callbacks, String home,
++            String workspace, String command);
+*** End Patch
+

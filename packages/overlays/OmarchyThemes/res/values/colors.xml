@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="omarchy_surface">#090D12</color>
+    <color name="omarchy_surface_elevated">#141C22</color>
+    <color name="omarchy_surface_high">#1B272D</color>
+    <color name="omarchy_border">#29413F</color>
+    <color name="omarchy_text">#F1FFF9</color>
+    <color name="omarchy_muted">#91A9A1</color>
+    <color name="omarchy_accent">#62E6C3</color>
+    <color name="omarchy_positive">#8BD49C</color>
+    <color name="omarchy_warning">#E6C384</color>
+    <color name="omarchy_destructive">#E9828C</color>
+    <color name="omarchy_navigation">#070A0E</color>
+</resources>

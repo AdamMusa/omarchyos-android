@@ -1,0 +1,13 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/Settings/res/values/strings.xml
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/Settings/res/values/strings.xml
+@@
+-</resources>
++    <!-- OmarchyOS platform extension settings. -->
++    <string name="omarchy_settings_title">OmarchyOS</string>
++    <string name="omarchy_settings_summary">Themes, plugins, and system experience</string>
++</resources>
+*** End Patch
+

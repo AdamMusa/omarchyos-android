@@ -1,0 +1,71 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/src/com/android/terminal/TerminalView.java
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalView.java
+@@
+     private final AdapterView.OnItemClickListener mClickListener = new AdapterView.OnItemClickListener() {
+         @Override
+         public void onItemClick(AdapterView<?> parent, View v, int pos, long id) {
+-            if (parent.requestFocus()) {
+-                InputMethodManager imm = (InputMethodManager) parent.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+-                imm.showSoftInput(parent, InputMethodManager.SHOW_IMPLICIT);
+-            }
++            showKeyboard();
+         }
+     };
+@@
+         setOnItemClickListener(mClickListener);
+     }
++
++    /** The IME is shown only after an explicit terminal or keyboard-button tap. */
++    public void showKeyboard() {
++        if (requestFocus()) {
++            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(
++                    Context.INPUT_METHOD_SERVICE);
++            imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT);
++        }
++    }
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalView.java
+@@
+     private final AdapterView.OnItemClickListener mClickListener = new AdapterView.OnItemClickListener() {
+         @Override
+         public void onItemClick(AdapterView<?> parent, View v, int pos, long id) {
+-            if (parent.requestFocus()) {
+-                InputMethodManager imm = (InputMethodManager) parent.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+-                imm.showSoftInput(parent, InputMethodManager.SHOW_IMPLICIT);
+-            }
++            showKeyboard();
+         }
+     };
+@@
+         setOnItemClickListener(mClickListener);
+     }
++
++    /** The IME is shown only after an explicit terminal or keyboard-button tap. */
++    public void showKeyboard() {
++        if (requestFocus()) {
++            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(
++                    Context.INPUT_METHOD_SERVICE);
++            imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT);
++        }
++    }
+*** End Patch
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/src/com/android/terminal/TerminalView.java
+@@
+     public TerminalView(Context context, AttributeSet attrs, int defStyle) {
+         super(context, attrs, defStyle);
++
++        // TerminalMetrics stores pixels, while a phone UI should follow the
++        // user's scaled font density. 14sp keeps code readable without making
++        // an ordinary portrait session too narrow to use.
++        setTextSize(14f * getResources().getDisplayMetrics().scaledDensity);
+ 
+         setBackground(null);
+*** End Patch
+

@@ -1,0 +1,64 @@
+manifest_url = "https://android.googlesource.com/platform/manifest"
+manifest_branch = "android-latest-release"
+fork_branch = "omarchy/android-latest-release"
+
+[[project]]
+path = "frameworks/base"
+upstream = "platform/frameworks/base"
+ownership = "framework and SystemUI integration"
+
+[[project]]
+path = "frameworks/libs/systemui"
+upstream = "platform/frameworks/libs/systemui"
+ownership = "shared SystemUI contracts"
+
+[[project]]
+path = "packages/apps/Launcher3"
+upstream = "platform/packages/apps/Launcher3"
+ownership = "Home, app library, folders, widgets, and recents"
+
+[[project]]
+path = "packages/apps/Settings"
+upstream = "platform/packages/apps/Settings"
+ownership = "Omarchy settings and platform experience"
+
+[[project]]
+path = "packages/apps/ThemePicker"
+upstream = "platform/packages/apps/ThemePicker"
+ownership = "wallpaper, palette, icon, and theme selection"
+
+[[project]]
+path = "build/make"
+upstream = "platform/build"
+ownership = "release identity and product build"
+
+[[project]]
+path = "build/soong"
+upstream = "platform/build/soong"
+ownership = "Omarchy build validation"
+
+[[project]]
+path = "device/generic/goldfish"
+upstream = "device/generic/goldfish"
+ownership = "native Android Emulator product"
+
+[[project]]
+path = "device/google/cuttlefish"
+upstream = "device/google/cuttlefish"
+ownership = "Cuttlefish product and automated virtual-device tests"
+
+[[new_project]]
+path = "device/omarchy"
+ownership = "Omarchy product definitions and future device families"
+
+[[new_project]]
+path = "packages/apps/OmarchyCore"
+ownership = "signed plugin registry and theme controller"
+
+[[new_project]]
+path = "packages/apps/OmarchyAgent"
+ownership = "installed Agent shell and Agent plugin"
+
+[[new_project]]
+path = "packages/overlays/OmarchyThemes"
+ownership = "code-free RRO theme packs"

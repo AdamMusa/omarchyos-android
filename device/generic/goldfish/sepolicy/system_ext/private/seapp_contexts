@@ -1,0 +1,2 @@
+# Keep the PTY permission scoped to Omarchy Code instead of every platform app.
+user=_app seinfo=platform name=com.android.terminal domain=omarchy_code_app type=app_data_file levelFrom=all

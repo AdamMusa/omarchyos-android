@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <overlayable name="OmarchyThemeTokens">
+        <policy type="signature">
+            <item type="color" name="omarchy_surface" />
+            <item type="color" name="omarchy_surface_elevated" />
+            <item type="color" name="omarchy_surface_high" />
+            <item type="color" name="omarchy_border" />
+            <item type="color" name="omarchy_text" />
+            <item type="color" name="omarchy_muted" />
+            <item type="color" name="omarchy_accent" />
+            <item type="color" name="omarchy_positive" />
+            <item type="color" name="omarchy_warning" />
+            <item type="color" name="omarchy_destructive" />
+            <item type="color" name="omarchy_navigation" />
+            <item type="bool" name="omarchy_is_light" />
+        </policy>
+    </overlayable>
+</resources>

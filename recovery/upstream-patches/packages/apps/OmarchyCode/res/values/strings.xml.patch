@@ -1,0 +1,32 @@
+# Codex apply_patch hunks for AOSP file: packages/apps/OmarchyCode/res/values/strings.xml
+# Apply in order after syncing upstream AOSP (see recovery/RECOVERY.md).
+
+*** Begin Patch
+*** Update File: packages/apps/OmarchyCode/res/values/strings.xml
+@@
+ <resources>
+-    <!-- Title of the Terminal activity. -->
+-    <string name="app_label">Terminal</string>
++    <string name="app_label">Code</string>
++    <string name="hub_eyebrow">OMARCHY WORKSPACE</string>
++    <string name="hub_title">Build directly on your phone.</string>
++    <string name="hub_description">Real coding tools, a private Linux-style workspace, and an OS bridge for publishing what you create.</string>
++    <string name="codex_title">Codex</string>
++    <string name="codex_description">Sign in with ChatGPT or an API key, then work with files and projects.</string>
++    <string name="claude_title">Claude Code</string>
++    <string name="claude_description">Use Anthropic’s official coding CLI in the same workspace.</string>
++    <string name="workspace_title">Workspace shell</string>
++    <string name="workspace_description">Open a direct terminal for files, folders, Git, and local tools.</string>
++    <string name="provider_official">OFFICIAL RUNTIME</string>
++    <string name="workspace_local">ON DEVICE</string>
++    <string name="hub_privacy">Provider authentication stays inside each official CLI. Projects remain in Code’s Android sandbox unless you explicitly publish or export them.</string>
++    <string name="terminal_hint">Tap the terminal to type</string>
++    <string name="menu_keyboard">Keyboard</string>
++    <string name="menu_home">Code home</string>
+ 
+     <string name="menu_new_tab">New tab</string>
+     <string name="menu_close_tab">Close tab</string>
+ 
+ </resources>
+*** End Patch
+

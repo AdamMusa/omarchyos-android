@@ -1,0 +1,40 @@
+#!/system/bin/sh
+
+usage() {
+    echo "usage: omarchy-mobile status"
+    echo "       omarchy-mobile publish <app|theme|plugin> <project-folder>"
+}
+
+case "${1:-}" in
+    status)
+        echo "OmarchyOS mobile bridge"
+        echo "workspace: ${PWD}"
+        echo "apps: sandboxed local projects; Android confirms launcher pinning"
+        echo "themes: staged locally; signed OS overlay required to apply globally"
+        echo "plugins: staged locally; platform signature required for privileged capabilities"
+        ;;
+    publish)
+        kind="${2:-}"
+        project="${3:-}"
+        case "$kind" in
+            app|theme|plugin) ;;
+            *) usage; exit 2 ;;
+        esac
+        if [ -z "$project" ] || [ ! -d "$project" ]; then
+            echo "project folder not found: $project" >&2
+            exit 2
+        fi
+        project_path="$(cd "$project" && pwd -P)" || exit 2
+        request_dir="$HOME/.omarchy"
+        request_file="$request_dir/publish.request"
+        request_tmp="$request_dir/publish.request.$$"
+        mkdir -p "$request_dir" || exit 1
+        (umask 077; printf '%s\n%s\n' "$kind" "$project_path" > "$request_tmp") || exit 1
+        mv -f "$request_tmp" "$request_file" || exit 1
+        echo "Review the publish request on screen."
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac

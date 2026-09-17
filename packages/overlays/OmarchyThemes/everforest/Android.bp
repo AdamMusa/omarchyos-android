@@ -1,0 +1,7 @@
+runtime_resource_overlay {
+    name: "OmarchyThemeEverforestCore",
+    theme: "OmarchyThemeEverforest",
+    certificate: "platform",
+    product_specific: true,
+    sdk_version: "current",
+}
