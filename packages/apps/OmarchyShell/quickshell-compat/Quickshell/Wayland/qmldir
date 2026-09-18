@@ -1,0 +1,4 @@
+module Quickshell.Wayland
+WlSessionLock 1.0 WlSessionLock.qml
+WlSessionLockSurface 1.0 WlSessionLockSurface.qml
+singleton ToplevelManager 1.0 ToplevelManager.qml

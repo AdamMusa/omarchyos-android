@@ -1,0 +1,2 @@
+module Quickshell.Networking
+singleton NetworkManager 1.0 NetworkManager.qml
