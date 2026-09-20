@@ -30,11 +30,24 @@ shutil.copyfile(source / "MobileStatus.qml", status / "MobileStatus.qml")
     "barWidget": {"displayName": "Phone status", "allowMultiple": False}
 }, indent=2))
 
-enabled = {"omarchy.bar", "omarchy.menu", "omarchy.clock", "omarchy.mobile-status", "omarchy.background"}
+themes = tree / "shell/plugins/mobile-themes"
+themes.mkdir(exist_ok=True)
+shutil.copyfile(source / "ThemeBrowser.qml", themes / "ThemeBrowser.qml")
+(themes / "manifest.json").write_text(json.dumps({
+    "schemaVersion": 1, "id": "omarchy.mobile-themes", "name": "Phone themes",
+    "version": "1.0.0", "author": "OmarchyOS", "kinds": ["service"],
+    "entryPoints": {"service": "ThemeBrowser.qml"}
+}, indent=2))
+assets = tree / "mobile-themes"
+assets.mkdir(exist_ok=True)
+shutil.copytree(source / "wallpapers", assets / "wallpapers", dirs_exist_ok=True)
+shutil.copyfile(source / "marketplace.json", assets / "marketplace.json")
+
+enabled = {"omarchy.bar", "omarchy.menu", "omarchy.clock", "omarchy.mobile-status", "omarchy.background", "omarchy.mobile-themes"}
 disabled = sorted({json.loads(path.read_text())["id"]
                    for path in (tree / "shell/plugins").rglob("*manifest.json")} - enabled)
 config = {
-    "version": 1, "mobileProfile": 2,
+    "version": 1, "mobileProfile": 3,
     "bar": {"position": "top", "transparent": False, "centerAnchor": "omarchy.clock",
             "layout": {"left": [{"id": "omarchy.menu"}],
                        "center": [{"id": "omarchy.clock", "format": "dddd HH:mm", "formatAlt": "d MMMM 'W'ww yyyy"}],
@@ -47,6 +60,7 @@ menu = {
     "root": {"label": "Omarchy", "title": "Omarchy"},
     "apps": {"icon": "󰀻", "label": "Apps", "provider": "apps"},
     "settings": {"icon": "", "label": "Phone settings"},
+    "themes": {"icon": "󰏘", "label": "Themes", "action": "mobile:themes"},
     "manage": {"icon": "󰭌", "label": "Manage apps", "action": "mobile:apps"}
 }
 for key, label in [("wifi", "Wi-Fi"), ("bluetooth", "Bluetooth"), ("sound", "Sound"),
@@ -56,7 +70,8 @@ for key, label in [("wifi", "Wi-Fi"), ("bluetooth", "Bluetooth"), ("sound", "Sou
 (tree / "default/omarchy/omarchy-menu.jsonc").write_text(json.dumps(menu, ensure_ascii=False, indent=2) + "\n")
 
 replace("shell/plugins/menu/Menu.qml", "    Util.execDetached(command)", """    if (command.indexOf("mobile:") === 0) {
-      AndroidBridge.openSettings(command.slice(7))
+      if (command === "mobile:themes") AndroidBridge.openThemes()
+      else AndroidBridge.openSettings(command.slice(7))
       return
     }
     Util.execDetached(command)""")

@@ -1,0 +1,28 @@
+{
+  "omarchy": "8675600e9ea0c6b6011de378b0625172b9cfdd46",
+  "registry": "e2902d2ac809e7cecc036558426d42178f4cbb9c",
+  "default_themes": [
+    "catppuccin",
+    "catppuccin-latte",
+    "ethereal",
+    "everforest",
+    "flexoki-light",
+    "gruvbox",
+    "hackerman",
+    "kanagawa",
+    "last-horizon",
+    "lumon",
+    "lupine",
+    "matte-black",
+    "miasma",
+    "nord",
+    "osaka-jade",
+    "retro-82",
+    "ristretto",
+    "rose-pine",
+    "solitude",
+    "tokyo-night",
+    "vantablack",
+    "white"
+  ]
+}

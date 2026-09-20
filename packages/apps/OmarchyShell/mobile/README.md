@@ -45,3 +45,30 @@ under `app/android`. `python3 tests/test_emulator_launcher.py` from the reposito
 root checks navigation arguments, modem configuration and persistent user data
 without launching an emulator. Run `./omarchy test` in a full restored AOSP
 workspace for the remaining platform checks.
+
+## Themes
+
+Open **Omarchy → Themes**. Installed includes all 22 themes in the pinned
+Omarchy source tree, with their original palette and one official wallpaper
+per theme. Apply changes the shell colors, artwork, Android light/dark mode,
+Android dynamic color seed and the Core semantic resources through a fabricated
+Runtime Resource Overlay. Android apps choose whether to use system colors.
+
+Marketplace uses the official `omacom/omarchy-theme-registry` catalog. A bundled
+snapshot loads offline; Refresh checks for new community themes. Install fetches
+the selected GitHub repository at a resolved commit, validates its color data,
+and imports palette and artwork into private per-user storage. Downloaded themes
+survive shell updates. The installer never installs desktop apps or executes
+repository scripts, QML, binaries, plugins or hooks. Legacy Alacritty palettes
+are supported; repositories without a valid palette produce an error and leave
+the active theme intact. Large archives are bounded for phone memory/storage.
+
+Source revisions and wallpaper URLs are recorded in `theme-sources.json` and
+`wallpapers/sources.json`. `tools/sync-mobile-themes.py` refreshes bundled assets
+on macOS using sips for image conversion. Review and pin source updates before
+shipping. Omarchy's license remains in the vendored tree; downloaded theme
+LICENSE/COPYING and README files are retained when provided.
+
+Run `tools/test-themes.sh` with JDK 17+ to check all bundled palettes and artwork,
+legacy conversion, invalid color handling, archive path validation, duplicate
+files, size limits and exclusion of executable repository files.

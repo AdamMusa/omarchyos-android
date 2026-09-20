@@ -13,9 +13,9 @@ Item {
     WlrLayershell.namespace: "omarchy-background"
     Image {
       anchors.fill: parent
-      source: "file://" + Quickshell.env("XDG_STATE_HOME") + "/omarchy/current/background"
+      source: AndroidBridge.themeState.wallpaper || ("file://" + Quickshell.env("XDG_STATE_HOME") + "/omarchy/current/background")
       // Keep the desktop artwork intact in portrait.
-      fillMode: Image.PreserveAspectFit
+      fillMode: AndroidBridge.themeState.wallpaperFit === false ? Image.PreserveAspectCrop : Image.PreserveAspectFit
       asynchronous: true
       cache: false
     }

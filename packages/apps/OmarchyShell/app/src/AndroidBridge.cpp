@@ -114,7 +114,8 @@ void AndroidBridge::setIdleInhibited(bool inhibited)
 
 void AndroidBridge::notifyStateChanged(const QString &what)
 {
-    if (what == QLatin1String("battery")) emit batteryChanged();
+    if (what == QLatin1String("themes")) emit themeStateChanged();
+    else if (what == QLatin1String("battery")) emit batteryChanged();
     else if (what == QLatin1String("audio")) emit audioChanged();
     else if (what == QLatin1String("network")) emit networkChanged();
     else if (what == QLatin1String("bluetooth")) emit bluetoothChanged();
@@ -452,3 +453,26 @@ Java_os_omarchy_shell_ShellBridge_nativeStateChanged(JNIEnv *env, jobject, jstri
                               Q_ARG(QString, value));
 }
 #endif
+
+QVariantMap AndroidBridge::themeState() const {
+#ifdef Q_OS_ANDROID
+    return QJsonDocument::fromJson(callString("themeStateJson").toUtf8()).object().toVariantMap();
+#else
+    return {};
+#endif
+}
+void AndroidBridge::refreshThemeMarketplace() const {
+#ifdef Q_OS_ANDROID
+    bridge().callMethod<void>("refreshThemeMarketplace", "()V");
+#endif
+}
+void AndroidBridge::installTheme(const QString &id) const {
+#ifdef Q_OS_ANDROID
+    bridge().callMethod<void>("installTheme", "(Ljava/lang/String;)V", QJniObject::fromString(id).object<jstring>());
+#endif
+}
+void AndroidBridge::applyTheme(const QString &id) const {
+#ifdef Q_OS_ANDROID
+    bridge().callMethod<void>("applyTheme", "(Ljava/lang/String;)V", QJniObject::fromString(id).object<jstring>());
+#endif
+}

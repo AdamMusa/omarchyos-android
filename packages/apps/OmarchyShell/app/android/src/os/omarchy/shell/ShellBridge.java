@@ -53,7 +53,14 @@ public class ShellBridge {
     /** Called once from C++; wires up the broadcast receivers. */
     public static void attach() {
         get().registerReceivers();
+        ThemeRepository.get(get().context());
     }
+
+    public static void themesChanged() { nativeStateChanged("themes"); }
+    public String themeStateJson() { return ThemeRepository.get(context()).state(); }
+    public void refreshThemeMarketplace() { ThemeRepository.get(context()).refreshMarket(); }
+    public void installTheme(String id) { ThemeRepository.get(context()).install(id); }
+    public void applyTheme(String id) { ThemeRepository.get(context()).apply(id); }
 
     private static native void nativeStateChanged(String what);
 
