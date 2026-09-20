@@ -208,16 +208,14 @@ qt_add_executable(omarchyshell
 set(OMARCHY_BASH_BINARY "/toolchain/bash-android/libbash.so"
     CACHE FILEPATH "bash built for Android by tools/build-bash.sh")
 
-string(TIMESTAMP OMARCHY_SHELL_BUILD_ID "%Y%m%d%H%M" UTC)
 # Omarchy's own default theme, used for the first-run current-theme link.
 set(OMARCHY_DEFAULT_THEME "tokyo-night" CACHE STRING "Theme selected on first run")
 target_compile_definitions(omarchyshell PRIVATE
-    OMARCHY_SHELL_BUILD_ID="${OMARCHY_SHELL_BUILD_ID}"
     OMARCHY_DEFAULT_THEME="${OMARCHY_DEFAULT_THEME}")
 
 if(ANDROID)
     # Ship Omarchy itself inside the package: shell QML, config defaults and
-    # all 23 themes, so theming on the phone is literally Omarchy's. They go in
+    # all bundled themes, so theming on the phone is literally Omarchy's. They go in
     # as Android assets rather than Qt resources — it keeps the binary small and
     # lets the shell unpack real, watchable files at first run. The `qs`
     # compatibility symlink is skipped so nothing is packaged twice.
@@ -236,6 +234,7 @@ if(ANDROID)
         # pacman, and one portrait wallpaper per theme.
         COMMAND rsync -a ${CMAKE_CURRENT_SOURCE_DIR}/fonts ${CMAKE_CURRENT_SOURCE_DIR}/wallpapers
                 ${OMARCHY_ASSETS}/
+        COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/asset-revision.py ${OMARCHY_ASSETS}
         COMMENT "Staging the Omarchy tree into the Android package")
     add_dependencies(omarchyshell omarchy_assets)
 

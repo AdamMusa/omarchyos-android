@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
+#include <QElapsedTimer>
+#include <QRegularExpression>
 
 namespace {
 // Shipped by the OS image: device/omarchy installs the Omarchy tree here.
@@ -113,14 +115,24 @@ void ShellPaths::deployOmarchyTree()
     // must exist as real files: Omarchy's Color/Style singletons read
     // theme/colors.toml and shell.toml through FileView and watch them for
     // live theme switching.
-    const QString marker = m_omarchyPath + QStringLiteral("/.deployed-") + QStringLiteral(OMARCHY_SHELL_BUILD_ID);
+    QElapsedTimer timer;
+    timer.start();
+    QFile assetRevision(QStringLiteral("assets:/omarchy/asset-revision.txt"));
+    const QString revision = assetRevision.open(QIODevice::ReadOnly)
+        ? QString::fromLatin1(assetRevision.readAll()).trimmed() : QString();
+    if (!QRegularExpression(QStringLiteral("^[a-f0-9]{64}$")).match(revision).hasMatch())
+        qFatal("omarchy-shell: missing or invalid packaged asset revision");
+    const QString marker = m_omarchyPath + QStringLiteral("/.deployed-") + revision;
     const QStringList required = { QStringLiteral("/shell/shell.qml"),
                                    QStringLiteral("/shell/Commons/qmldir"),
                                    QStringLiteral("/default/fonts/omarchy/omarchy.ttf") };
     bool intact = QFile::exists(marker);
     for (const QString &path : required)
         intact = intact && QFileInfo(m_omarchyPath + path).size() > 0;
-    if (intact) return;
+    if (intact) {
+        qInfo("omarchy-shell: assets reused in %lld ms", qlonglong(timer.elapsed()));
+        return;
+    }
 
     if (m_omarchyPath != m_home + QStringLiteral("/omarchy")) {
         qWarning("omarchy-shell: refusing to deploy over %s", qPrintable(m_omarchyPath));
@@ -130,9 +142,11 @@ void ShellPaths::deployOmarchyTree()
     QDir().mkpath(m_omarchyPath);
 
     bool complete = true;
+    int files = 0;
     QDirIterator it(QStringLiteral("assets:/omarchy"), QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString src = it.next();
+        ++files;
         const QString dest = m_omarchyPath + src.mid(QStringLiteral("assets:/omarchy").size());
         QDir().mkpath(QFileInfo(dest).absolutePath());
         QFile input(src);
@@ -155,6 +169,8 @@ void ShellPaths::deployOmarchyTree()
         // QML modules behind a successful deployment marker.
         if (!copied || !output.commit()) complete = false;
     }
+
+    qInfo("omarchy-shell: assets deployed %d files in %lld ms", files, qlonglong(timer.elapsed()));
 
     // Upstream imports its own code as `qs.*`, which Quickshell resolves by
     // exposing the shell directory under that name. Android assets carry no

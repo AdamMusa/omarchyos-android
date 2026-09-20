@@ -154,3 +154,16 @@ for path in tree.rglob("*"):
     if path.is_symlink() and not path.exists():
         path.unlink()
 print("Staged Android app library, phone menu, compact bar and native settings routes")
+
+# Android supplies fonts and layout metrics directly; do not launch desktop
+# fontconfig/Hyprland probes at startup or after every palette update.
+replace("shell/Commons/Style.qml", "    hyprctlProc.running = true\n    gapsOutProc.running = true",
+        "    // Android window metrics are supplied by the mobile profile.")
+replace("shell/Commons/Style.qml", "    fcMatchProc.running = true",
+        '    root.resolvedFontFamily = "JetBrainsMono NF"')
+replace("shell/services/PluginRegistry.qml", "      localPluginWatcher.running = true",
+        "      // Android package changes are handled by the platform bridge.")
+
+# Desktop screenshot previews are unused: mobile rows show actual wallpapers.
+for preview in (tree / "themes").glob("*/preview*.png"):
+    preview.unlink()

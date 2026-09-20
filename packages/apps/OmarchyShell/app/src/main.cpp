@@ -12,6 +12,7 @@
 #include <QSurfaceFormat>
 #include <QSGRendererInterface>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QImage>
 #include <QFile>
 #include <QFont>
@@ -69,12 +70,15 @@ int main(int argc, char *argv[])
     }
 
 
+    QElapsedTimer startup;
+    startup.start();
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("omarchy-shell"));
     app.setOrganizationName(QStringLiteral("OmarchyOS"));
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     ShellPaths paths;
+    qInfo("omarchy-shell: paths ready in %lld ms", qlonglong(startup.elapsed()));
     AndroidBridge bridge;
 
     QQmlApplicationEngine engine;
@@ -131,6 +135,8 @@ int main(int argc, char *argv[])
     }
 
     engine.loadFromModule("OmarchyShell", "Main");
+    qInfo("omarchy-shell: QML loaded in %lld ms", qlonglong(startup.elapsed()));
+
 
 #ifdef Q_OS_ANDROID
     // Android discards the native surface when another activity covers Home.
