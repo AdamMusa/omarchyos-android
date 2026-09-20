@@ -54,14 +54,26 @@ void ShellPaths::ensureUserConfig()
         QFile::link(defaultTheme, currentTheme);
     }
 
-    // First-run wallpaper. A custom current/background link is preserved.
+    // Current wallpaper, mirroring ~/.local/state/omarchy/current/background.
+    // Keep the actual Omarchy desktop artwork where it is shipped. Upgrade
+    // only the old generated default, leaving custom wallpaper links intact.
     const QString currentBackground = m_stateHome + QStringLiteral("/omarchy/current/background");
+    const QString desktopWallpaper = m_omarchyPath + QStringLiteral("/wallpapers/")
+                                     + QStringLiteral(OMARCHY_DEFAULT_THEME) + QStringLiteral("/omarchy.png");
+    if (QFile::exists(desktopWallpaper)
+        && QFile::symLinkTarget(currentBackground) == m_omarchyPath + QStringLiteral("/wallpapers/")
+           + QStringLiteral(OMARCHY_DEFAULT_THEME) + QStringLiteral("/omarchyos-")
+           + QStringLiteral(OMARCHY_DEFAULT_THEME) + QStringLiteral(".png"))
+        QFile::remove(currentBackground);
     if (!QFile::exists(currentBackground)) {
+        if (QFileInfo(currentBackground).isSymLink()) QFile::remove(currentBackground);
         const QString wallpapers = m_omarchyPath + QStringLiteral("/wallpapers/")
                                    + QStringLiteral(OMARCHY_DEFAULT_THEME);
         const QStringList shipped = QDir(wallpapers).entryList(
             { QStringLiteral("*.png"), QStringLiteral("*.jpg") }, QDir::Files, QDir::Name);
-        if (!shipped.isEmpty())
+        if (QFile::exists(desktopWallpaper))
+            QFile::link(desktopWallpaper, currentBackground);
+        else if (!shipped.isEmpty())
             QFile::link(wallpapers + QLatin1Char('/') + shipped.first(), currentBackground);
         else
             qWarning("omarchy-shell: no wallpaper shipped for theme %s", OMARCHY_DEFAULT_THEME);

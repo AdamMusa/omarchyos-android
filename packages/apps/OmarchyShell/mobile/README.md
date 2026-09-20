@@ -16,6 +16,8 @@ colors, typography, menu and calendar, with Android owning apps and services.
   services are disabled rather than loading Linux commands on every interval.
 - Native Android navigation stays visible. Keep Launcher3QuickStep installed
   and enabled for gesture/overview support, and choose Omarchy as HOME.
+- The home uses the original Omarchy Tokyo Night wordmark wallpaper, converted
+  to PNG for the bundled Qt decoder and fitted without cropping in portrait.
 - The profile migrates the desktop bar once, backing up `shell.json` to
   `shell.json.before-mobile`. Theme and wallpaper preferences are retained.
 
