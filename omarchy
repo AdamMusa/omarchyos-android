@@ -207,6 +207,16 @@ run_emulator() {
       && ln -sfn "$product_out/$optional_image" "$runtime_images/$optional_image"
   done
 
+  # The emulator starts its modem from host-side files beside the ramdisk.
+  # Copying only *.img leaves radio-ranchu restarting and telephony calls hung.
+  if [[ -d "$product_out/data/misc/modem_simulator" ]]; then
+    mkdir -p "$runtime_images/data/misc"
+    ln -sfn "$product_out/data/misc/modem_simulator" "$runtime_images/data/misc/modem_simulator"
+  elif [[ -f "$product_out/advancedFeatures.ini" ]] \
+      && rg -q '^ModemSimulator[[:space:]]*=[[:space:]]*on' "$product_out/advancedFeatures.ini"; then
+    die "Modem configuration is missing. Copy data/misc/modem_simulator from the same Android product build alongside the images."
+  fi
+
   if [[ "${OMARCHY_WIPE_DATA:-0}" == "1" ]]; then
     rm -f "$writable_data" "$writable_data.qcow2"
   fi
@@ -215,6 +225,8 @@ run_emulator() {
     cp -p "$userdata_seed" "$writable_data"
   fi
 
+  # Host graphics avoids software-renderer stalls during Android startup.
+  # OmarchyShell disables the emulator's incompatible shader binary cache.
   ANDROID_PRODUCT_OUT="$runtime_images" "$emulator_bin" \
     -sysdir "$runtime_images" \
     -kernel "$runtime_images/kernel-ranchu" \
@@ -224,12 +236,13 @@ run_emulator() {
     -sdcard "$runtime_root/no-sdcard.img" \
     -feature DynamicPartition \
     -accel on \
-    -gpu host \
+    -gpu "${OMARCHY_EMULATOR_GPU:-host}" \
     -memory "${OMARCHY_EMULATOR_MEMORY_MB:-4096}" \
     -cores "${OMARCHY_EMULATOR_CORES:-4}" \
     -skin "${OMARCHY_EMULATOR_SKIN:-1080x2400}" \
     -dpi-device "${OMARCHY_EMULATOR_DENSITY:-420}" \
     -prop "qemu.sf.lcd_density=${OMARCHY_EMULATOR_DENSITY:-420}" \
+    -prop qemu.hw.mainkeys=0 \
     -port "${OMARCHY_EMULATOR_PORT:-5556}" \
     -no-cache \
     -no-snapshot \

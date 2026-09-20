@@ -19,12 +19,23 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QRegularExpression>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#endif
 
 #include "AndroidBridge.h"
 #include "ShellPaths.h"
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_ANDROID
+    // Emulator GL encoders can crash inside glProgramBinary while restoring
+    // Qt's cache after a renderer change. Keep caching on physical devices.
+    const QString hardware = QJniObject::getStaticObjectField(
+        "android/os/Build", "HARDWARE", "Ljava/lang/String;").toString();
+    if (hardware == QLatin1String("ranchu") || hardware == QLatin1String("goldfish"))
+        QCoreApplication::setAttribute(Qt::AA_DisableShaderDiskCache);
+#endif
     // Some emulated GPUs (the Android emulator's gfxstream among them) hand
     // Qt a context it cannot draw the scene graph with, which shows up as a
     // window that paints its clear colour and nothing else. A marker file in
