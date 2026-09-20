@@ -5,7 +5,11 @@ import QtQuick
 // OTA) does not reset toggles like do-not-disturb.
 QtObject {
   id: root
+  // Quickshell names this reloadableId; the earlier compat spelling stays as
+  // an alias so nothing that used it breaks.
+  property string reloadableId: ""
   property string reloadKey: ""
-  Component.onCompleted: AndroidBridge.restoreProperties(reloadKey, root)
-  Component.onDestruction: AndroidBridge.saveProperties(reloadKey, root)
+  readonly property string storeKey: reloadableId || reloadKey
+  Component.onCompleted: AndroidBridge.restoreProperties(storeKey, root)
+  Component.onDestruction: AndroidBridge.saveProperties(storeKey, root)
 }

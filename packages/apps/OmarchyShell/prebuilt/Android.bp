@@ -1,0 +1,24 @@
+// OmarchyShell as the device's shell.
+//
+// The APK itself is built outside the platform tree: it is a Qt application,
+// so it needs the Qt toolchain and gradle rather than Soong. tools/build-apk.sh
+// produces it and it is imported here as a prebuilt.
+//
+// Keep Quickstep installed: it owns Android's gesture/overview service even
+// when Omarchy is the selected HOME activity. The platform certificate is
+// required because the shell
+// holds signature permissions (it reads the notification stream, sets the
+// lock state and reaches system services on the user's behalf).
+android_app_import {
+    name: "OmarchyShell",
+    apk: "OmarchyShell.apk",
+    certificate: "platform",
+    privileged: true,
+    system_ext_specific: true,
+    required: [
+        "privapp-permissions-omarchy",
+    ],
+    dex_preopt: {
+        enabled: false,
+    },
+}

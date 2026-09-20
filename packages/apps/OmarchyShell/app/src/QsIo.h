@@ -23,6 +23,7 @@ class QsProcess : public QObject
     Q_PROPERTY(QObject *stderr MEMBER m_stderrParser NOTIFY parsersChanged)
 public:
     explicit QsProcess(QObject *parent = nullptr);
+    ~QsProcess() override;
 
     bool running() const;
     void setRunning(bool running);
@@ -49,9 +50,22 @@ signals:
 
 private:
     void start();
+    // Maps desktop commands onto their Android equivalents (bash -> mksh,
+    // omarchy-* -> the shims in /system_ext/bin).
+    static QStringList resolveCommand(const QStringList &command);
     QProcess m_process;
     QStringList m_command;
     QString m_workingDirectory;
+    // Guards against a command that never stops printing. Omarchy's scans are
+    // written for a desktop filesystem; on Android one of them can walk a tree
+    // orders of magnitude larger, and collecting that into a QString used to
+    // take the whole shell down with std::bad_alloc.
+    qint64 m_stdoutBytes = 0;
+    qint64 m_stderrBytes = 0;
+    static constexpr qint64 kMaxCollectedBytes = 4 * 1024 * 1024;
+    // How much is taken out of Qt's buffer per readyRead, so no single read
+    // allocates more than this.
+    static constexpr qint64 kReadChunkBytes = 256 * 1024;
     QStringList m_environment;
     QObject *m_stdoutParser = nullptr;
     QObject *m_stderrParser = nullptr;
@@ -111,6 +125,9 @@ class QsStdioCollector : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(StdioCollector)
+    // Upstream reads collector.text (a property) while FileView exposes
+    // text() as a call; both spellings have to match Quickshell exactly.
+    Q_PROPERTY(QString text READ text NOTIFY textChanged)
     Q_PROPERTY(QString data READ text NOTIFY textChanged)
     Q_PROPERTY(bool waitForEnd MEMBER m_waitForEnd)
 public:
@@ -163,6 +180,16 @@ public:
 
     // Called by the host when a request for this target arrives.
     Q_INVOKABLE QString dispatch(const QString &function, const QVariantList &args);
+
+    // Omarchy's UI reaches its own shell by running `omarchy-shell <target>
+    // <function> [args]`, a CLI that opens the shell's IPC socket. The Android
+    // host is that shell, so the call is answered in-process instead.
+    static QString call(const QString &target, const QString &function,
+                        const QVariantList &args);
+    // Recognises an omarchy-shell invocation, either as argv or as the single
+    // string a `bash -lc` wrapper carries, and answers it. Returns false when
+    // the command is something else and must really be run.
+    static bool handleCommandLine(const QStringList &command, QString *reply = nullptr);
 
 signals:
     void targetChanged();

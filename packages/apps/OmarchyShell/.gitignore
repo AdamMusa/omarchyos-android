@@ -1,0 +1,6 @@
+prebuilt/OmarchyShell.apk
+app/android/assets/
+app/android/libs/
+app/android/.gradle/
+app/android/build/
+mobile/__pycache__/

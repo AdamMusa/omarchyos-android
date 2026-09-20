@@ -1,18 +1,32 @@
-pragma Singleton
 import QtQuick
 
-// Upstream runs its own notification daemon. Android already owns delivery, so
-// the shell listens through a NotificationListenerService and renders the same
-// popups and history.
+// Upstream runs its own freedesktop notification daemon and is handed each
+// notification as it arrives. Android already owns delivery, so the server is
+// a relay: NotificationBridge (a NotificationListenerService) reports what the
+// system posted, and the same signal upstream expects is emitted here.
+//
+// Creatable rather than a singleton, because upstream instantiates it.
 QtObject {
   id: root
-  property bool imageSupported: true
-  property bool bodyMarkupSupported: true
-  property bool actionsSupported: true
-  readonly property var trackedNotifications: AndroidBridge.notifications
-  signal notification(var notif)
-  property Connections _c: Connections {
+
+  property bool keepOnReload: false
+  property bool imageSupported: false
+  property bool actionsSupported: false
+  property bool actionIconsSupported: false
+  property bool bodyMarkupSupported: false
+  property bool bodyHyperlinksSupported: false
+  property bool bodyImagesSupported: false
+  property bool persistenceSupported: false
+  property bool inlineReplySupported: false
+
+  readonly property var trackedNotifications: ({ values: [] })
+
+  signal notification(var notification)
+
+  property Connections bridge: Connections {
     target: AndroidBridge
-    function onNotificationPosted(n) { root.notification(n) }
+    function onNotificationPosted(posted) {
+      root.notification(posted)
+    }
   }
 }

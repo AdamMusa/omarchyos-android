@@ -22,7 +22,15 @@ public:
     QString home() const { return m_home; }
     QString stateHome() const { return m_stateHome; }
     QString configHome() const { return m_configHome; }
-    QUrl shellQmlUrl() const { return QUrl::fromLocalFile(m_omarchyPath + QStringLiteral("/shell/shell.qml")); }
+    // OMARCHY_SHELL_QML points the host at a different root — used by the
+    // probe QML that exercises one compat type at a time.
+    QUrl shellQmlUrl() const
+    {
+        const QString override =
+            qEnvironmentVariable("OMARCHY_SHELL_QML");
+        return QUrl::fromLocalFile(override.isEmpty()
+            ? m_omarchyPath + QStringLiteral("/shell/shell.qml") : override);
+    }
 
     // Seeds $HOME/.config/omarchy and the current-theme state on first run so
     // the shell finds the same files it would on a fresh Omarchy install.
@@ -32,6 +40,10 @@ public:
     QStringList qmlImportPaths() const;
 
 private:
+    // Copies the packaged Omarchy tree out of the app's resources on first run
+    // and after an update, so themes and defaults are real files on disk.
+    void deployOmarchyTree();
+
     QString m_omarchyPath;
     QString m_home;
     QString m_stateHome;

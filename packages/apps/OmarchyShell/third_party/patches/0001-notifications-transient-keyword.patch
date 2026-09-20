@@ -1,0 +1,18 @@
+Avoid the reserved word `transient` in a var declaration.
+
+Qt 6.8's QML parser still treats `transient` as a future reserved word, so
+`var transient = false` fails to parse and takes the whole notifications
+service down with "Expected token `identifier'". Newer Qt, which upstream
+Quickshell builds against, parses it fine. The rename is local to the
+function and changes no behaviour.
+
+--- a/shell/plugins/notifications/Service.qml
++++ b/shell/plugins/notifications/Service.qml
+@@
+-    var transient = false
++    var isTransient = false
+     try {
+-      transient = !!(notification.hints && notification.hints["transient"])
+-    } catch (e) { transient = false }
++      isTransient = !!(notification.hints && notification.hints["transient"])
++    } catch (e) { isTransient = false }

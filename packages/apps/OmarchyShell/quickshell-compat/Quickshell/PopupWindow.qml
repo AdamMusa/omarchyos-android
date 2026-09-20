@@ -1,55 +1,62 @@
 import QtQuick
-import QtQuick.Window
-import QtQuick.Window as QW
 
-// Upstream anchors popups to a parent layer-shell surface. On Android the
-// shell owns one overlay window per popup, positioned against the anchor
-// item's screen coordinates so menus and tooltips land where the bar expects.
-Window {
+// Upstream anchors popups to a parent surface through the Wayland positioner.
+// Here a popup is an Item on the overlay layer of the shell window, placed by
+// the same anchor/gravity/adjustment rules so menus and tooltips land where
+// the bar expects them.
+Item {
   id: root
 
-  // Grouped anchor description, same shape as upstream's PopupAnchor.
   property PopupAnchor anchor: PopupAnchor {}
   property bool visibleRequested: false
   property var parentWindow: null
   property int relativeX: 0
   property int relativeY: 0
-  // Upstream sizes popups from their content's implicit size; Window has no
-  // implicit size of its own, so mirror it here and drive width/height from it.
-  property real implicitWidth: 0
-  property real implicitHeight: 0
-  width: implicitWidth > 0 ? implicitWidth : 1
-  height: implicitHeight > 0 ? implicitHeight : 1
+  property color color: "transparent"
 
-  flags: Qt.Popup | Qt.FramelessWindowHint
-  color: "transparent"
+  property real implicitWidth_: 0
+  property alias implicitWidth: root.implicitWidth_
+  property real implicitHeight_: 0
+  property alias implicitHeight: root.implicitHeight_
+
+  // Upstream sizes popups for a desktop, where a 700px calendar is small. A
+  // phone surface cannot be wider than the screen it is composited into, so
+  // the requested size is capped rather than allowed to overflow off-screen.
+  width: Math.min(Math.max(1, implicitWidth), ShellSurfaceRoot.screenWidth)
+  height: Math.min(Math.max(1, implicitHeight), ShellSurfaceRoot.screenHeight)
   visible: visibleRequested
 
-  // Resolve the anchor into a screen position. Upstream fills anchor.rect in
-  // its onAnchoring handler, so ask for that first, then place the window
-  // against the anchor window's origin and keep it on screen.
+  Rectangle { anchors.fill: parent; color: root.color; z: -1 }
+
+  Component.onCompleted: {
+    var host = ShellSurfaceRoot.layerFor(3)   // overlay
+    if (host) parent = host
+    reanchor()
+  }
+
+  onVisibleChanged: if (visible) reanchor()
+  onVisibleRequestedChanged: if (visibleRequested) reanchor()
+  onAnchorChanged: reanchor()
+
   function reanchor() {
     if (!anchor) return
     anchor.updateAnchor()
 
-    var origin = Qt.point(0, 0)
-    var host = anchor.window || parentWindow
-    if (host) origin = Qt.point(host.x, host.y)
-    else if (anchor.item && anchor.item.mapToGlobal) origin = anchor.item.mapToGlobal(0, 0)
+    var px = anchor.rect.x + relativeX
+    var py = anchor.rect.y + relativeY
 
-    var px = origin.x + anchor.rect.x + relativeX
-    var py = origin.y + anchor.rect.y + relativeY
-
-    var screenW = Screen.width
-    var screenH = Screen.height
-    if (anchor.adjustment & 1) px = Math.max(0, Math.min(px, screenW - width))
-    if (anchor.adjustment & 2) py = Math.max(0, Math.min(py, screenH - height))
+    // The anchor rect is in the anchor item's window; inside one Android
+    // window that is already shell-window space, so only clamping is left.
+    // Clamped on both axes whatever the positioner asked for: upstream's
+    // adjustment flags describe which way a compositor may slide a popup on a
+    // large screen, but on a phone there is nowhere else for it to go, and an
+    // unclamped popup simply leaves the display.
+    var maxX = Math.max(0, ShellSurfaceRoot.screenWidth - width)
+    var maxY = Math.max(0, ShellSurfaceRoot.screenHeight - height)
+    px = Math.max(0, Math.min(px, maxX))
+    py = Math.max(0, Math.min(py, maxY))
 
     root.x = px
     root.y = py
   }
-
-  onAnchorChanged: reanchor()
-  onVisibleRequestedChanged: if (visibleRequested) reanchor()
-  onVisibleChanged: if (visible) reanchor()
 }

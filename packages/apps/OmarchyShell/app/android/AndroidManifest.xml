@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<!-- OmarchyShell: the Omarchy desktop shell as OmarchyOS's phone shell. One
+     process owns Home and every shell surface, the way Omarchy's Quickshell
+     host does on the desktop. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="os.omarchy.shell"
+    android:installLocation="auto"
+    android:versionCode="1"
+    android:versionName="4.0">
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.GET_TASKS"/>
+    <!-- Signature-level, granted because the shell ships in the system image. -->
+    <uses-permission android:name="android.permission.STATUS_BAR"/>
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR"/>
+    <uses-permission android:name="android.permission.REAL_GET_TASKS"/>
+    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_TASKS"/>
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD"/>
+
+    <!-- extractNativeLibs: bash must land on disk as a real file, because
+         Android only lets an app execute binaries from its lib directory. -->
+    <application
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:label="Omarchy"
+        android:icon="@drawable/omarchy_logo"
+        android:hardwareAccelerated="true"
+        android:allowBackup="false"
+        android:extractNativeLibs="true"
+        android:supportsRtl="true"
+        android:theme="@style/OmarchyShellTheme">
+
+        <activity
+            android:name="os.omarchy.shell.OmarchyActivity"
+            android:label="Omarchy"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|density"
+            android:excludeFromRecents="true"
+            android:stateNotNeeded="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/OmarchyShellTheme">
+
+            <!-- Home: the shell replaces the launcher outright. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.HOME"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <meta-data android:name="android.app.lib_name" android:value="omarchyshell"/>
+            <meta-data android:name="android.app.arguments" android:value=""/>
+        </activity>
+
+        <!-- Omarchy's notification plugin renders these. -->
+        <service
+            android:name="os.omarchy.shell.NotificationBridge"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
