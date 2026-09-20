@@ -231,6 +231,7 @@ if(ANDROID)
         # The vendored tree stays byte-identical to upstream; what this Qt
         # cannot parse is fixed on the staged copy.
         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/third_party/patches/apply.sh ${OMARCHY_ASSETS}
+        COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/mobile/apply.py ${OMARCHY_ASSETS}
         # OmarchyOS's own assets: the Nerd Font the desktop installs through
         # pacman, and one portrait wallpaper per theme.
         COMMAND rsync -a ${CMAKE_CURRENT_SOURCE_DIR}/fonts ${CMAKE_CURRENT_SOURCE_DIR}/wallpapers

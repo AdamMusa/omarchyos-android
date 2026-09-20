@@ -74,7 +74,25 @@ void ShellPaths::ensureUserConfig()
         QFile(userShellJson).setPermissions(QFile::ReadOwner | QFile::WriteOwner);
     }
 
-
+    // Upgrade the shipped desktop defaults once, preserving the user's theme,
+    // wallpaper and unrelated preferences. Retain the old layout for recovery.
+    QFile current(userShellJson);
+    QFile defaults(m_omarchyPath + QStringLiteral("/config/omarchy/shell.json"));
+    if (current.open(QIODevice::ReadOnly) && defaults.open(QIODevice::ReadOnly)) {
+        QJsonObject config = QJsonDocument::fromJson(current.readAll()).object();
+        const QJsonObject mobile = QJsonDocument::fromJson(defaults.readAll()).object();
+        if (mobile.value("mobileProfile").toInt() > config.value("mobileProfile").toInt()) {
+            current.close();
+            QFile::copy(userShellJson, userShellJson + QStringLiteral(".before-mobile"));
+            for (const auto *key : {"bar", "disabledPlugins", "plugins", "mobileProfile"})
+                config.insert(QLatin1String(key), mobile.value(QLatin1String(key)));
+            QSaveFile updated(userShellJson);
+            if (updated.open(QIODevice::WriteOnly)) {
+                updated.write(QJsonDocument(config).toJson());
+                updated.commit();
+            }
+        }
+    }
 }
 
 void ShellPaths::deployOmarchyTree()
