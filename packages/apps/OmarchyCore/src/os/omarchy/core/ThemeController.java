@@ -5,6 +5,11 @@ import android.app.UiModeManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.om.OverlayInfo;
+import android.content.om.FabricatedOverlay;
+import android.content.om.OverlayIdentifier;
+import android.content.om.OverlayManagerTransaction;
+import android.os.Bundle;
+import android.util.TypedValue;
 import android.content.om.OverlayManager;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -42,7 +47,7 @@ final class ThemeController {
         return active;
     }
 
-    boolean apply(PluginRecord plugin, int userId) {
+    synchronized boolean apply(PluginRecord plugin, int userId) {
         if (plugin == null || !plugin.isTheme() || plugin.seedColors.isEmpty()) {
             return false;
         }
@@ -95,6 +100,10 @@ final class ThemeController {
                 overlayManager.setEnabledExclusiveInCategory(
                         overlayPackage, UserHandle.of(userId));
             }
+            OverlayIdentifier mobile = new OverlayIdentifier("os.omarchy.core", "mobile_palette_u" + userId);
+            if (overlayManager.getOverlayInfo(mobile, UserHandle.of(userId)) != null) {
+                overlayManager.commit(new OverlayManagerTransaction.Builder().setEnabled(mobile, false, userId).build());
+            }
             preferences.edit().remove(KEY_PENDING).apply();
             return true;
         } catch (RuntimeException exception) {
@@ -118,6 +127,68 @@ final class ThemeController {
                     .commit();
             return false;
         }
+    }
+
+    /** Only the platform-signed shell can send data to this service. No theme code is loaded. */
+    synchronized boolean applyPalette(String id, String mode, Bundle palette, int userId) {
+        if (id == null || !id.matches("[a-z0-9_][a-z0-9._+-]{0,79}") || palette == null
+                || !("light".equals(mode) || "dark".equals(mode))) return false;
+        Context context = mContext.createContextAsUser(UserHandle.of(userId), 0);
+        ThemeManager themes = context.getSystemService(ThemeManager.class);
+        OverlayManager overlays = context.getSystemService(OverlayManager.class);
+        UiModeManager ui = context.getSystemService(UiModeManager.class);
+        if (themes == null || overlays == null || ui == null) return false;
+        ThemeSettings previous = themes.getThemeSettings();
+        int previousMode = ui.getNightMode();
+        boolean updated = false;
+        try {
+            int bg = paletteColor(palette, "background", null);
+            int fg = paletteColor(palette, "foreground", null);
+            int accent = paletteColor(palette, "accent", null);
+            FabricatedOverlay.Builder overlay = new FabricatedOverlay.Builder(
+                    "os.omarchy.core", "mobile_palette_u" + userId, "os.omarchy.core")
+                    .setTargetOverlayable("OmarchyThemeTokens");
+            String[] tokens = {"surface", "surface_elevated", "surface_high", "border", "text",
+                    "muted", "accent", "positive", "warning", "destructive", "navigation"};
+            int[] values = {bg, blend(bg, fg, .06f), blend(bg, fg, .12f), blend(bg, fg, .24f), fg,
+                    blend(bg, fg, .65f), accent, paletteColor(palette, "green", "accent"),
+                    paletteColor(palette, "yellow", "accent"), paletteColor(palette, "red", "accent"), bg};
+            for (int i = 0; i < tokens.length; i++) overlay.setResourceValue(
+                    "os.omarchy.core:color/omarchy_" + tokens[i], TypedValue.TYPE_INT_COLOR_ARGB8, values[i]);
+            overlay.setResourceValue("os.omarchy.core:bool/omarchy_is_light", TypedValue.TYPE_INT_BOOLEAN,
+                    "light".equals(mode) ? 1 : 0);
+            updated = themes.updateThemeSettings(new ThemeSettings.Builder()
+                    .setColorSource(FieldColorSource.VALUE_PRESET).setThemeStyle(ThemeStyle.TONAL_SPOT)
+                    .setSeedColors(List.of(Color.valueOf(accent))).build());
+            if (!updated) throw new IllegalStateException("Android palette rejected");
+            ui.setNightMode("light".equals(mode) ? UiModeManager.MODE_NIGHT_NO : UiModeManager.MODE_NIGHT_YES);
+            OverlayManagerTransaction.Builder transaction = new OverlayManagerTransaction.Builder()
+                    .registerFabricatedOverlay(overlay.build())
+                    .setEnabled(new OverlayIdentifier("os.omarchy.core", "mobile_palette_u" + userId), true, userId);
+            // Migrate the early preview's shared identifier to a separate overlay per user.
+            OverlayIdentifier legacy = new OverlayIdentifier("os.omarchy.core", "mobile_palette");
+            if (overlays.getOverlayInfo(legacy, UserHandle.of(userId)) != null) transaction.setEnabled(legacy, false, userId);
+            overlays.commit(transaction.build());
+            preferences(userId).edit().putString(KEY_ACTIVE, "omarchy.mobile." + id).remove(KEY_PENDING).commit();
+            return true;
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Unable to apply mobile theme " + id, e);
+            try { if (updated && previous != null) themes.updateThemeSettings(previous); ui.setNightMode(previousMode); }
+            catch (RuntimeException rollback) { Log.e(TAG, "Unable to restore previous palette", rollback); }
+            return false;
+        }
+    }
+
+    private static int paletteColor(Bundle palette, String key, String fallback) {
+        String value = palette.getString(key, fallback == null ? "" : palette.getString(fallback, ""));
+        if (!value.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Invalid palette color: " + key);
+        return Color.parseColor(value);
+    }
+
+    private static int blend(int background, int foreground, float amount) {
+        return Color.rgb(Math.round(Color.red(background) * (1 - amount) + Color.red(foreground) * amount),
+                Math.round(Color.green(background) * (1 - amount) + Color.green(foreground) * amount),
+                Math.round(Color.blue(background) * (1 - amount) + Color.blue(foreground) * amount));
     }
 
     private boolean validateOverlays(

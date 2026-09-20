@@ -12,12 +12,13 @@ import os.omarchy.plugin.PluginContract;
 
 /** User-scoped host for theme packs and isolated, platform-signed plugins. */
 public final class OmarchyPluginManagerService extends Service {
-    private static final String DEFAULT_THEME = "omarchy.theme.mint";
+    private static final String DEFAULT_THEME = "omarchy.theme.tokyo-night";
 
     private PluginRegistry mRegistry;
     private PluginStateStore mState;
     private PluginEventDispatcher mEvents;
     private ThemeController mThemes;
+    private final java.util.concurrent.ExecutorService mThemeWorker = java.util.concurrent.Executors.newSingleThreadExecutor();
 
     private final IOmarchyPluginManager.Stub mBinder = new IOmarchyPluginManager.Stub() {
         @Override
@@ -154,8 +155,33 @@ public final class OmarchyPluginManagerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        refreshAndNotify(UserHandle.myUserId());
+        if (intent != null && "os.omarchy.intent.action.APPLY_PALETTE".equals(intent.getAction())) {
+            final android.os.ResultReceiver result;
+            final String id, mode;
+            final Bundle palette;
+            try {
+                result = intent.getParcelableExtra("result", android.os.ResultReceiver.class);
+                id = intent.getStringExtra("theme_id");
+                mode = intent.getStringExtra("mode");
+                palette = intent.getBundleExtra("palette");
+            } catch (RuntimeException malformed) {
+                android.util.Log.w("OmarchyThemes", "Invalid palette request", malformed);
+                return START_STICKY;
+            }
+            mThemeWorker.execute(() -> {
+                boolean success = mThemes.applyPalette(id, mode, palette, UserHandle.myUserId());
+                if (result != null) result.send(success ? 1 : 0, Bundle.EMPTY);
+            });
+        } else {
+            refreshAndNotify(UserHandle.myUserId());
+        }
         return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        mThemeWorker.shutdown();
+        super.onDestroy();
     }
 
     @Override
