@@ -132,6 +132,26 @@ int main(int argc, char *argv[])
 
     engine.loadFromModule("OmarchyShell", "Main");
 
+#ifdef Q_OS_ANDROID
+    // Android discards the native surface when another activity covers Home.
+    // Reusing its scene graph/GL resources can then produce only the window's
+    // clear colour on Back. Release after suspension (not transient focus loss)
+    // and let Qt recreate rendering resources while retaining the QML state.
+    for (QObject *root : engine.rootObjects()) {
+        auto *window = qobject_cast<QQuickWindow *>(root);
+        if (!window) continue;
+        window->setPersistentSceneGraph(false);
+        window->setPersistentGraphics(false);
+        QObject::connect(&app, &QGuiApplication::applicationStateChanged, window,
+                         [window](Qt::ApplicationState state) {
+            if (state == Qt::ApplicationSuspended || state == Qt::ApplicationHidden)
+                window->releaseResources();
+            else if (state == Qt::ApplicationActive)
+                window->update();
+        });
+    }
+#endif
+
     // Render health. A blank screen has two very different causes — a scene
     // with nothing in it, or frames that never reach the Android surface — and
     // only the swap count tells them apart from outside the process.
