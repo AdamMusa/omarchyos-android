@@ -25,7 +25,9 @@ def run(*command):
 
 def home_is_resumed():
     state = run('shell', 'dumpsys', 'activity', 'activities').decode()
-    return any('topResumedActivity=' in line and 'os.omarchy.shell/' in line
+    return any('topResumedActivity=' in line
+               and ('os.omarchy.shell/.OmarchyActivity' in line
+                    or 'os.omarchy.shell/os.omarchy.shell.OmarchyActivity' in line)
                for line in state.splitlines())
 
 
@@ -55,7 +57,8 @@ width, height, reference = frame()
 visible = [i for i, rgb in enumerate(reference) if max(abs(c - 16) for c in rgb) > 32]
 assert len(visible) > 20, 'Home is already blank or has too little visible content'
 for iteration in range(args.rounds):
-    for service in ('WIFI_SETTINGS', 'BLUETOOTH_SETTINGS', 'SOUND_SETTINGS', 'DISPLAY_SETTINGS'):
+    for service in ('WIFI_SETTINGS', 'BLUETOOTH_SETTINGS', 'SOUND_SETTINGS',
+                    'DISPLAY_SETTINGS', 'DREAM_SETTINGS'):
         result = run('shell', 'am', 'start', '-W', '-a', 'android.settings.' + service)
         assert b'Error:' not in result and not home_is_resumed(), result.decode()
         time.sleep(1)

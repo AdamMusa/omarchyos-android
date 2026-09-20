@@ -64,7 +64,7 @@ menu = {
     "manage": {"icon": "󰭌", "label": "Manage apps", "action": "mobile:apps"}
 }
 for key, label in [("wifi", "Wi-Fi"), ("bluetooth", "Bluetooth"), ("sound", "Sound"),
-                   ("display", "Display"), ("battery", "Battery"), ("storage", "Storage"),
+                   ("display", "Display"), ("screensaver", "Screensaver"), ("battery", "Battery"), ("storage", "Storage"),
                    ("accessibility", "Accessibility"), ("security", "Security"), ("all", "All settings")]:
     menu["settings." + key] = {"label": label, "action": "mobile:" + key}
 (tree / "default/omarchy/omarchy-menu.jsonc").write_text(json.dumps(menu, ensure_ascii=False, indent=2) + "\n")

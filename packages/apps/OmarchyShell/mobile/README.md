@@ -11,7 +11,7 @@ colors, typography, menu and calendar, with Android owning apps and services.
   and Android intents directly. App management opens Android's app settings.
   No Linux package catalog, Windows installer or desktop workspace menu is
   exposed. APK installation remains Android Package Installer's responsibility.
-- Settings entries open Android Wi-Fi, Bluetooth, sound, display, battery,
+- Settings entries open Android Wi-Fi, Bluetooth, sound, display, screensaver, battery,
   storage, accessibility and security screens. Unsupported desktop polling
   services are disabled rather than loading Linux commands on every interval.
 - Native Android navigation stays visible. Keep Launcher3QuickStep installed
@@ -21,6 +21,11 @@ colors, typography, menu and calendar, with Android owning apps and services.
   with its upstream winding-road wallpaper.
 - The profile migrates the desktop bar once, backing up `shell.json` to
   `shell.json.before-mobile`. Theme and wallpaper preferences are retained.
+- Packaged assets use a content revision so native-only updates reuse extracted
+  files. Desktop theme screenshots and font/window probes are omitted on mobile.
+- The native Omarchy screensaver uses the selected palette, wordmark, and system
+  clock without starting Qt. Android owns activation and lock-screen transitions.
+  See [screensaver setup](../../../../docs/SCREENSAVER.md).
 
 ## Simulator requirements
 

@@ -38,6 +38,9 @@ see [device support and validation](#verification-and-device-support).
 
 - **Phone home screen:** Omarchy typography, menu, day-and-time clock, calendar,
   settings shortcut, and battery status, adapted to touch targets and phone widths.
+- **Omarchy screensaver:** a moving Omarchy wordmark, theme colors, and clock,
+  with Android managing idle activation and the lock screen. Configure it under
+  **Phone settings → Screensaver**; see [screensaver controls](docs/SCREENSAVER.md).
 - **All 22 default themes from the pinned Omarchy source:** original palettes and
   each theme's first upstream wallpaper, with portrait previews and full-screen
   cropping that preserves image proportions.
@@ -117,6 +120,9 @@ compact theme-picker layouts, and returning Home from native Android settings.
 See [theme validation](docs/THEME_VALIDATION.md) and
 [Home navigation validation](docs/HOME_RESUME_VALIDATION.md) for the results and
 reproduction steps.
+
+See [startup performance and remaining work](docs/PERFORMANCE.md) for initialization
+measurements, improvements, and unresolved stability observations.
 
 The shell APK builds successfully. A full AOSP rebuild is currently blocked by
 missing modules and a framework stub dependency cycle in the Linux source tree.

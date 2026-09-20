@@ -292,6 +292,7 @@ public class ShellBridge {
             case "wifi": action = Settings.ACTION_WIFI_SETTINGS; break;
             case "bluetooth": action = Settings.ACTION_BLUETOOTH_SETTINGS; break;
             case "sound": action = Settings.ACTION_SOUND_SETTINGS; break;
+            case "screensaver": action = Settings.ACTION_DREAM_SETTINGS; break;
             case "display": action = Settings.ACTION_DISPLAY_SETTINGS; break;
             case "apps": action = Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS; break;
             case "battery": action = Settings.ACTION_BATTERY_SAVER_SETTINGS; break;

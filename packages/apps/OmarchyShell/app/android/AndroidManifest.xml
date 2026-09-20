@@ -47,8 +47,6 @@
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|density"
             android:excludeFromRecents="true"
             android:stateNotNeeded="true"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
             android:theme="@style/OmarchyShellTheme">
 
             <!-- Home: the shell replaces the launcher outright. -->
@@ -62,6 +60,18 @@
             <meta-data android:name="android.app.lib_name" android:value="omarchyshell"/>
             <meta-data android:name="android.app.arguments" android:value=""/>
         </activity>
+
+        <service
+            android:name="os.omarchy.shell.OmarchyDreamService"
+            android:label="Omarchy"
+            android:exported="true"
+            android:process=":screensaver"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService"/>
+            </intent-filter>
+            <meta-data android:name="android.service.dream" android:resource="@xml/omarchy_dream"/>
+        </service>
 
         <!-- Omarchy's notification plugin renders these. -->
         <service
