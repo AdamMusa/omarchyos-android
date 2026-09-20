@@ -1,42 +1,39 @@
 # OmarchyOS
 
-**An Android phone operating system with the Omarchy home screen, style, and themes.**
+**Android's phone foundation. Omarchy's home screen, style, and themes.**
 
-OmarchyOS brings Omarchy to everyday phone use while keeping the Android platform
-that powers calls, messages, Android apps, connectivity, camera, notifications,
-and device settings. It is built on the Android Open Source Project (AOSP), with
-an Omarchy home screen adapted for touch and phone-sized displays.
+OmarchyOS is a fork of the Android Open Source Project (AOSP). It retains
+Android's standard phone capabilities—calls, messaging, Android apps, Wi-Fi,
+Bluetooth, camera and audio services, notifications, permissions, and power
+management—and adds the Omarchy experience for touch and phone-sized displays.
 
-Android continues to manage applications, permissions, hardware services, battery
-use, and system navigation. Open **Omarchy → Apps** for installed applications,
-**Phone settings** for device controls, and **Themes** to change the look.
+These capabilities come from the underlying Android platform. Omarchy supplies
+the home screen, visual style, theme marketplace, and additional system
+integrations while Android continues to manage apps, hardware services, and
+system navigation.
 
-**Current status:** the Omarchy experience is running and being tested in the
-native Android Emulator. The Android phone capabilities below are retained in
-the platform; physical-device and carrier-dependent features still require a
-matching device port and testing. This project does not yet claim a fully
-validated, production-ready physical phone release.
+Open **Omarchy → Apps** for installed applications, **Phone settings** for device
+controls, and **Themes** to change the look.
 
-## Everyday phone capabilities
+## Standard Android phone capabilities
 
-| Feature | What OmarchyOS provides | Validation and requirements |
-| --- | --- | --- |
-| Calls, contacts, and messaging | Android telephony and the phone, contacts, and messaging apps supplied by the selected Android product. | Real calls, SMS/MMS, SIM/eSIM, mobile data, IMS/VoLTE, and emergency calling require a supported modem, device port, carrier support, and physical-device testing. |
-| Android apps | Installed-app library, normal Android app launching, APK installation through Android's package installer, app permissions, and app management. | The shell uses Android PackageManager and intents. Individual apps may require hardware or services outside this build. |
-| Wi-Fi and Bluetooth | Android connectivity services and their native settings screens, reached directly from the Omarchy menu. | Opening settings and returning Home are verified. Real networks, pairing, Bluetooth audio, and tethering/hotspot behavior need device testing. |
-| Camera, microphone, and media | Android camera, audio, media, and permission infrastructure for compatible apps. | Capture quality, recording, speakers, headphones, and hardware codecs depend on the device's drivers and hardware support. |
-| Location, sensors, and NFC | Android location and sensor APIs, with NFC available in products that include its hardware and services. | GPS/GNSS, motion sensors, contactless features, and related apps need a compatible device and validation. |
-| Notifications and multitasking | Android notifications, Quick Settings, lock screen, app tasks, and overview integration. | SystemUI and Launcher3QuickStep remain part of the product. Omarchy supplies Home and the installed-app menu. |
-| Back, Home, and gestures | Native Android navigation across the home screen, apps, and settings. | Repeated Back checks from Wi-Fi, Bluetooth, Sound, and Display passed; swipe-back and Home return were also checked. |
-| Display, sound, and battery | Native settings for brightness/display, sound, battery saving, and power management. | Settings integration is present; charging, battery life, suspend, and thermal behavior require physical-device testing. |
-| Files and storage | Android storage services, file access permissions, document pickers, and storage settings. | Available through Android and the apps included in the chosen product; removable storage depends on hardware. |
-| Security and privacy | Android app sandboxing, runtime permissions, security settings, and the platform's lock-screen and privacy mechanisms. | Biometrics, encryption, verified boot, and device security certification require validation for each physical-device port. |
-| Accessibility and input | Android accessibility settings, input methods, and phone layouts that adapt to available width. | The theme picker was checked at 320dp and 411dp widths. Broader assistive-technology and font-scaling coverage remains part of validation. |
+The following platform capabilities are retained in OmarchyOS. Availability on a
+particular phone depends on its hardware, device port, included apps, and carrier;
+see [device support and validation](#verification-and-device-support).
 
-The repository does not bundle Google Play or Google Mobile Services. Compatibility
-with apps that depend on those services is not guaranteed. Supported physical
-phones, update delivery, and certification will be documented per device as those
-ports are completed.
+| Capability | Android foundation retained by OmarchyOS |
+| --- | --- |
+| Calls, contacts, and messages | Telephony, contacts, and messaging support, with the phone apps included by the selected Android product. |
+| Android apps | APK installation, installed-app browsing and launching, app management, and permissions. |
+| Internet and connectivity | Wi-Fi, Bluetooth, mobile networking, and the Android connectivity settings and services included by the device product. |
+| Camera and media | Camera, microphone, audio playback, video, and media APIs for compatible apps. |
+| Location and sensors | Location and sensor APIs, plus NFC where the device includes its hardware and services. |
+| Notifications and multitasking | Notifications, Quick Settings, lock screen, app tasks, and overview integration. |
+| Phone navigation | Native Android Back, Home, recent apps, and gesture navigation. |
+| Display, sound, and power | Display and sound controls, battery settings, battery saving, and power management. |
+| Files and storage | Storage services, document pickers, file permissions, and storage management. |
+| Security and privacy | App sandboxing, runtime permissions, security settings, and lock-screen and privacy infrastructure. |
+| Accessibility and input | Android accessibility services, input methods, and accessibility settings. |
 
 ## The Omarchy experience
 
@@ -101,6 +98,19 @@ AOSP source tree needs a case-sensitive filesystem because some source paths
 differ only by letter case; Android images must be built on Linux.
 
 ## Verification and device support
+
+The current Omarchy experience runs in the native Android Emulator. Retaining
+Android's platform capabilities is separate from validating every feature on a
+physical phone; a production-ready physical-phone release is still in development.
+
+Real calls, SMS/MMS, SIM/eSIM, mobile data, IMS/VoLTE, emergency calling, camera
+capture, wireless connections, GPS, NFC, biometrics, and charging need compatible
+hardware and device-specific testing. Encryption, verified boot, battery life,
+thermal behavior, accessibility, and update delivery also require validation for
+each device port. Supported phones and certification will be documented per release.
+
+Google Play and Google Mobile Services are not bundled in this repository.
+Apps that require those services need a compatible build that provides them.
 
 The latest simulator checks cover all 22 bundled palettes and wallpaper assets,
 community-theme installation, light/dark theme application, theme persistence,
