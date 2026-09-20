@@ -1,21 +1,20 @@
 # OmarchyOS
 
-**Android's phone foundation. Omarchy's home screen, style, and themes.**
+**OmarchyOS — Omarchy for phones.**
 
-OmarchyOS is a fork of the Android Open Source Project (AOSP). It retains
-Android's standard phone capabilities—calls, messaging, Android apps, Wi-Fi,
-Bluetooth, camera and audio services, notifications, permissions, and power
-management—and adds the Omarchy experience for touch and phone-sized displays.
+OmarchyOS is a mobile operating system built on the Android Open Source Project
+(AOSP) for its native app ecosystem and core phone capabilities. Android provides
+telephony, messaging, connectivity, camera and audio services, hardware support,
+permissions, and power management.
 
-These capabilities come from the underlying Android platform. Omarchy supplies
-the home screen, visual style, theme marketplace, and additional system
-integrations while Android continues to manage apps, hardware services, and
-system navigation.
+OmarchyOS brings the Omarchy home screen, themes, marketplace, and on-device Code
+workspace together into a phone experience. Android is the underlying platform
+that supplies the phone services and application compatibility.
 
 Open **Omarchy → Apps** for installed applications, **Phone settings** for device
 controls, and **Themes** to change the look.
 
-## Standard Android phone capabilities
+## Phone capabilities powered by Android
 
 The following platform capabilities are retained in OmarchyOS. Availability on a
 particular phone depends on its hardware, device port, included apps, and carrier;
@@ -35,7 +34,7 @@ see [device support and validation](#verification-and-device-support).
 | Security and privacy | App sandboxing, runtime permissions, security settings, and lock-screen and privacy infrastructure. |
 | Accessibility and input | Android accessibility services, input methods, and accessibility settings. |
 
-## The Omarchy experience
+## The OmarchyOS experience
 
 - **Phone home screen:** Omarchy typography, menu, day-and-time clock, calendar,
   settings shortcut, and battery status, adapted to touch targets and phone widths.
