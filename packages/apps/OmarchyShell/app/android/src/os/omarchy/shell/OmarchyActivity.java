@@ -82,7 +82,7 @@ public class OmarchyActivity extends QtActivity {
      * step, and the scene stopped being rendered at all.
      */
     private void takeOverTheScreen() {
-        getWindow().setDecorFitsSystemWindows(false);
+        getWindow().setDecorFitsSystemWindows(true);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         // Without this Android paints a scrim behind a transparent nav bar.
@@ -91,6 +91,7 @@ public class OmarchyActivity extends QtActivity {
         WindowInsetsController insets = getWindow().getInsetsController();
         if (insets == null) return;
         insets.hide(WindowInsets.Type.statusBars());
+        insets.show(WindowInsets.Type.navigationBars());
         insets.setSystemBarsBehavior(
                 WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     }

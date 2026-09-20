@@ -41,5 +41,26 @@ PRODUCT_COPY_FILES += \
 PRODUCT_BRAND := Omarchy
 PRODUCT_MANUFACTURER := OmarchyOS
 
-# Keep Android's actual Launcher/SystemUI/Settings packages. Omarchy maintains
-# fork branches in those projects instead of drawing a second shell over them.
+# OmarchyShell is the phone home screen; retain Android's overview provider.
+#
+# Launcher3QuickStep must remain installed and enabled for the platform's
+# TouchInteractionService and RecentsActivity. Select Omarchy as the HOME
+# activity during device provisioning; never disable the Quickstep package.
+# SystemUI supplies keyguard, system dialogs and navigation chrome.
+#
+# Everything else Android ships stays installed and is reached through
+# Omarchy's own menu: Settings, Camera, Contacts and the rest are listed from
+# PackageManager and started with an ordinary intent. OmarchyOS wraps Android's
+# features in Omarchy's style; it does not reimplement them or invent a second
+# app format.
+PRODUCT_PACKAGES += \
+    OmarchyShell \
+    Launcher3QuickStep
+
+# Gesture navigation, not three buttons: back, home and recents then work over
+# every app without the shell having to draw navigation of its own.
+PRODUCT_PACKAGES += \
+    NavigationBarModeGesturalOverlay
+
+PRODUCT_PRODUCT_PROPERTIES += \
+    ro.omarchy.shell=os.omarchy.shell
