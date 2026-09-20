@@ -49,8 +49,11 @@ workspace for the remaining platform checks.
 ## Themes
 
 Open **Omarchy → Themes**. Installed includes all 22 themes in the pinned
-Omarchy source tree, with their original palette and one official wallpaper
-per theme. Apply changes the shell colors, artwork, Android light/dark mode,
+Omarchy source tree, with their original palette and first wallpaper in upstream
+filename order. Portrait previews show the actual selected artwork. Wallpapers
+fill the phone screen with proportional cropping, without stretching or empty
+bands. A community theme without supplied artwork is labeled accordingly and
+displays its background color instead of reusing another theme’s image. Apply changes the shell colors, artwork, Android light/dark mode,
 Android dynamic color seed and the Core semantic resources through a fabricated
 Runtime Resource Overlay. Android apps choose whether to use system colors.
 

@@ -26,7 +26,11 @@ public final class ThemeDataTest {
                 if (!Files.isDirectory(dir)) continue;
                 ThemePalette palette = ThemePalette.parse(Files.readString(dir.resolve("colors.toml")));
                 check(ThemePalette.parse(palette.toml()).colors.equals(palette.colors), "Palette round trip: " + dir);
-                check(Files.isRegularFile(Path.of(args[1], dir.getFileName() + ".png")), "Missing default wallpaper");
+                Path wallpaper = Path.of(args[1], dir.getFileName() + ".jpg");
+                check(Files.isRegularFile(wallpaper), "Missing default wallpaper: " + dir);
+                var image = javax.imageio.ImageIO.read(wallpaper.toFile());
+                check(image != null && image.getWidth() > 0 && image.getHeight() > 0,
+                        "Wallpaper must decode: " + dir);
                 count++;
             }
         }

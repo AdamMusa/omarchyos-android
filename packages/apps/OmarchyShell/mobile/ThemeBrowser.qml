@@ -119,11 +119,31 @@ Item {
               id: details
               anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 }
               spacing: 12
+              Image {
+                visible: !root.marketplace && source.toString().length > 0
+                source: row.modelData.preview || ""
+                Layout.preferredWidth: 60
+                Layout.preferredHeight: 92
+                fillMode: Image.PreserveAspectCrop
+                sourceSize.width: 180
+                asynchronous: true
+                clip: true
+                Accessible.name: row.modelData.name + " wallpaper"
+              }
               ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
                 Text { text: row.modelData.name; color: row.modelData.foreground || Color.foreground; font.pixelSize: 16; font.bold: true; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                 Text { text: root.state.active === row.themeId ? "Active" : row.modelData.builtIn ? "Omarchy default · " + row.modelData.mode : row.present ? "Downloaded" : "Community theme"; color: row.modelData.foreground || Color.foreground; opacity: .7; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                Text {
+                  visible: !root.marketplace && row.modelData.hasWallpaper === false
+                  text: "No wallpaper supplied"
+                  color: row.modelData.foreground || Color.foreground
+                  opacity: .7
+                  font.pixelSize: 12
+                  Layout.fillWidth: true
+                  wrapMode: Text.WordWrap
+                }
                 Row {
                   visible: !root.marketplace
                   spacing: 5

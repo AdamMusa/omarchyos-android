@@ -15,7 +15,7 @@ Validated on the arm64 Android emulator, September 20, 2026.
 - Aetheria applies a dark shell and imported wallpaper; its Core RRO surface
   resolves to `#0e091d`. The theme and artwork survive a device reboot and shell
   APK update.
-- Tokyo Night restores the original desktop artwork and dark mode. Core surface
+- Tokyo Night applies its official winding-road wallpaper and dark mode. Core surface
   resolves to `#1a1b26`; the per-user fabricated overlay is enabled.
 - Emulator launcher tests pass. No shell/Core crashes or SystemUI ANRs occurred
   in the final reboot and apply checks.
@@ -32,3 +32,12 @@ A complete AOSP rebuild remains blocked by the Linux source tree's unrelated
 missing modules and framework stub dependency cycle. `./omarchy test` still
 reports 17 pre-existing checks failing because the recovered Mac checkout lacks
 some AOSP files and fork branches. These failures are not treated as passing.
+
+## Wallpaper correction
+
+The initial package chose the optional Omarchy wordmark for most defaults and
+letterboxed the artwork on phones. Default wallpaper selection now follows
+upstream filename order, uses the actual first artwork for every theme, and
+renders with aspect-fill cropping. The Installed picker shows portrait wallpaper
+previews. All 22 JPEG assets are decoded by the data tests, and source URLs remain
+pinned in `mobile/wallpapers/sources.json`.

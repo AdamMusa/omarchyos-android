@@ -60,6 +60,11 @@ public final class ThemeRepository {
                 File snapshot = new File(bundled.getParentFile(), "mobile-themes/marketplace.json");
                 market = new JSONArray(read(cache.isFile() ? cache : snapshot));
             } catch (Exception ignored) { }
+            try {
+                File image = wallpaper(activeDirectory());
+                if (image.isFile()) link(new File(current, "background"), image);
+                else Files.deleteIfExists(new File(current, "background").toPath());
+            } catch (Exception ignored) { }
             publish();
         });
     }
@@ -85,7 +90,7 @@ public final class ThemeRepository {
     }
     private File wallpaper(File dir) {
         File file = new File(dir, "background.png");
-        if (!file.isFile()) file = new File(bundled.getParentFile(), "mobile-themes/wallpapers/" + dir.getName() + ".png");
+        if (!file.isFile()) file = new File(bundled.getParentFile(), "mobile-themes/wallpapers/" + dir.getName() + ".jpg");
         return file;
     }
     private JSONObject describe(File dir, boolean builtIn) throws Exception {
@@ -104,8 +109,8 @@ public final class ThemeRepository {
             .put("mode", p.mode).put("accent", p.colors.get("accent"))
             .put("background", p.colors.get("background")).put("foreground", p.colors.get("foreground"))
             .put("builtIn", builtIn).put("repo", meta.optString("repo", ""));
-        File preview = new File(dir, "preview.png");
-        if (!preview.isFile()) preview = wallpaper(dir);
+        File preview = wallpaper(dir);
+        item.put("hasWallpaper", preview.isFile());
         item.put("preview", preview.isFile() ? preview.toURI().toString() : "");
         return item;
     }
@@ -129,18 +134,10 @@ public final class ThemeRepository {
                 snapshot.put("palette", ThemePalette.parse(read(new File(active, "colors.toml"))).toml());
                 File image = wallpaper(active);
                 snapshot.put("wallpaper", image.isFile() ? image.toURI().toString() : "");
-                snapshot.put("wallpaperFit", isWordmark(active));
             } catch (Exception ignored) { }
             state = snapshot.toString();
             ShellBridge.themesChanged();
         } catch (Exception ignored) { }
-    }
-    private boolean isWordmark(File dir) {
-        if (new File(extra, dir.getName()).isDirectory()) return false;
-        try {
-            JSONObject sources = new JSONObject(read(new File(bundled.getParentFile(), "mobile-themes/wallpapers/sources.json")));
-            return sources.optString(dir.getName()).contains("omarchy");
-        } catch (Exception e) { return true; }
     }
     private boolean start(String status) {
         if (!busy.compareAndSet(false, true)) return false;
@@ -234,6 +231,7 @@ public final class ThemeRepository {
                 link(new File(current,"theme"),dir);
                 File background=wallpaper(dir);
                 if (background.isFile()) link(new File(current,"background"),background);
+                else Files.deleteIfExists(new File(current,"background").toPath());
                 finish(null,"Theme applied.");
             } catch(Exception e) {
                 if (systemApplied && previous != null) {
