@@ -195,7 +195,9 @@ public class OmarchyActivity extends QtActivity {
         // Without this Android paints a scrim behind a transparent nav bar.
         getWindow().setNavigationBarContrastEnforced(false);
         getWindow().setStatusBarContrastEnforced(false);
-        WindowInsetsController insets = getWindow().getInsetsController();
+        // Qt can defer creating the decor during a configuration relaunch.
+        // Ask the decor for its controller; it may not be attached yet.
+        WindowInsetsController insets = getWindow().getDecorView().getWindowInsetsController();
         if (insets == null) return;
         if (hasNativeSystemBar()) insets.show(WindowInsets.Type.statusBars());
         else insets.hide(WindowInsets.Type.statusBars());

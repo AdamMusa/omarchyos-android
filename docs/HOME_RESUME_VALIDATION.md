@@ -35,3 +35,9 @@ The shell builds successfully and theme/data and emulator launcher tests pass.
 `./omarchy test` still reports the same 17 existing missing-file/fork-branch
 failures documented in THEME_VALIDATION.md; a complete AOSP image rebuild is
 not claimed.
+
+The version 6 shell also handles a theme-triggered activity relaunch before Qt
+creates its decor. Insets are obtained from the initialized decor and deferred
+until it is attached. Switching Tokyo Night → Catppuccin Latte with that build
+produced no Home crash; the prior build could dereference an absent decor during
+`onCreate`. Final base-image checks must use the rebuilt image containing version 6.
