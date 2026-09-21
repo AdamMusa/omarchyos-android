@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionCode="102"
+    android:versionName="102"
+    package="app.grapheneos.gmscompat.lib">
+
+    <application
+        android:label="@string/app_label"
+        android:forceQueryable="true" />
+
+</manifest>

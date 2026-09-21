@@ -1,0 +1,102 @@
+From d594252dd1dbd903192da5305ddef9ecef5453c2 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Fri, 17 Jan 2025 11:33:38 +0200
+Subject: [PATCH 20/28] add BinderWrapper
+
+---
+ core/java/android/os/BinderWrapper.java | 83 +++++++++++++++++++++++++
+ 1 file changed, 83 insertions(+)
+ create mode 100644 core/java/android/os/BinderWrapper.java
+
+diff --git a/core/java/android/os/BinderWrapper.java b/core/java/android/os/BinderWrapper.java
+new file mode 100644
+index 000000000000..95fe9cc09f71
+--- /dev/null
++++ b/core/java/android/os/BinderWrapper.java
+@@ -0,0 +1,83 @@
++package android.os;
++
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.content.Context;
++
++import java.io.FileDescriptor;
++
++/** @hide */
++public class BinderWrapper implements IBinder {
++    protected final IBinder base;
++
++    public BinderWrapper(IBinder base) {
++        this.base = base;
++    }
++
++    @Override
++    public boolean transact(int code, @NonNull Parcel data, @Nullable Parcel reply, int flags) throws RemoteException {
++        return base.transact(code, data, reply, flags);
++    }
++
++    @Nullable
++    @Override
++    public IInterface queryLocalInterface(@NonNull String descriptor) {
++        return base.queryLocalInterface(descriptor);
++    }
++
++    @Nullable
++    @Override
++    public String getInterfaceDescriptor() throws RemoteException {
++        return base.getInterfaceDescriptor();
++    }
++
++    @Override
++    public boolean pingBinder() {
++        return base.pingBinder();
++    }
++
++    @Override
++    public boolean isBinderAlive() {
++        return base.isBinderAlive();
++    }
++
++    @Override
++    public void dump(@NonNull FileDescriptor fd, @Nullable String[] args) throws RemoteException {
++        base.dump(fd, args);
++    }
++
++    @Override
++    public void dumpAsync(@NonNull FileDescriptor fd, @Nullable String[] args) throws RemoteException {
++        base.dumpAsync(fd, args);
++    }
++
++    @Override
++    public void shellCommand(@Nullable FileDescriptor in, @Nullable FileDescriptor out, @Nullable FileDescriptor err, @NonNull String[] args, @Nullable ShellCallback shellCallback, @NonNull ResultReceiver resultReceiver) throws RemoteException {
++        base.shellCommand(in, out, err, args, shellCallback, resultReceiver);
++    }
++
++    @Override
++    public void linkToDeath(@NonNull DeathRecipient recipient, int flags) throws RemoteException {
++        base.linkToDeath(recipient, flags);
++    }
++
++    @Override
++    public boolean unlinkToDeath(@NonNull DeathRecipient recipient, int flags) {
++        return base.unlinkToDeath(recipient, flags);
++    }
++
++    @Nullable
++    public IBinder getExtension() throws RemoteException {
++        return base.getExtension();
++    }
++
++    @Override
++    public void addFrozenStateChangeCallback(@NonNull FrozenStateChangeCallback callback) throws RemoteException {
++        base.addFrozenStateChangeCallback(callback);
++    }
++
++    @Override
++    public boolean removeFrozenStateChangeCallback(@NonNull FrozenStateChangeCallback callback) {
++        return base.removeFrozenStateChangeCallback(callback);
++    }
++}
+-- 
+2.43.0
+

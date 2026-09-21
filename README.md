@@ -112,8 +112,12 @@ hardware and device-specific testing. Encryption, verified boot, battery life,
 thermal behavior, accessibility, and update delivery also require validation for
 each device port. Supported phones and certification will be documented per release.
 
-Google Play and Google Mobile Services are not bundled in this repository.
-Apps that require those services need a compatible build that provides them.
+OmarchyOS supports Google Play through **sandboxed Google Play**, ported from
+GrapheneOS: Google's Play services and Play Store are installed as ordinary apps
+with no special access, instead of being built into the OS with system
+privileges. Google's apps are not bundled. See [sandboxed Google Play](docs/SANDBOXED_PLAY.md),
+including why apps that require Google certification through Play Integrity,
+such as some banking apps, still refuse to run.
 
 The latest simulator checks cover all 22 bundled palettes and wallpaper assets,
 community-theme installation, light/dark theme application, theme persistence,

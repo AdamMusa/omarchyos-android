@@ -1,0 +1,31 @@
+From 972e149f08f13848a3638a7d30b586732739d621 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Wed, 15 Jul 2026 16:46:04 +0000
+Subject: [PATCH] gmscompat: allow harmless COLUMN_NOTIFICATION_CLASS
+
+---
+ src/com/android/providers/downloads/DownloadProvider.java | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/com/android/providers/downloads/DownloadProvider.java b/src/com/android/providers/downloads/DownloadProvider.java
+index 3afa1a7..ca27a24 100644
+--- a/src/com/android/providers/downloads/DownloadProvider.java
++++ b/src/com/android/providers/downloads/DownloadProvider.java
+@@ -1276,6 +1276,14 @@ public final class DownloadProvider extends ContentProvider {
+         check.remove(Downloads.Impl.COLUMN_MIME_TYPE);
+         check.remove(Downloads.Impl.COLUMN_FILE_NAME_HINT); // checked later in insert()
+         check.remove(Downloads.Impl.COLUMN_NOTIFICATION_PACKAGE); // checked later in insert()
++        // GmsCompat: Play Store uses COLUMN_NOTIFICATION_CLASS as selectionArg
++        // in ContentResolver#query() during self-update.
++        // Allowing this column is harmless
++        // (used only for Intent.setClassName(packageName, className)) and
++        // it doesn't even get used anyway, because DownloadProvider always checks whether
++        // COLUMN_IS_PUBLIC_API is "false" (it is enforced to be "true" above) before
++        // using COLUMN_NOTIFICATION_CLASS
++        check.remove(Downloads.Impl.COLUMN_NOTIFICATION_CLASS);
+         check.remove(Downloads.Impl.COLUMN_ALLOWED_NETWORK_TYPES);
+         check.remove(Downloads.Impl.COLUMN_ALLOW_ROAMING);
+         check.remove(Downloads.Impl.COLUMN_ALLOW_METERED);
+-- 
+2.43.0
+

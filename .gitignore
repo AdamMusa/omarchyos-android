@@ -8,3 +8,7 @@
 
 # Generated from the checked-in Omarchy boot artwork.
 /device/omarchy/bootanimation/bootanimation.zip
+
+# Signing keys never live in the tree (see device/omarchy/tools/make-release-keys.sh)
+*.pk8
+.omarchy-keys/

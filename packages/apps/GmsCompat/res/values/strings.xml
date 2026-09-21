@@ -1,0 +1,232 @@
+<resources>
+    <string name="app_name">GmsCompat</string>
+    <string name="activity_name">Sandboxed Google Play</string>
+    <string name="reroute_location_requests_to_os_apis">Reroute location requests to the OS</string>
+    <string name="open_app_info">Open app info</string>
+    <string name="open_settings">Open settings</string>
+    <string name="persistent_fg_service_notif">Sandboxed Google Play is running</string>
+
+    <string name="usage_guide">Usage guide</string>
+    <string name="play_services">Play services</string>
+    <string name="play_services_special_permissions">Play services special permissions</string>
+    <string name="play_services_special_permissions_summary">ICC authentication, RCS activation</string>
+    <string name="play_store">Play Store</string>
+    <string name="android_auto">Android Auto</string>
+<!--    <string name="google_settings">Google services &amp; preferences</string>-->
+    <string name="google_settings">Google Settings</string>
+    <string name="component_system_settings">%s app info</string>
+    <string name="gms_network_location_opt_in">Google Location Accuracy</string>
+    <string name="no_gms_network_location">
+"Google’s location service is disabled. Tap “%1$s” to learn more.
+If you decide to keep it disabled, consider enabling “%2$s” option to improve app compatibility."
+    </string>
+    <string name="revoke_location_permission">Revoke the Location permission from Play services.</string>
+
+    <string name="play_services_settings">Play services app info</string>
+    <string name="play_store_settings">Play Store app info</string>
+
+    <string name="potential_issues">Potential issues</string>
+
+    <string name="geolocation">Geolocation</string>
+    <string name="location_access_is_off_for_all_apps">Location access is off for all apps.</string>
+    <string name="location_settings">Location settings</string>
+    <string name="location_redirection_extra_permissions">
+"Location requests are rerouted to the OS, but Play services still has the Location permission."
+    </string>
+    <string name="play_services_no_location_permission">
+"Play services needs Location permission to be set to “%s”, and “Use precise location” needs to be enabled."
+    </string>
+    <string name="play_services_no_wifi_control_appop">
+"Play services needs the “Wi-Fi control” permission to scan for Wi-Fi networks, which is used to estimate location.
+This permission can be allowed in Settings ⮕ Apps ⮕ Special app access ⮕ Wi-Fi control."
+    </string>
+    <string name="play_services_no_ble_location">
+"Location service assisted by Bluetooth scanning requires the “Nearby devices” permission."
+    </string>
+    <string name="always_on_scanning_settings">Always-on scanning settings</string>
+    <string name="always_on_wifi_scanning_disabled">Always-on Wi-Fi scanning is disabled.</string>
+    <string name="always_on_bluetooth_scanning_disabled">Always-on Bluetooth scanning is disabled.</string>
+
+    <string name="push_notifications">Push notifications</string>
+    <string name="play_services_no_battery_exemption">
+"When device is idle, push notifications will be delayed to improve battery life.
+To receive them quicker, set “Battery usage” to “Unrestricted” in Play services app info."
+    </string>
+
+    <string name="pending_play_store_update_notif_title">Play Store needs to update %1$s</string>
+    <string name="pending_play_store_update_notif_text">It\'s recommended to allow this. Tap to proceed.</string>
+    <string name="play_store_pending_user_action_notif">Action required in Play Store</string>
+    <string name="missing_permission">Missing permission</string>
+    <string name="missing_optional_permission">Missing optional permission</string>
+    <string name="missing_app">Missing app</string>
+    <string name="play_store_missing_obb_permission_notif">To install this app, Play Store needs access to Android/obb folder</string>
+
+    <string name="missing_permission_nearby_exposurenotifications">
+"Play services needs the “Nearby devices” permission to enable Exposure Notifications"
+    </string>
+
+    <string name="missing_permission_nearby_NearbyShare">
+"Play services needs the “Nearby devices“ permission to enable Nearby Share"
+    </string>
+
+    <string name="notif_ch_missing_play_games_app">Missing Play Games app</string>
+    <string name="missing_play_games_app">%1$s needs the Play Games app</string>
+    <string name="install">Install</string>
+
+    <string name="notif_channel_bg_activity_start">Request to show a screen</string>
+    <string name="notif_bg_activity_start">%s needs to show a screen. Tap to allow</string>
+
+    <string name="notif_gmscore_missing_nearby_devices_perm_generic">Play services needs the “Nearby devices” permission</string>
+
+    <string name="notif_missing_nofications_perm">%1$s tried to show a notification</string>
+
+    <string name="notif_ch_app_crash">App crash</string>
+    <string name="notif_gms_crash_title">%1$s has crashed</string>
+    <string name="notif_gms_crash_text">Tap to see the details</string>
+    <string name="notif_gms_crash_report">Report to developers</string>
+
+    <string name="notif_gmscore_power_exemption">
+"Push notifications will be delayed because Play services app is not allowed to always run in the background. Tap to resolve."
+    </string>
+    <string name="notif_gmscore_background_data_exemption">
+"Push notifications will be delayed because Play services app is not allowed to use mobile data from the background. Tap to open Play services settings, which contain mobile data usage settings."
+    </string>
+    <string name="dont_show_again">Don\'t show again</string>
+
+    <string name="missing_speech_services">This app needs the Speech Services component</string>
+
+    <string name="notif_contacts_sync_prompt">
+"To sync contacts from a Google account, Play services needs the Contacts permission. Tap to open settings."
+    </string>
+
+    <string name="notif_screen_capture_is_running">Screen capture is running</string>
+
+    <string name="notif_GmsCore_missing_nearby_devices_perm_generic">%1$s requires Play services to have the “Nearby devices” permission</string>
+
+    <string name="notif_android_auto_needs_baseline_perms_title">Android Auto needs setup</string>
+    <string name="notif_android_auto_needs_baseline_perms_text">Go to Settings ➔ Apps ➔ Sandboxed Google Play ➔ Android Auto</string>
+    <string name="notif_android_auto_car_connection_lost">Android Auto car connection was unexpectedly lost</string>
+
+    <string name="notif_ch_manage_play_integrity_api">Play Integrity API usage</string>
+    <string name="notif_app_used_play_integrity_api_title">Play Integrity API usage</string>
+    <string name="notif_app_used_play_integrity_api">%1$s used the Play Integrity API</string>
+    <string name="notif_app_play_integrity_api_blocked">%1$s was blocked from using the Play Integrity API</string>
+    <string name="notif_app_used_play_integrity_api_action_more_info">More info</string>
+
+    <string name="sign_in_with_google_notif_ch">Sign in with Google</string>
+    <string name="sign_in_with_google_notif_title">Enable Google’s credential service</string>
+    <string name="sign_in_with_google_notif_text">“Sign in with Google” requires Google’s credential service to be enabled. Tap to open settings.</string>
+
+    <string name="toast_app_location_access_is_globally_off">Location access is off for all apps</string>
+
+    <string name="grant_dialog_button_allow">Allow</string>
+    <string name="aauto_settings">Android Auto settings</string>
+    <string name="aauto_settings_summary_disabled">Android Auto is disabled</string>
+
+    <string name="permissions_category">Permissions</string>
+
+    <string name="aauto_wired_perms_title">Allow permissions for wired Android Auto</string>
+    <string name="aauto_wired_perms_confirm">
+"These permissions allow Android Auto to:
+
+• Connect to the car via USB
+• Send and receive car display data
+• Launch apps that have opted-in to Android Auto on the car display
+• Reset the USB port and to reconnect the connected USB devices
+"
+    </string>
+
+    <string name="audio_routing_perm_title">Allow to reroute audio from device to the car</string>
+    <string name="audio_routing_perm_confirm">This permission will allow Android Auto to reroute
+audio playback and audio capture from device to the car. Audio capture will be allowed only if the
+Microphone permission is allowed.</string>
+
+    <string name="aauto_wireless_perms_title">Allow permissions for wireless Android Auto</string>
+    <string name="aauto_wireless_perms_confirm">
+"These permissions allow Android Auto to:
+
+• Connect and interact with Bluetooth, Wi-Fi and USB devices
+• Reset the USB port and to reconnect the connected USB devices
+• Toggle Wi-Fi and Bluetooth on or off
+• Access the list of Wi-Fi networks
+• Connect to Wi-Fi networks without confirmation
+• Read the device serial number, Bluetooth MAC address, Wi-Fi MAC address
+• Send and receive car display data
+• Launch apps that have opted-in to Android Auto on the car display
+
+The network permission will also be allowed, it’s needed for communication with the car over Wi-Fi.
+"
+    </string>
+
+    <string name="aauto_phone_perm_title">Allow permissions for handling phone calls</string>
+    <string name="aauto_phone_perm_confirm">
+"These permissions allow Android Auto to:
+
+• Place and answer phone calls
+• Manage ongoing phone calls
+• Enable and disable Bluetooth
+• Pair and connect with the car’s hands-free audio system via Bluetooth
+"
+    </string>
+
+    <string name="aauto_app_info_title">Android Auto app info</string>
+    <string name="aauto_app_info_summary">App info screen includes standard permission settings</string>
+
+    <string name="notif_listener_settings_title">Notification access settings</string>
+    <string name="notif_listener_settings_summary">Select which notifications can be accessed by Android Auto</string>
+
+    <string name="potential_issues_category">Potential issues</string>
+
+    <string name="aauto_issue_voice_commands">Voice commands</string>
+    <string name="aauto_issue_voice_commands_header">In order for voice commands to work:</string>
+    <string name="aauto_issue_aauto_no_microphone_perm">Android Auto needs the Microphone permission</string>
+    <string name="aauto_issue_gsa_not_installed">Google app needs to be installed from the Play Store</string>
+    <string name="aauto_issue_gsa_disabled">Google app has to be enabled</string>
+    <string name="aauto_issue_gsa_no_network_perm">Google app needs the Network permission</string>
+    <string name="aauto_issue_gsa_no_microphone_perm">Google app needs the Microphone permission</string>
+
+    <string name="optional_deps_category">Optional dependencies</string>
+
+    <string name="app_dep_missing_summary">Not installed, tap to open Play Store</string>
+    <string name="app_dep_missing_summary_no_play_store">Not installed</string>
+    <string name="app_dep_installed">Installed, tap to open app info</string>
+    <string name="app_dep_disabled">Disabled, tap to open app info</string>
+
+    <string name="google_maps_app">Google Maps</string>
+    <string name="speech_services_app">Speech Recognition &amp; Synthesis</string>
+    <string name="google_search_app">Google app</string>
+    <string name="google_messages_app">Google Messages</string>
+
+    <string name="gmscore_settings">Play services permissions</string>
+    <string name="gmscore_app_info_title">Play services app info</string>
+    <string name="gmscore_app_info_summary">App info screen includes standard permission settings</string>
+    <string name="rcs_activation_category">RCS activation</string>
+    <string name="gmscore_icc_auth_perms_title">Allow ICC authentication with device identifiers</string>
+    <string name="gmscore_icc_auth_perms_confirm">
+"This permission allows Google Play services to:
+
+• Use your SIM (ICC-based authentication) and device identifiers to authenticate with your mobile carrier
+
+Some carriers require an entitlement check (GSMA TS.43 with EAP-AKA authentication) to verify your phone number and activate RCS in Google Messages. This permission allows Google Play services to use your SIM to complete the EAP-AKA challenge-response from the carrier's entitlement server.
+"
+</string>
+
+    <string name="rcs_potential_issues">Potential issues with RCS activation</string>
+    <string name="rcs_issue_header">These are the minimum requirements for RCS activation:</string>
+    <string name="rcs_issue_gmscore_no_phone_perm">Google Play services needs the Phone permission</string>
+    <string name="rcs_issue_gmscore_no_internet_perm">Google Play services needs the Network permission</string>
+    <string name="rcs_issue_bugle_not_installed">Google Messages needs to be installed from the Play Store</string>
+    <string name="rcs_issue_bugle_disabled">Google Messages needs to be enabled</string>
+    <string name="rcs_issue_bugle_not_from_play_store">Google Messages is not installed from the Play Store. Although RCS can work, installing this way may not be stable.</string>
+    <string name="rcs_issue_bugle_not_sms_app">Google Messages needs to be set as the default SMS app</string>
+    <string name="rcs_issue_bugle_no_internet_perm">Google Messages needs the Network permission</string>
+    <string name="rcs_issue_not_owner_user">RCS in Google Messages currently only works in the Owner user</string>
+    <string name="rcs_issue_gmscore_no_icc_auth_perm">Google Play services may need permission to do ICC authentication with device identifiers</string>
+
+    <string name="notif_rcs_needs_baseline_perms_title">RCS may require permissions</string>
+    <string name="notif_rcs_not_owner_user_title">RCS may not work</string>
+    <string name="notif_rcs_not_owner_user_text">RCS is currently only known to work in the Owner user.</string>
+    <string name="notif_rcs_needs_baseline_perms_text">Some apps are missing permissions for RCS, and activation might not complete. Tap to open Play services special permissions for more information.</string>
+    <string name="notif_rcs_needs_baseline_perms_text_icc">Your carrier may require ICC authentication for RCS setup. Tap to open Play services special permissions for more information.</string>
+    <string name="notif_rcs_needs_baseline_perms_text_icc_and_other_perms">Your carrier may require ICC authentication for RCS setup, and other permissions are needed. Tap to open Play services special permissions for more information.</string>
+</resources>

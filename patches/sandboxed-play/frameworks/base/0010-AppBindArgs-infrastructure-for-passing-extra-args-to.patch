@@ -1,0 +1,331 @@
+From c1dbaf7ea1f934de121ea4d52e8089a8ecd16ce2 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Fri, 18 Aug 2023 12:21:13 +0300
+Subject: [PATCH 10/28] AppBindArgs: infrastructure for passing extra args to
+ app process init
+
+---
+ core/java/android/app/ActivityThread.java     | 19 ++++++-
+ .../java/android/app/ActivityThreadHooks.java | 42 +++++++++++++++
+ core/java/android/app/AppBindArgs.java        |  8 +++
+ core/java/android/app/IApplicationThread.aidl |  2 +-
+ .../server/am/ActivityManagerService.java     |  4 ++
+ .../am/NativeApplicationThreadWrapper.java    |  1 +
+ .../server/ext/PackageManagerHooks.java       | 53 ++++++++++++++++++-
+ .../server/pm/PackageManagerService.java      |  1 +
+ .../server/am/AsyncProcessStartTest.java      |  4 +-
+ .../server/am/ProcessObserverTest.java        |  4 +-
+ 10 files changed, 129 insertions(+), 9 deletions(-)
+ create mode 100644 core/java/android/app/ActivityThreadHooks.java
+ create mode 100644 core/java/android/app/AppBindArgs.java
+
+diff --git a/core/java/android/app/ActivityThread.java b/core/java/android/app/ActivityThread.java
+index b7d9f653023e..1dd683ddd6bc 100644
+--- a/core/java/android/app/ActivityThread.java
++++ b/core/java/android/app/ActivityThread.java
+@@ -1017,6 +1017,7 @@ public final class ActivityThread extends ClientTransactionHandler
+         @UnsupportedAppUsage
+         AppBindData() {
+         }
++        Bundle extraArgs;
+         @UnsupportedAppUsage
+         LoadedApk info;
+         @UnsupportedAppUsage
+@@ -1423,6 +1424,7 @@ public final class ActivityThread extends ClientTransactionHandler
+         @Override
+         @RavenwoodThrow(comment = "See ActivityThread_ravenwood for initialization on Ravenwood")
+         public final void bindApplication(
++                Bundle extraArgs,
+                 String processName,
+                 ApplicationInfo appInfo,
+                 String sdkSandboxClientAppVolumeUuid,
+@@ -1509,6 +1511,7 @@ public final class ActivityThread extends ClientTransactionHandler
+             }
+ 
+             AppBindData data = new AppBindData();
++            data.extraArgs = extraArgs;
+             data.processName = processName;
+             data.appInfo = appInfo;
+             data.sdkSandboxClientAppVolumeUuid = sdkSandboxClientAppVolumeUuid;
+@@ -5612,8 +5615,14 @@ public final class ActivityThread extends ClientTransactionHandler
+             } else {
+                 cl = packageInfo.getClassLoader();
+             }
+-            service = packageInfo.getAppFactory()
+-                    .instantiateService(cl, data.info.name, data.intent);
++            {
++                String className = data.info.name;
++                service = ActivityThreadHooks.instantiateService(className);
++                if (service == null) {
++                    service = packageInfo.getAppFactory()
++                            .instantiateService(cl, className, data.intent);
++                }
++            }
+             ContextImpl context = ContextImpl.getImpl(service
+                     .createServiceBaseContext(this, packageInfo));
+             if (data.info.splitName != null) {
+@@ -7972,6 +7981,8 @@ public final class ActivityThread extends ClientTransactionHandler
+     @UnsupportedAppUsage
+     @RavenwoodThrow(comment = "See ActivityThread_ravenwood for initialization on Ravenwood")
+     private void handleBindApplication(AppBindData data) {
++        final Bundle extraAppBindArgs = ActivityThreadHooks.onBind(data);
++
+         mDdmSyncStageUpdater.next(Stage.Bind);
+ 
+         // Register the UI Thread as a sensitive thread to the runtime.
+@@ -8235,6 +8246,10 @@ public final class ActivityThread extends ClientTransactionHandler
+             dalvik.system.VMRuntime.getRuntime().clampGrowthLimit();
+         }
+ 
++        if (extraAppBindArgs != null) {
++            ActivityThreadHooks.onBind2(appContext, extraAppBindArgs);
++        }
++
+         // Allow disk access during application and provider setup. This could
+         // block processing ordered broadcasts, but later processing would
+         // probably end up doing the same disk access.
+diff --git a/core/java/android/app/ActivityThreadHooks.java b/core/java/android/app/ActivityThreadHooks.java
+new file mode 100644
+index 000000000000..4d1ed92f2a71
+--- /dev/null
++++ b/core/java/android/app/ActivityThreadHooks.java
+@@ -0,0 +1,42 @@
++package android.app;
++
++import android.annotation.Nullable;
++import android.content.Context;
++import android.os.Bundle;
++
++import com.android.internal.util.Preconditions;
++
++import java.util.Objects;
++
++class ActivityThreadHooks {
++
++    @Nullable // null during the early part of app process init
++    private static volatile Context appContext;
++    private static volatile boolean onBindCalled;
++
++    // called after the initial app context is constructed
++    // ActivityThread.handleBindApplication
++    static Bundle onBind(ActivityThread.AppBindData appBindData) {
++        Bundle args = appBindData.extraArgs;
++        Objects.requireNonNull(args, "args bundle is null");
++
++        Preconditions.checkState(!onBindCalled);
++        onBindCalled = true;
++
++        int[] flags = Objects.requireNonNull(args.getIntArray(AppBindArgs.KEY_FLAGS_ARRAY));
++
++        return args;
++    }
++
++    // called after ActivityThread instrumentation is inited, which happens before execution of any
++    // of app's code
++    // ActivityThread.handleBindApplication
++    static void onBind2(Context appContext, Bundle appBindArgs) {
++        ActivityThreadHooks.appContext = appContext;
++    }
++
++    static Service instantiateService(String className) {
++        Service res = null;
++        return res;
++    }
++}
+diff --git a/core/java/android/app/AppBindArgs.java b/core/java/android/app/AppBindArgs.java
+new file mode 100644
+index 000000000000..bd411cd4232a
+--- /dev/null
++++ b/core/java/android/app/AppBindArgs.java
+@@ -0,0 +1,8 @@
++package android.app;
++
++/** @hide */
++public interface AppBindArgs {
++    String KEY_FLAGS_ARRAY = "flagsArr";
++
++    int FLAGS_ARRAY_LEN = 10;
++}
+diff --git a/core/java/android/app/IApplicationThread.aidl b/core/java/android/app/IApplicationThread.aidl
+index c3cd2191292c..d0aeeae3ff3c 100644
+--- a/core/java/android/app/IApplicationThread.aidl
++++ b/core/java/android/app/IApplicationThread.aidl
+@@ -83,7 +83,7 @@ oneway interface IApplicationThread {
+             in CompatibilityInfo compatInfo, int processState);
+     @UnsupportedAppUsage
+     void scheduleStopService(IBinder token);
+-    void bindApplication(in String packageName, in ApplicationInfo info,
++    void bindApplication(in Bundle extraArgs, in String packageName, in ApplicationInfo info,
+             in String sdkSandboxClientAppVolumeUuid, in String sdkSandboxClientAppPackage,
+             in boolean isSdkInSandbox,
+             in ProviderInfoList providerList, in ComponentName testName,
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 4e3bc096a8ca..69f21ae7a4f1 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -524,6 +524,7 @@ import com.android.server.compat.PlatformCompat;
+ import com.android.server.contentcapture.ContentCaptureManagerInternal;
+ import com.android.server.crashrecovery.CrashRecoveryHelper;
+ import com.android.server.criticalevents.CriticalEventLog;
++import com.android.server.ext.PackageManagerHooks;
+ import com.android.server.firewall.IntentFirewall;
+ import com.android.server.graphics.fonts.FontManagerInternal;
+ import com.android.server.job.JobSchedulerInternal;
+@@ -5448,7 +5449,10 @@ public class ActivityManagerService extends IActivityManager.Stub
+                     instrumentationWatcher = instr2.mWatcher;
+                     instrumentationUiConnection = instr2.mUiAutomationConnection;
+                 }
++                Bundle extraArgs = PackageManagerHooks.getExtraAppBindArgs(mContext, mPackageManagerInt,
++                        appInfo.packageName, app.getApplicationUid(), pid);
+                 thread.bindApplication(
++                        extraArgs,
+                         processName,
+                         appInfo,
+                         app.sdkSandboxClientAppVolumeUuid,
+diff --git a/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java b/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java
+index 2bbff4f6943e..a2982ebb5ed8 100644
+--- a/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java
++++ b/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java
+@@ -246,6 +246,7 @@ public class NativeApplicationThreadWrapper implements IApplicationThread {
+ 
+     @Override
+     public final void bindApplication(
++            Bundle extraArgs,
+             String processName,
+             ApplicationInfo appInfo,
+             String sdkSandboxClientAppVolumeUuid,
+diff --git a/services/core/java/com/android/server/ext/PackageManagerHooks.java b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+index cb5038687b6f..781816d97c9c 100644
+--- a/services/core/java/com/android/server/ext/PackageManagerHooks.java
++++ b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+@@ -1,13 +1,18 @@
+ package com.android.server.ext;
+ 
+-import android.Manifest;
+ import android.annotation.Nullable;
+ import android.annotation.UserIdInt;
++import android.app.AppBindArgs;
++import android.content.Context;
+ import android.content.pm.PackageManagerInternal;
++import android.os.Bundle;
++import android.os.UserHandle;
+ import android.util.ArraySet;
++import android.util.Slog;
+ 
++import com.android.server.pm.Computer;
++import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.PackageStateInternal;
+-import com.android.server.pm.pkg.parsing.ParsingPackage;
+ 
+ public class PackageManagerHooks {
+ 
+@@ -26,6 +31,50 @@ public class PackageManagerHooks {
+         return false;
+     }
+ 
++    @Nullable
++    public static Bundle getExtraAppBindArgs(Context context, PackageManagerInternal pm,
++                                             String packageName, int appUid, int pid) {
++        if (android.os.Flags.isDevBuild()) {
++            Slog.d("AppBindArgs", "obtaining args for pkgName " + packageName
++                    + ", appUid " + appUid + ", pid " + pid);
++        }
++
++        // Note that:
++        // - app UID differs from process UID for isolated processes
++        // - for android:externalService processes (e.g. WebView processes), app UID and package
++        // name values are client's, not host's
++
++        final int appId = UserHandle.getAppId(appUid);
++        final int userId = UserHandle.getUserId(appUid);
++
++        Computer pmComputer = (Computer) pm.snapshot();
++
++        PackageStateInternal pkgState = pmComputer.getPackageStateInternal(packageName);
++        if (pkgState == null) {
++            return null;
++        }
++
++        if (pkgState.getAppId() != appId) {
++            return null;
++        }
++
++        AndroidPackage pkg = pkgState.getPkg();
++
++        if (pkg == null) {
++            return null;
++        }
++
++        // isSystem() remains true even if isUpdatedSystemApp() is true
++        final boolean isUserApp = !pkgState.isSystem();
++
++        int[] flagsArr = new int[AppBindArgs.FLAGS_ARRAY_LEN];
++
++        var b = new Bundle();
++        b.putIntArray(AppBindArgs.KEY_FLAGS_ARRAY, flagsArr);
++
++        return b;
++    }
++
+     // Called when AppsFilter decides whether to restrict package visibility
+     public static boolean shouldFilterApplication(
+             @Nullable PackageStateInternal callingPkgSetting,
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 8e26a173f488..e3d1fd1f251d 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -227,6 +227,7 @@ import com.android.server.art.DexUseManagerLocal;
+ import com.android.server.art.model.DeleteResult;
+ import com.android.server.compat.CompatChange;
+ import com.android.server.compat.PlatformCompat;
++import com.android.server.ext.PackageManagerHooks;
+ import com.android.server.pm.Installer.InstallerException;
+ import com.android.server.pm.Settings.VersionInfo;
+ import com.android.server.pm.dex.ArtManagerService;
+diff --git a/services/tests/mockingservicestests/src/com/android/server/am/AsyncProcessStartTest.java b/services/tests/mockingservicestests/src/com/android/server/am/AsyncProcessStartTest.java
+index bb46476b90ad..8b5e3d583f57 100644
+--- a/services/tests/mockingservicestests/src/com/android/server/am/AsyncProcessStartTest.java
++++ b/services/tests/mockingservicestests/src/com/android/server/am/AsyncProcessStartTest.java
+@@ -201,7 +201,7 @@ public class AsyncProcessStartTest {
+             return null;
+         }).when(thread).bindApplication(
+                 any(), any(),
+-                any(), any(), anyBoolean(),
++                any(), any(), any(), anyBoolean(),
+                 any(), any(),
+                 any(), any(),
+                 any(),
+@@ -262,7 +262,7 @@ public class AsyncProcessStartTest {
+         mProcessList.handleProcessStartedLocked(app, app.getPid(), /* usingWrapper */ false,
+                 /* expectedStartSeq */ 0, /* procAttached */ false);
+ 
+-        app.getThread().bindApplication(PACKAGE, appInfo,
++        app.getThread().bindApplication(null, PACKAGE, appInfo,
+                 null, null, false,
+                 null,
+                 null,
+diff --git a/services/tests/mockingservicestests/src/com/android/server/am/ProcessObserverTest.java b/services/tests/mockingservicestests/src/com/android/server/am/ProcessObserverTest.java
+index 6f0aa83f83b7..aaae4a41933b 100644
+--- a/services/tests/mockingservicestests/src/com/android/server/am/ProcessObserverTest.java
++++ b/services/tests/mockingservicestests/src/com/android/server/am/ProcessObserverTest.java
+@@ -206,7 +206,7 @@ public class ProcessObserverTest {
+             return null;
+         }).when(thread).bindApplication(
+                 any(), any(),
+-                any(), any(), anyBoolean(),
++                any(), any(), any(), anyBoolean(),
+                 any(), any(),
+                 any(), any(),
+                 any(),
+@@ -251,7 +251,7 @@ public class ProcessObserverTest {
+         final ApplicationInfo appInfo = makeApplicationInfo(PACKAGE);
+         mProcessList.handleProcessStartedLocked(app, app.getPid(), /* usingWrapper */ false,
+                 /* expectedStartSeq */ 0, /* procAttached */ false);
+-        app.getThread().bindApplication(PACKAGE, appInfo,
++        app.getThread().bindApplication(null, PACKAGE, appInfo,
+                 null, null, false,
+                 null,
+                 null,
+-- 
+2.43.0
+

@@ -1,0 +1,93 @@
+From f9fac80d5e4588ce709807a303726aee9aa3191a Mon Sep 17 00:00:00 2001
+From: inthewaves <inthewaves@pm.me>
+Date: Wed, 17 Jun 2026 13:39:19 -0700
+Subject: [PATCH] gmscompat: add stubs for BluetoothLeBroadcast methods
+
+---
+ .../android/bluetooth/BluetoothLeBroadcast.java   | 15 +++++++++++++--
+ .../bluetooth/BluetoothLeBroadcastAssistant.java  | 15 +++++++++++++--
+ 2 files changed, 26 insertions(+), 4 deletions(-)
+
+diff --git a/framework/java/android/bluetooth/BluetoothLeBroadcast.java b/framework/java/android/bluetooth/BluetoothLeBroadcast.java
+index 939c9d1bb..708fd5439 100644
+--- a/framework/java/android/bluetooth/BluetoothLeBroadcast.java
++++ b/framework/java/android/bluetooth/BluetoothLeBroadcast.java
+@@ -30,6 +30,7 @@ import android.annotation.Nullable;
+ import android.annotation.RequiresNoPermission;
+ import android.annotation.RequiresPermission;
+ import android.annotation.SystemApi;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.annotations.RequiresBluetoothConnectPermission;
+ import android.content.AttributionSource;
+ import android.content.Context;
+@@ -327,7 +328,12 @@ public final class BluetoothLeBroadcast implements AutoCloseable, BluetoothProfi
+         requireNonNull(executor);
+         requireNonNull(callback);
+         Log.d(TAG, "registerCallback");
+-        enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        try {
++            enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return;
++        }
+         mCallbackWrapper.registerCallback(getService(), callback, executor);
+     }
+ 
+@@ -350,7 +356,12 @@ public final class BluetoothLeBroadcast implements AutoCloseable, BluetoothProfi
+     public void unregisterCallback(@NonNull Callback callback) {
+         requireNonNull(callback);
+         Log.d(TAG, "unregisterCallback");
+-        enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        try {
++            enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return;
++        }
+         mCallbackWrapper.unregisterCallback(getService(), callback);
+     }
+ 
+diff --git a/framework/java/android/bluetooth/BluetoothLeBroadcastAssistant.java b/framework/java/android/bluetooth/BluetoothLeBroadcastAssistant.java
+index 6d2bea183..69c1738a3 100644
+--- a/framework/java/android/bluetooth/BluetoothLeBroadcastAssistant.java
++++ b/framework/java/android/bluetooth/BluetoothLeBroadcastAssistant.java
+@@ -33,6 +33,7 @@ import android.annotation.RequiresNoPermission;
+ import android.annotation.RequiresPermission;
+ import android.annotation.SdkConstant;
+ import android.annotation.SystemApi;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.annotations.RequiresBluetoothConnectPermission;
+ import android.bluetooth.annotations.RequiresBluetoothLocationPermission;
+ import android.bluetooth.annotations.RequiresBluetoothScanPermission;
+@@ -726,7 +727,12 @@ public final class BluetoothLeBroadcastAssistant implements BluetoothProfile, Au
+         requireNonNull(callback);
+         log("registerCallback");
+ 
+-        enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        try {
++            enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return;
++        }
+ 
+         synchronized (mCallbackExecutorMap) {
+             // If the callback map is empty, we register the service-to-app callback
+@@ -776,7 +782,12 @@ public final class BluetoothLeBroadcastAssistant implements BluetoothProfile, Au
+         requireNonNull(callback);
+         log("unregisterCallback");
+ 
+-        enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        try {
++            enforcePermissionInFramework(mContext, BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return;
++        }
+ 
+         synchronized (mCallbackExecutorMap) {
+             if (mCallbackExecutorMap.remove(callback) == null) {
+-- 
+2.43.0
+

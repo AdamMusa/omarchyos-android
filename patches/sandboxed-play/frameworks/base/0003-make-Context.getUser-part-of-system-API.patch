@@ -1,0 +1,54 @@
+From 756b4db3a4e22761523f097587850c01a5dc699b Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Mon, 13 Jan 2025 18:25:03 +0200
+Subject: [PATCH 03/28] make Context.getUser() part of system API
+
+It's useful for APIs that require specifying the user explicitly.
+
+Change-Id: I4c682e85e632e389b6c03e344d6c99d73aa9d579
+---
+ core/api/module-lib-current.txt        | 1 -
+ core/api/system-current.txt            | 1 +
+ core/java/android/content/Context.java | 2 +-
+ 3 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/core/api/module-lib-current.txt b/core/api/module-lib-current.txt
+index ee91e88c9495..1c6bc7ee7220 100644
+--- a/core/api/module-lib-current.txt
++++ b/core/api/module-lib-current.txt
+@@ -100,7 +100,6 @@ package android.content {
+   public abstract class Context {
+     method @NonNull public android.content.Context createContextForSdkInSandbox(@NonNull android.content.pm.ApplicationInfo, int) throws android.content.pm.PackageManager.NameNotFoundException;
+     method @NonNull public android.os.IBinder getProcessToken();
+-    method @NonNull public android.os.UserHandle getUser();
+     field @FlaggedApi("android.os.profiling.anomaly.flags.anomaly_detector_core_c") public static final String ANOMALY_DETECTOR_SERVICE = "anomaly_detector";
+     field @FlaggedApi("android.app.ondeviceintelligence.flags.enable_on_device_intelligence_module") public static final int BIND_FOREGROUND_SERVICE = 67108864; // 0x4000000
+     field public static final String PAC_PROXY_SERVICE = "pac_proxy";
+diff --git a/core/api/system-current.txt b/core/api/system-current.txt
+index 9cb5087586b4..98531c04e349 100644
+--- a/core/api/system-current.txt
++++ b/core/api/system-current.txt
+@@ -4502,6 +4502,7 @@ package android.content {
+     method public abstract android.content.Context createCredentialProtectedStorageContext();
+     method @NonNull public android.content.Context createPackageContextAsUser(@NonNull String, int, @NonNull android.os.UserHandle) throws android.content.pm.PackageManager.NameNotFoundException;
+     method @Nullable public abstract java.io.File getPreloadsFileCache();
++    method @NonNull public android.os.UserHandle getUser();
+     method public abstract boolean isCredentialProtectedStorage();
+     method @Nullable @RequiresPermission(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL) public android.content.Intent registerReceiverForAllUsers(@Nullable android.content.BroadcastReceiver, @NonNull android.content.IntentFilter, @Nullable String, @Nullable android.os.Handler);
+     method @Nullable @RequiresPermission(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL) public android.content.Intent registerReceiverForAllUsers(@Nullable android.content.BroadcastReceiver, @NonNull android.content.IntentFilter, @Nullable String, @Nullable android.os.Handler, int);
+diff --git a/core/java/android/content/Context.java b/core/java/android/content/Context.java
+index f0bd86d90e1b..438a277e1d01 100644
+--- a/core/java/android/content/Context.java
++++ b/core/java/android/content/Context.java
+@@ -8205,7 +8205,7 @@ public abstract class Context {
+      * @hide
+      */
+     @NonNull
+-    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
++    @SystemApi
+     @TestApi
+     @RavenwoodSupported(type = SupportType.SUBCLASS, subclass = "ContextImpl")
+     public @CanBeALL @CanBeCURRENT UserHandle getUser() {
+-- 
+2.43.0
+

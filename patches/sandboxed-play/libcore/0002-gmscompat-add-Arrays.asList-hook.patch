@@ -1,0 +1,50 @@
+From cf133d4436e05ba1740763c5923e1190dc1550e1 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Mon, 31 Mar 2025 10:21:03 +0300
+Subject: [PATCH] gmscompat: add Arrays.asList() hook
+
+---
+ api/module-lib-current.txt                 | 4 ++++
+ ojluni/src/main/java/java/util/Arrays.java | 8 ++++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/api/module-lib-current.txt b/api/module-lib-current.txt
+index b35d48b81..d1e33a7d4 100644
+--- a/api/module-lib-current.txt
++++ b/api/module-lib-current.txt
+@@ -570,6 +570,10 @@ package java.text {
+ 
+ package java.util {
+ 
++  public final class Arrays {
++    field public static java.util.function.UnaryOperator<Object[]> asListHook;
++  }
++
+   public class LinkedHashMap<K, V> extends java.util.HashMap<K, V> implements java.util.Map<K, V> java.util.SequencedMap<K, V> {
+     method public java.util.Map.Entry<K, V> eldest();
+   }
+diff --git a/ojluni/src/main/java/java/util/Arrays.java b/ojluni/src/main/java/java/util/Arrays.java
+index aec04497f..9e8df518d 100644
+--- a/ojluni/src/main/java/java/util/Arrays.java
++++ b/ojluni/src/main/java/java/util/Arrays.java
+@@ -4962,9 +4962,17 @@ public final class Arrays {
+     @SafeVarargs
+     @SuppressWarnings("varargs")
+     public static <T> List<T> asList(T... a) {
++        java.util.function.UnaryOperator<Object[]> hook = asListHook;
++        if (hook != null) {
++            a = (T[]) hook.apply(a);
++        }
+         return new ArrayList<>(a);
+     }
+ 
++    /** @hide */
++    @android.annotation.SystemApi(client = android.annotation.SystemApi.Client.MODULE_LIBRARIES)
++    public static java.util.function.UnaryOperator<Object[]> asListHook;
++
+     /**
+      * Since Android 15 Arrays.asList(...).toArray()'s component type is {@link Object},
+      * not the underlying array's elements type. So the following code will throw
+-- 
+2.43.0
+

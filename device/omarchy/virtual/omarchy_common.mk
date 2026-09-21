@@ -53,6 +53,13 @@ PRODUCT_COPY_FILES += \
     device/omarchy/bootanimation/bootanimation.zip:$(TARGET_COPY_OUT_PRODUCT)/media/bootanimation.zip \
     device/omarchy/bootanimation/NOTICE.md:$(TARGET_COPY_OUT_PRODUCT)/etc/omarchy/bootanimation/NOTICE.md
 
+# Sandboxed Google Play (ported from GrapheneOS gmscompat). The OS ships only the
+# compatibility layer; the user installs Google's own Play services and Play
+# Store as ordinary, unprivileged apps. They run in the untrusted_app domain with
+# no special permissions, and can be removed like any other app.
+PRODUCT_PACKAGES += \
+    GmsCompat
+
 PRODUCT_BRAND := Omarchy
 PRODUCT_MANUFACTURER := OmarchyOS
 

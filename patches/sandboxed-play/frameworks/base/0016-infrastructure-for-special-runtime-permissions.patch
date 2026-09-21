@@ -1,0 +1,770 @@
+From 8615d1173a05036efa84433370568908efe383fe Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Thu, 9 Feb 2023 18:53:11 +0200
+Subject: [PATCH 16/28] infrastructure for special runtime permissions
+
+Squashed with 8320ef57c9d47c6933c753b69c0279a960752014 by
+Andrew Gunnerson <accounts+github@chiller3.com>
+---
+ core/api/system-current.txt                   |  3 ++
+ .../java/android/app/ActivityThreadHooks.java |  3 ++
+ core/java/android/app/AppBindArgs.java        |  2 +
+ .../content/pm/AppPermissionUtils.java        |  4 ++
+ .../android/content/pm/IPackageInstaller.aidl |  3 ++
+ .../android/content/pm/PackageInstaller.java  | 38 +++++++++++----
+ .../pm/SpecialRuntimePermAppUtils.java        | 27 +++++++++++
+ .../android/content/pm/SrtPermissions.java    | 23 +++++++++
+ .../content/pm/IPackageManagerNative.aidl     |  6 +++
+ .../server/ext/PackageManagerHooks.java       |  5 +-
+ .../server/pm/InstallPackageHelper.java       | 25 ++++++++--
+ .../server/pm/PackageInstallerService.java    | 13 +++++
+ .../server/pm/PackageInstallerSession.java    | 18 +++++++
+ .../server/pm/PackageManagerService.java      |  1 +
+ .../PermissionManagerServiceInternal.java     | 19 +++++++-
+ .../permission/SpecialRuntimePermUtils.java   | 48 +++++++++++++++++++
+ .../permission/AppIdPermissionPolicy.kt       | 42 +++++++++++++++-
+ .../access/permission/PermissionService.kt    | 37 ++++++++++++--
+ 18 files changed, 296 insertions(+), 21 deletions(-)
+ create mode 100644 core/java/android/content/pm/SpecialRuntimePermAppUtils.java
+ create mode 100644 core/java/android/content/pm/SrtPermissions.java
+ create mode 100644 services/core/java/com/android/server/pm/permission/SpecialRuntimePermUtils.java
+
+diff --git a/core/api/system-current.txt b/core/api/system-current.txt
+index 66b393413a16..cefba23afef8 100644
+--- a/core/api/system-current.txt
++++ b/core/api/system-current.txt
+@@ -5293,6 +5293,9 @@ package android.content.pm {
+     field @NonNull public static final android.os.Parcelable.Creator<android.content.pm.SignedPackage> CREATOR;
+   }
+ 
++  public class SpecialRuntimePermAppUtils {
++  }
++
+   public final class SuspendDialogInfo implements android.os.Parcelable {
+     method public int describeContents();
+     method public void writeToParcel(android.os.Parcel, int);
+diff --git a/core/java/android/app/ActivityThreadHooks.java b/core/java/android/app/ActivityThreadHooks.java
+index f07986ec7083..fe98e8017222 100644
+--- a/core/java/android/app/ActivityThreadHooks.java
++++ b/core/java/android/app/ActivityThreadHooks.java
+@@ -3,6 +3,7 @@ package android.app;
+ import android.annotation.Nullable;
+ import android.content.Context;
+ import android.content.pm.GosPackageState;
++import android.content.pm.SrtPermissions;
+ import android.os.Bundle;
+ import android.os.Process;
+ import android.util.Log;
+@@ -30,6 +31,8 @@ class ActivityThreadHooks {
+ 
+         int[] flags = Objects.requireNonNull(args.getIntArray(AppBindArgs.KEY_FLAGS_ARRAY));
+ 
++        SrtPermissions.setFlags(flags[AppBindArgs.FLAGS_IDX_SPECIAL_RUNTIME_PERMISSIONS]);
++
+         return args;
+     }
+ 
+diff --git a/core/java/android/app/AppBindArgs.java b/core/java/android/app/AppBindArgs.java
+index 14a490003363..4eb2c18a73dd 100644
+--- a/core/java/android/app/AppBindArgs.java
++++ b/core/java/android/app/AppBindArgs.java
+@@ -5,5 +5,7 @@ public interface AppBindArgs {
+     String KEY_GOS_PACKAGE_STATE = "gosPs";
+     String KEY_FLAGS_ARRAY = "flagsArr";
+ 
++    int FLAGS_IDX_SPECIAL_RUNTIME_PERMISSIONS = 0;
++
+     int FLAGS_ARRAY_LEN = 10;
+ }
+diff --git a/core/java/android/content/pm/AppPermissionUtils.java b/core/java/android/content/pm/AppPermissionUtils.java
+index fdfc2e7a07b3..b8a3610810e8 100644
+--- a/core/java/android/content/pm/AppPermissionUtils.java
++++ b/core/java/android/content/pm/AppPermissionUtils.java
+@@ -30,6 +30,10 @@ public class AppPermissionUtils {
+     // android.permission.PermissionManager#checkPermissionUncached
+     /** @hide */
+     public static boolean shouldSpoofSelfCheck(String permName) {
++        if (SrtPermissions.shouldSpoofSelfCheck(permName)) {
++            return true;
++        }
++
+         return false;
+     }
+ 
+diff --git a/core/java/android/content/pm/IPackageInstaller.aidl b/core/java/android/content/pm/IPackageInstaller.aidl
+index 3cfad302420d..247e51be383f 100644
+--- a/core/java/android/content/pm/IPackageInstaller.aidl
++++ b/core/java/android/content/pm/IPackageInstaller.aidl
+@@ -67,6 +67,9 @@ interface IPackageInstaller {
+     @EnforcePermission("INSTALL_PACKAGES")
+     void setPermissionsResult(int sessionId, boolean accepted);
+ 
++    @EnforcePermission("INSTALL_GRANT_RUNTIME_PERMISSIONS")
++    void updatePermissionStates(int sessionId, in String[] permissionNames, in int[] states);
++
+     void bypassNextStagedInstallerCheck(boolean value);
+ 
+     void bypassNextAllowedApexUpdateCheck(boolean value);
+diff --git a/core/java/android/content/pm/PackageInstaller.java b/core/java/android/content/pm/PackageInstaller.java
+index 8926ad126720..a1ec302b9eb4 100644
+--- a/core/java/android/content/pm/PackageInstaller.java
++++ b/core/java/android/content/pm/PackageInstaller.java
+@@ -1432,6 +1432,16 @@ public class PackageInstaller {
+         }
+     }
+ 
++    /** @hide */
++    @RequiresPermission(Manifest.permission.INSTALL_GRANT_RUNTIME_PERMISSIONS)
++    public void updatePermissionStates(int sessionId, String[] permissionNames, int[] states) {
++        try {
++            mInstaller.updatePermissionStates(sessionId, permissionNames, states);
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
+     /**
+      * Check if install constraints are satisfied for the given packages.
+      *
+@@ -3175,7 +3185,7 @@ public class PackageInstaller {
+         @Nullable
+         public PersistableBundle extensionParams;
+ 
+-        private final ArrayMap<String, Integer> mPermissionStates;
++        private volatile ArrayMap<String, Integer> mPermissionStates;
+ 
+         /** @hide */
+         public static final int MAX_URI_LENGTH = 2048;
+@@ -3448,12 +3458,19 @@ public class PackageInstaller {
+         @NonNull
+         public SessionParams setPermissionState(@NonNull String permissionName,
+                 @PermissionState int state) {
++            setPermissionState(mPermissionStates, permissionName, state);
++            return this;
++        }
++
++        /** @hide */
++        public static void setPermissionState(ArrayMap<String, Integer> states,
++                  @NonNull String permissionName, @PermissionState int state) {
+             if (TextUtils.isEmpty(permissionName)) {
+                 throw new IllegalArgumentException("Provided permissionName cannot be "
+                         + (permissionName == null ? "null" : "empty"));
+             }
+             if (state != PERMISSION_STATE_DEFAULT
+-                    && !validatePermissionStates(Set.of(permissionName))) {
++                    && !validatePermissionStates(states, Set.of(permissionName))) {
+                 throw new IllegalArgumentException(
+                         "Permissions states exceeds size limits total size limit of "
+                                 + MAX_PERMISSION_STATES_SIZE + " in length");
+@@ -3461,22 +3478,20 @@ public class PackageInstaller {
+ 
+             switch (state) {
+                 case PERMISSION_STATE_DEFAULT:
+-                    mPermissionStates.remove(permissionName);
++                    states.remove(permissionName);
+                     break;
+                 case PERMISSION_STATE_GRANTED:
+                 case PERMISSION_STATE_DENIED:
+-                    mPermissionStates.put(permissionName, state);
++                    states.put(permissionName, state);
+                     break;
+                 default:
+                     throw new IllegalArgumentException("Unexpected permission state int: " + state);
+             }
+-
+-            return this;
+         }
+ 
+-        private boolean validatePermissionStates(Collection<String> permissionNames) {
++        private static boolean validatePermissionStates(ArrayMap<String, Integer> permissionStates, Collection<String> permissionNames) {
+             int totalLength = 0;
+-            for (String permission : mPermissionStates.keySet()) {
++            for (String permission : permissionStates.keySet()) {
+                 totalLength += permission.length();
+             }
+             for (String permission : permissionNames) {
+@@ -3490,7 +3505,7 @@ public class PackageInstaller {
+                 Collection<String> denyPermissions) {
+             Set<String> newPermissions = new HashSet<>(grantPermissions);
+             newPermissions.addAll(denyPermissions);
+-            if (!validatePermissionStates(newPermissions)) {
++            if (!validatePermissionStates(mPermissionStates, newPermissions)) {
+                 throw new IllegalArgumentException(
+                         "Permissions states exceeds size limits total size limit of "
+                                 + MAX_PERMISSION_STATES_SIZE + " in length");
+@@ -3999,6 +4014,11 @@ public class PackageInstaller {
+             return mPermissionStates;
+         }
+ 
++        /** @hide */
++        public void replacePermissionStates(ArrayMap<String, Integer> states) {
++            mPermissionStates = states;
++        }
++
+         /** @hide */
+         @Nullable
+         public String[] getLegacyGrantedRuntimePermissions() {
+diff --git a/core/java/android/content/pm/SpecialRuntimePermAppUtils.java b/core/java/android/content/pm/SpecialRuntimePermAppUtils.java
+new file mode 100644
+index 000000000000..1c947cf2441e
+--- /dev/null
++++ b/core/java/android/content/pm/SpecialRuntimePermAppUtils.java
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (C) 2022 GrapheneOS
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.content.pm;
++
++import android.Manifest;
++import android.annotation.SystemApi;
++
++/** @hide */
++@SystemApi
++public class SpecialRuntimePermAppUtils {
++
++    private SpecialRuntimePermAppUtils() {}
++}
+diff --git a/core/java/android/content/pm/SrtPermissions.java b/core/java/android/content/pm/SrtPermissions.java
+new file mode 100644
+index 000000000000..4f80d26bf76c
+--- /dev/null
++++ b/core/java/android/content/pm/SrtPermissions.java
+@@ -0,0 +1,23 @@
++package android.content.pm;
++
++import android.Manifest;
++
++/** @hide */
++public class SrtPermissions { // "special runtime permissions"
++    private static int flags;
++
++    public static int getFlags() {
++        return flags;
++    }
++
++    public static void setFlags(int value) {
++        flags = value;
++    }
++
++    public static boolean shouldSpoofSelfCheck(String permName) {
++        switch (permName) {
++            default:
++                return false;
++        }
++    }
++}
+diff --git a/native/android/aidl/android/content/pm/IPackageManagerNative.aidl b/native/android/aidl/android/content/pm/IPackageManagerNative.aidl
+index 191871ced60a..959443983232 100644
+--- a/native/android/aidl/android/content/pm/IPackageManagerNative.aidl
++++ b/native/android/aidl/android/content/pm/IPackageManagerNative.aidl
+@@ -173,4 +173,10 @@ interface IPackageManagerNative {
+      * Get information of staged APEXes.
+      */
+     StagedApexInfo[] getStagedApexInfos();
++
++    /**
++     * App attempted to perform an operation that is protected with a a special runtime permission
++     * and failed due to that permission being denied.
++     */
++    oneway void onDeniedSpecialRuntimePermissionOp(in String permissionName, int uid, in String packageName);
+ }
+diff --git a/services/core/java/com/android/server/ext/PackageManagerHooks.java b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+index f7817fa0e627..9a750d4be31c 100644
+--- a/services/core/java/com/android/server/ext/PackageManagerHooks.java
++++ b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+@@ -3,9 +3,9 @@ package com.android.server.ext;
+ import android.annotation.Nullable;
+ import android.annotation.UserIdInt;
+ import android.app.AppBindArgs;
++import android.content.Context;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.GosPackageState;
+-import android.content.Context;
+ import android.content.pm.PackageManagerInternal;
+ import android.os.Bundle;
+ import android.os.UserHandle;
+@@ -15,6 +15,7 @@ import android.util.Slog;
+ import com.android.server.pm.Computer;
+ import com.android.server.pm.GosPackageStatePmHooks;
+ import com.android.server.pm.ext.PackageHooks;
++import com.android.server.pm.permission.SpecialRuntimePermUtils;
+ import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.PackageStateInternal;
+ 
+@@ -82,6 +83,8 @@ public class PackageManagerHooks {
+                 requireNonNull(pmComputer.getApplicationInfo(packageName, 0L, userId));
+ 
+         int[] flagsArr = new int[AppBindArgs.FLAGS_ARRAY_LEN];
++        flagsArr[AppBindArgs.FLAGS_IDX_SPECIAL_RUNTIME_PERMISSIONS] =
++                SpecialRuntimePermUtils.getFlags(pkg, pkgState, userId);
+ 
+         var b = new Bundle();
+         b.putParcelable(AppBindArgs.KEY_GOS_PACKAGE_STATE, gosPs);
+diff --git a/services/core/java/com/android/server/pm/InstallPackageHelper.java b/services/core/java/com/android/server/pm/InstallPackageHelper.java
+index e7bb826461bc..5e593e84331f 100644
+--- a/services/core/java/com/android/server/pm/InstallPackageHelper.java
++++ b/services/core/java/com/android/server/pm/InstallPackageHelper.java
+@@ -160,6 +160,7 @@ import android.util.Log;
+ import android.util.Pair;
+ import android.util.Slog;
+ import android.util.SparseArray;
++import android.util.SparseBooleanArray;
+ import android.util.SparseIntArray;
+ 
+ import com.android.internal.annotations.GuardedBy;
+@@ -815,6 +816,7 @@ final class InstallPackageHelper {
+                         permissionParamsBuilder.setAllowlistedRestrictedPermissions(
+                                 new ArrayList<>(pkgSetting.getPkg().getRequestedPermissions()));
+                     }
++                    permissionParamsBuilder.setNewlyInstalledInUserId(userId);
+                     mPm.mPermissionManager.onPackageInstalled(pkgSetting.getPkg(),
+                             Process.INVALID_UID /* previousAppId */,
+                             permissionParamsBuilder.build(), userId);
+@@ -2760,7 +2762,13 @@ final class InstallPackageHelper {
+                     }
+                 }
+ 
++                final SparseBooleanArray archivedInUserIds = new SparseBooleanArray();
++
+                 if (userId != UserHandle.USER_ALL) {
++                    if (PackageArchiver.isArchived(ps.getUserStateOrDefault(userId))) {
++                        archivedInUserIds.put(userId, true);
++                    }
++
+                     // It's implied that when a user requests installation, they want the app to
+                     // be installed and enabled. The caller, however, can explicitly specify to
+                     // keep the existing enabled state.
+@@ -2792,6 +2800,10 @@ final class InstallPackageHelper {
+                     // Thus, updating the settings to install the app for all users.
+                     final boolean isPackageExisted = installRequest.getOriginUsers() != null;
+                     for (int currentUserId : allUsers) {
++                        if (PackageArchiver.isArchived(ps.getUserStateOrDefault(currentUserId))) {
++                            archivedInUserIds.put(currentUserId, true);
++                        }
++
+                         // If the app is already installed for the currentUser,
+                         // keep it as installed as we might be updating the app at this place.
+                         // If not currently installed, check if the currentUser is restricted by
+@@ -2860,16 +2872,26 @@ final class InstallPackageHelper {
+                     }
+                 }
+ 
++                final PermissionManagerServiceInternal.PackageInstalledParams.Builder
++                        permissionParamsBuilder =
++                        new PermissionManagerServiceInternal.PackageInstalledParams.Builder();
++
+                 // Set install reason for users that are having the package newly installed.
+                 if (userId == UserHandle.USER_ALL) {
+                     for (int currentUserId : allUsers) {
+                         if (!previousUserIds.contains(currentUserId)
+                                 && ps.getInstalled(currentUserId)) {
+                             ps.setInstallReason(installReason, currentUserId);
++                            if (!archivedInUserIds.get(currentUserId, false)) {
++                                permissionParamsBuilder.setNewlyInstalledInUserId(currentUserId);
++                            }
+                         }
+                     }
+                 } else if (!previousUserIds.contains(userId)) {
+                     ps.setInstallReason(installReason, userId);
++                    if (!archivedInUserIds.get(userId, false)) {
++                        permissionParamsBuilder.setNewlyInstalledInUserId(userId);
++                    }
+                 }
+ 
+                 // TODO(b/169721400): generalize Incremental States and create a Callback object
+@@ -2890,9 +2912,6 @@ final class InstallPackageHelper {
+ 
+                 mPm.mSettings.writeKernelMappingLPr(ps);
+ 
+-                final PermissionManagerServiceInternal.PackageInstalledParams.Builder
+-                        permissionParamsBuilder =
+-                        new PermissionManagerServiceInternal.PackageInstalledParams.Builder();
+                 final boolean grantRequestedPermissions = (installRequest.getInstallFlags()
+                         & PackageManager.INSTALL_GRANT_ALL_REQUESTED_PERMISSIONS) != 0;
+                 if (grantRequestedPermissions) {
+diff --git a/services/core/java/com/android/server/pm/PackageInstallerService.java b/services/core/java/com/android/server/pm/PackageInstallerService.java
+index 224aa8703669..32b49d3d06eb 100644
+--- a/services/core/java/com/android/server/pm/PackageInstallerService.java
++++ b/services/core/java/com/android/server/pm/PackageInstallerService.java
+@@ -1739,6 +1739,19 @@ public class PackageInstallerService extends IPackageInstaller.Stub implements
+         }
+     }
+ 
++    @android.annotation.EnforcePermission(android.Manifest.permission.INSTALL_GRANT_RUNTIME_PERMISSIONS)
++    @Override
++    public void updatePermissionStates(int sessionId, String[] permissionNames, int[] states) {
++        updatePermissionStates_enforcePermission();
++
++        synchronized (mSessions) {
++            PackageInstallerSession session = mSessions.get(sessionId);
++            if (session != null) {
++                session.updatePermissionStates(permissionNames, states);
++            }
++        }
++    }
++
+     private boolean isValidForInstallConstraints(PackageStateInternal ps,
+             String installerPackageName, int installerUid, String packageName) {
+         final var snapshot = mPm.snapshotComputer();
+diff --git a/services/core/java/com/android/server/pm/PackageInstallerSession.java b/services/core/java/com/android/server/pm/PackageInstallerSession.java
+index 268c82df6fa8..591f1e484d60 100644
+--- a/services/core/java/com/android/server/pm/PackageInstallerSession.java
++++ b/services/core/java/com/android/server/pm/PackageInstallerSession.java
+@@ -7329,4 +7329,22 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
+                 initialVerificationPolicy, currentVerificationPolicy, installDependencyHelper,
+                 /* restoredOnReboot= */ true);
+     }
++
++    void updatePermissionStates(String[] permissionNames, int[] states) {
++        int num = permissionNames.length;
++        if (num != states.length) {
++            throw new IllegalArgumentException("array length mismatch");
++        }
++
++        synchronized (mLock) {
++            ArrayMap<String, Integer> updatedStates = new ArrayMap<>(params.getPermissionStates());
++            for (int i = 0; i < num; ++i) {
++                PackageInstaller.SessionParams.setPermissionState(updatedStates,
++                        permissionNames[i], states[i]);
++            }
++            params.replacePermissionStates(updatedStates);
++        }
++
++        mCallback.onSessionChanged(this);
++    }
+ }
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index fda8ceb52825..2b90dba505ca 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -242,6 +242,7 @@ import com.android.server.pm.permission.LegacyPermissionManagerService;
+ import com.android.server.pm.permission.LegacyPermissionSettings;
+ import com.android.server.pm.permission.PermissionManagerService;
+ import com.android.server.pm.permission.PermissionManagerServiceInternal;
++import com.android.server.pm.permission.SpecialRuntimePermUtils;
+ import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.ArchiveState;
+ import com.android.server.pm.pkg.PackageStateInternal;
+diff --git a/services/core/java/com/android/server/pm/permission/PermissionManagerServiceInternal.java b/services/core/java/com/android/server/pm/permission/PermissionManagerServiceInternal.java
+index bdcc66bf2533..31d9bb182e68 100644
+--- a/services/core/java/com/android/server/pm/permission/PermissionManagerServiceInternal.java
++++ b/services/core/java/com/android/server/pm/permission/PermissionManagerServiceInternal.java
+@@ -25,6 +25,7 @@ import android.content.pm.PackageInstaller.SessionParams;
+ import android.content.pm.PermissionInfo;
+ import android.permission.PermissionManagerInternal;
+ import android.util.ArrayMap;
++import android.util.SparseBooleanArray;
+ 
+ import com.android.internal.util.function.QuadFunction;
+ import com.android.internal.util.function.TriFunction;
+@@ -347,13 +348,17 @@ public interface PermissionManagerServiceInternal extends PermissionManagerInter
+         private final List<String> mAllowlistedRestrictedPermissions;
+         @NonNull
+         private final int mAutoRevokePermissionsMode;
++        @NonNull
++        private final SparseBooleanArray mNewlyInstalledInUserIds;
+ 
+         private PackageInstalledParams(@NonNull ArrayMap<String, Integer> permissionStates,
+                 @NonNull List<String> allowlistedRestrictedPermissions,
+-                int autoRevokePermissionsMode) {
++                int autoRevokePermissionsMode,
++                @NonNull SparseBooleanArray newlyInstalledInUserIds) {
+             mPermissionStates = permissionStates;
+             mAllowlistedRestrictedPermissions = allowlistedRestrictedPermissions;
+             mAutoRevokePermissionsMode = autoRevokePermissionsMode;
++            mNewlyInstalledInUserIds = newlyInstalledInUserIds;
+         }
+ 
+         /**
+@@ -385,6 +390,10 @@ public interface PermissionManagerServiceInternal extends PermissionManagerInter
+             return mAutoRevokePermissionsMode;
+         }
+ 
++        public boolean isNewlyInstalledInUserId(int userId) {
++            return mNewlyInstalledInUserIds.get(userId, false);
++        }
++
+         /**
+          * Builder class for {@link PackageInstalledParams}.
+          */
+@@ -395,6 +404,8 @@ public interface PermissionManagerServiceInternal extends PermissionManagerInter
+             private List<String> mAllowlistedRestrictedPermissions = Collections.emptyList();
+             @NonNull
+             private int mAutoRevokePermissionsMode = AppOpsManager.MODE_DEFAULT;
++            @NonNull
++            private final SparseBooleanArray mNewlyInstalledInUserIds = new SparseBooleanArray();
+ 
+             /**
+              * Set the permissions states requested by the installer.
+@@ -442,6 +453,10 @@ public interface PermissionManagerServiceInternal extends PermissionManagerInter
+                 mAutoRevokePermissionsMode = autoRevokePermissionsMode;
+             }
+ 
++            public void setNewlyInstalledInUserId(int userId) {
++                mNewlyInstalledInUserIds.put(userId, true);
++            }
++
+             /**
+              * Build a new instance of {@link PackageInstalledParams}.
+              *
+@@ -451,7 +466,7 @@ public interface PermissionManagerServiceInternal extends PermissionManagerInter
+             public PackageInstalledParams build() {
+                 return new PackageInstalledParams(
+                         mPermissionStates == null ? new ArrayMap<>() : mPermissionStates,
+-                        mAllowlistedRestrictedPermissions, mAutoRevokePermissionsMode);
++                        mAllowlistedRestrictedPermissions, mAutoRevokePermissionsMode, mNewlyInstalledInUserIds);
+             }
+         }
+     }
+diff --git a/services/core/java/com/android/server/pm/permission/SpecialRuntimePermUtils.java b/services/core/java/com/android/server/pm/permission/SpecialRuntimePermUtils.java
+new file mode 100644
+index 000000000000..9f548ff6dd9b
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/permission/SpecialRuntimePermUtils.java
+@@ -0,0 +1,48 @@
++package com.android.server.pm.permission;
++
++import android.content.Context;
++import android.util.ArraySet;
++import android.util.EmptyArray;
++
++import com.android.internal.pm.pkg.component.ParsedUsesPermission;
++import com.android.server.pm.pkg.AndroidPackage;
++import com.android.server.pm.pkg.PackageState;
++
++public class SpecialRuntimePermUtils {
++    private static final String TAG = SpecialRuntimePermUtils.class.getSimpleName();
++
++    private static final ArraySet<String> specialRuntimePermissions = new ArraySet<>(new String[] {
++    });
++
++    public static boolean isSpecialRuntimePermission(String permission) {
++        return specialRuntimePermissions.contains(permission);
++    }
++
++    public static String[] getAll() {
++        return specialRuntimePermissions.toArray(EmptyArray.STRING);
++    }
++
++    public static boolean shouldAutoGrant(Context ctx, String packageName, int userId, String perm) {
++        if (!isSpecialRuntimePermission(perm)) {
++            return false;
++        }
++
++        return true;
++    }
++
++    public static int getFlags(AndroidPackage pkg, PackageState pkgState, int userId) {
++        int flags = 0;
++
++        for (ParsedUsesPermission perm : pkg.getUsesPermissionMapping().values()) {
++            String name = perm.getName();
++            switch (name) {
++                default:
++                    continue;
++            }
++        }
++
++        return flags;
++    }
++
++    private SpecialRuntimePermUtils() {}
++}
+diff --git a/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt b/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt
+index 09a8582f8978..1ed4d40a913a 100644
+--- a/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt
++++ b/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt
+@@ -24,6 +24,7 @@ import android.content.pm.PermissionGroupInfo
+ import android.content.pm.PermissionInfo
+ import android.content.pm.PermissionInfo.NO_TARGET_SDK_VERSION
+ import android.content.pm.SigningDetails
++import android.content.pm.SpecialRuntimePermAppUtils
+ import android.health.connect.HealthPermissions
+ import android.os.Build
+ import android.permission.flags.Flags
+@@ -51,6 +52,8 @@ import com.android.server.pm.KnownPackages
+ import com.android.server.pm.ext.PackageExt
+ import com.android.server.pm.ext.PackageHooks
+ import com.android.server.pm.parsing.PackageInfoUtils
++import com.android.server.pm.permission.SpecialRuntimePermUtils
++import com.android.server.pm.permission.SpecialRuntimePermUtils.isSpecialRuntimePermission
+ import com.android.server.pm.pkg.AndroidPackage
+ import com.android.server.pm.pkg.PackageState
+ import libcore.util.EmptyArray
+@@ -313,6 +316,14 @@ class AppIdPermissionPolicy : SchemePolicy() {
+             if (oldFlags.hasAnyBit(SYSTEM_OR_POLICY_FIXED_MASK)) {
+                 return@forEach
+             }
++            if (isSpecialRuntimePermission(permissionName)) {
++                return@forEach
++            }
++
++            if (isImplicitSpecialRuntimeSplit(androidPackage, permissionName)) {
++                return@forEach
++            }
++
+             var newFlags = oldFlags
+             val isSystemOrInstalled =
+                 packageState.isSystem || packageState.getUserStateOrDefault(userId).isInstalled
+@@ -336,6 +347,24 @@ class AppIdPermissionPolicy : SchemePolicy() {
+         }
+     }
+ 
++    private fun MutateStateScope.isImplicitSpecialRuntimeSplit(
++        androidPackage: AndroidPackage,
++        permissionName: String,
++    ): Boolean {
++        if (permissionName !in androidPackage.implicitPermissions) {
++            return false
++        }
++
++        val sourcePermissions = newState
++            .externalState
++            .implicitToSourcePermissions[permissionName]
++            ?: return false
++
++        return sourcePermissions.anyIndexed { _, permission ->
++            isSpecialRuntimePermission(permission)
++        }
++    }
++
+     private fun MutateStateScope.adoptPermissions(
+         packageState: PackageState,
+         changedPermissionNames: MutableIndexedSet<String>,
+@@ -1223,7 +1252,7 @@ class AppIdPermissionPolicy : SchemePolicy() {
+                     packageState ->
+                     targetSdkVersion.coerceAtMost(packageState.androidPackage!!.targetSdkVersion)
+                 }
+-            if (targetSdkVersion < Build.VERSION_CODES.M) {
++            if (targetSdkVersion < Build.VERSION_CODES.M && !isSpecialRuntimePermission(permissionName)) {
+                 if (permission.isRuntimeOnly) {
+                     // Different from the old implementation, which simply skips a runtime-only
+                     // permission, we now only allow holding on to the restriction related flags,
+@@ -1368,6 +1397,14 @@ class AppIdPermissionPolicy : SchemePolicy() {
+                 } else {
+                     newFlags andInv PermissionFlags.SOFT_RESTRICTED
+                 }
++
++
++            if (!newFlags.hasBits(PermissionFlags.USER_SET)
++                    && isSpecialRuntimePermission(permissionName)
++                    && requestingPackageStates.anyIndexed { _, it -> it.isSystem }) {
++                newFlags = newFlags or PermissionFlags.RUNTIME_GRANTED
++            }
++
+             setPermissionFlags(appId, userId, permissionName, newFlags)
+         } else {
+             Slog.e(
+@@ -1418,6 +1455,9 @@ class AppIdPermissionPolicy : SchemePolicy() {
+                     }
+                     newFlags = newFlags or (sourceFlags and PermissionFlags.MASK_RUNTIME)
+                 }
++                if (isSpecialRuntimePermission(sourcePermissionName)) {
++                    newFlags = newFlags or PermissionFlags.RUNTIME_GRANTED
++                }
+             }
+             if (
+                 targetSdkVersion >= Build.VERSION_CODES.M &&
+diff --git a/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt b/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt
+index 73909925d038..c4af7ab5241f 100644
+--- a/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt
++++ b/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt
+@@ -106,6 +106,8 @@ import com.android.server.pm.permission.LegacyPermissionState
+ import com.android.server.pm.permission.Permission as LegacyPermission2
+ import com.android.server.pm.permission.PermissionManagerServiceInterface
+ import com.android.server.pm.permission.PermissionManagerServiceInternal
++import com.android.server.pm.permission.SpecialRuntimePermUtils
++import com.android.server.pm.permission.SpecialRuntimePermUtils.isSpecialRuntimePermission
+ import com.android.server.pm.pkg.AndroidPackage
+ import com.android.server.pm.pkg.PackageState
+ import com.android.server.privatecompute.PrivateComputeStatsLogUtil
+@@ -981,27 +983,41 @@ class PermissionService(private val service: AccessCheckingService) :
+                     permission.isDevelopment || permission.isRuntime -> {
+                         if (
+                             permissionState ==
+-                                PackageInstaller.SessionParams.PERMISSION_STATE_GRANTED
++                                PackageInstaller.SessionParams.PERMISSION_STATE_GRANTED ||
++                            permissionState ==
++                                PackageInstaller.SessionParams.PERMISSION_STATE_DENIED
+                         ) {
+                             setRuntimePermissionGranted(
+                                 packageState,
+                                 userId,
+                                 permissionName,
+                                 VirtualDeviceManager.PERSISTENT_DEVICE_ID_DEFAULT,
+-                                isGranted = true,
++                                isGranted = permissionState == PackageInstaller.SessionParams.PERMISSION_STATE_GRANTED,
+                                 canManageRolePermission = false,
+                                 overridePolicyFixed = false,
+                                 reportError = false,
+                                 "setRequestedPermissionStates",
+                             )
++
++                            var extraFlagMask = 0
++                            var extraFlags = 0
++                            if (permissionName == android.Manifest.permission.INTERNET) {
++                                // INTERNET permission is never set automatically pre-install
++                                // and PackageHooks checks USER_SET flag when overriding permission
++                                // state
++                                extraFlagMask = PackageManager.FLAG_PERMISSION_USER_SET
++                                extraFlags = PackageManager.FLAG_PERMISSION_USER_SET
++                            }
++
+                             updatePermissionFlags(
+                                 packageState.appId,
+                                 userId,
+                                 permissionName,
+                                 VirtualDeviceManager.PERSISTENT_DEVICE_ID_DEFAULT,
+                                 PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED or
++                                    extraFlagMask or
+                                     PackageManager.FLAG_PERMISSION_REVOKED_COMPAT,
+-                                0,
++                                extraFlags,
+                                 canUpdateSystemFlags = false,
+                                 reportErrorForUnknownPermission = false,
+                                 isPermissionRequested = true,
+@@ -1059,7 +1075,8 @@ class PermissionService(private val service: AccessCheckingService) :
+                 }
+             }
+             permission.isRuntime -> {
+-                if (androidPackage.targetSdkVersion < Build.VERSION_CODES.M) {
++                if (androidPackage.targetSdkVersion < Build.VERSION_CODES.M
++                        && !isSpecialRuntimePermission(permissionName)) {
+                     // If a permission review is required for legacy apps we represent
+                     // their permissions as always granted
+                     return
+@@ -2562,7 +2579,17 @@ class PermissionService(private val service: AccessCheckingService) :
+                 params.allowlistedRestrictedPermissions,
+                 userId,
+             )
+-            setRequestedPermissionStates(packageState, userId, params.permissionStates)
++            val permissionStates = ArrayMap(params.permissionStates)
++            if (params.isNewlyInstalledInUserId(userId)) {
++                SpecialRuntimePermUtils.getAll().forEach { perm ->
++                    if (!permissionStates.contains(perm)) {
++                        if (SpecialRuntimePermUtils.shouldAutoGrant(context, androidPackage.packageName, userId, perm)) {
++                            permissionStates.set(perm, PackageInstaller.SessionParams.PERMISSION_STATE_GRANTED)
++                        }
++                    }
++                }
++            }
++            setRequestedPermissionStates(packageState, userId, permissionStates)
+         }
+     }
+ 
+-- 
+2.43.0
+

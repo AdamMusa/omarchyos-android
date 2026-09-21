@@ -1,0 +1,72 @@
+From cef6a8694d09d20a450ab620ddc3fd452139fc7e Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Sat, 19 Oct 2024 17:16:08 +0300
+Subject: [PATCH] gmscompat: add stubs for NearbyManager API
+
+It's used by the Find My Device feature to locate offline devices.
+---
+ .../java/android/nearby/NearbyManager.java          | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/nearby/framework/java/android/nearby/NearbyManager.java b/nearby/framework/java/android/nearby/NearbyManager.java
+index 9d7d144a3..f64a684d0 100644
+--- a/nearby/framework/java/android/nearby/NearbyManager.java
++++ b/nearby/framework/java/android/nearby/NearbyManager.java
+@@ -26,6 +26,7 @@ import android.annotation.RequiresPermission;
+ import android.annotation.SuppressLint;
+ import android.annotation.SystemApi;
+ import android.annotation.SystemService;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.BluetoothManager;
+ import android.content.Context;
+ import android.location.LocationManager;
+@@ -220,6 +221,9 @@ public class NearbyManager {
+             }
+         } catch (RemoteException e) {
+             throw e.rethrowFromSystemServer();
++        } catch (SecurityException e) {
++            GmsCompat.catchOrRethrow(e);
++            return ScanStatus.ERROR;
+         }
+     }
+ 
+@@ -255,6 +259,8 @@ public class NearbyManager {
+             }
+         } catch (RemoteException e) {
+             throw e.rethrowFromSystemServer();
++        } catch (SecurityException e) {
++            GmsCompat.catchOrRethrow(e);
+         }
+     }
+ 
+@@ -509,6 +515,8 @@ public class NearbyManager {
+             mService.setPoweredOffFindingEphemeralIds(ephemeralIdList);
+         } catch (RemoteException e) {
+             throw e.rethrowFromSystemServer();
++        } catch (SecurityException e) {
++            GmsCompat.catchOrRethrow(e);
+         }
+ 
+     }
+@@ -554,6 +562,8 @@ public class NearbyManager {
+                     poweredOffFindingMode == POWERED_OFF_FINDING_MODE_ENABLED);
+         } catch (RemoteException e) {
+             throw e.rethrowFromSystemServer();
++        } catch (SecurityException e) {
++            GmsCompat.catchOrRethrow(e);
+         }
+     }
+ 
+@@ -577,6 +587,9 @@ public class NearbyManager {
+                     ? POWERED_OFF_FINDING_MODE_ENABLED : POWERED_OFF_FINDING_MODE_DISABLED;
+         } catch (RemoteException e) {
+             throw e.rethrowFromSystemServer();
++        } catch (SecurityException e) {
++            GmsCompat.catchOrRethrow(e);
++            return POWERED_OFF_FINDING_MODE_DISABLED;
+         }
+     }
+ 
+-- 
+2.43.0
+

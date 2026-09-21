@@ -58,6 +58,19 @@ assert_contains packages/apps/OmarchyCore/src/os/omarchy/core/PluginRegistry.jav
 assert_contains packages/apps/OmarchyCore/src/os/omarchy/core/ThemeController.java 'ThemeManager' 'themes use Android framework Theme Service'
 assert_contains packages/apps/OmarchyCore/src/os/omarchy/core/ThemeController.java 'KEY_PENDING' 'theme switching records crash-safe pending state'
 assert_contains packages/apps/OmarchyCore/src/os/omarchy/core/PluginRegistry.java 'application.hasCode' 'theme registry rejects executable theme packs'
+
+# Sandboxed Google Play and release security
+assert_file packages/apps/GmsCompat/Android.bp
+assert_file external/GmsCompatConfig/Android.bp
+assert_file device/omarchy/tools/apply-sandboxed-play.sh
+assert_file device/omarchy/tools/make-release-keys.sh
+assert_file device/omarchy/tools/sign-release.sh
+assert_contains device/omarchy/virtual/omarchy_common.mk 'GmsCompat' 'product installs the sandboxed Google Play layer'
+assert_contains patches/sandboxed-play/system/sepolicy/0001-disable-unused-gmscore_app-domain.patch 'gmscore_app' 'Play services never get the privileged gmscore_app domain'
+assert_not_contains device/omarchy 'privapp.*com\.google\.android\.gms|PRODUCT_PACKAGES.*(GmsCore|Phonesky|PrebuiltGmsCore)' 'Google apps are never built in as privileged system apps'
+assert_not_contains device/omarchy 'PlayIntegrityFix|keybox\.xml|spoof.*fingerprint' 'no Play Integrity spoofing'
+assert_contains omarchy 'OMARCHY_BUILD_VARIANT' 'release user builds are selectable'
+[ -z "$(git -C "$project_root" ls-files '*.pk8')" ] && pass 'no private keys are committed' || fail 'no private keys are committed'
 assert_contains packages/apps/OmarchyCore/src/os/omarchy/core/PluginEventDispatcher.java 'IOmarchyPlugin' 'plugin events cross the Binder boundary'
 assert_contains packages/apps/OmarchyCore/contract/src/os/omarchy/plugin/PluginContract.java 'API_VERSION' 'plugin contract is versioned'
 assert_contains device/omarchy/virtual/omarchy_common.mk 'OmarchyThemeCatppuccinLatteCore' 'product includes dark and light reference themes'

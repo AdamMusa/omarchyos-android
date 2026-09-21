@@ -1,0 +1,26 @@
+From 696c0b35e48af468557b79109657081eef15f880 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Wed, 19 Aug 2026 17:37:00 +0000
+Subject: [PATCH 28/28] gmscompat: fix
+ PackageInstaller.installPackageArchived() stub
+
+Play Store expects EXTRA_STATUS_MESSAGE to always be present.
+---
+ core/java/android/content/pm/PackageInstaller.java | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/java/android/content/pm/PackageInstaller.java b/core/java/android/content/pm/PackageInstaller.java
+index ab0b047816f8..7bb640f7f837 100644
+--- a/core/java/android/content/pm/PackageInstaller.java
++++ b/core/java/android/content/pm/PackageInstaller.java
+@@ -1433,6 +1433,7 @@ public class PackageInstaller {
+             fillIn.putExtra(PackageInstaller.EXTRA_PACKAGE_NAME, archivedPackageInfo.getPackageName());
+             // there's no unprivileged alternative to this API
+             fillIn.putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
++            fillIn.putExtra(PackageInstaller.EXTRA_STATUS_MESSAGE, "installPackageArchived() is not allowed");
+             com.android.internal.os.BackgroundThread.getHandler().post(() -> {
+                 try {
+                     statusReceiver.sendIntent(GmsCompat.appContext(), 0, fillIn, null, null);
+-- 
+2.43.0
+

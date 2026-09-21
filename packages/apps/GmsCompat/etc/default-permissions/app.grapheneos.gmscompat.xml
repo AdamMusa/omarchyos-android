@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<exceptions>
+    <exception package="app.grapheneos.gmscompat">
+        <permission name="android.permission.POST_NOTIFICATIONS" fixed="true"/>
+    </exception>
+</exceptions>

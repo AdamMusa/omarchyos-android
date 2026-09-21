@@ -1,0 +1,144 @@
+From c152c5adeef0a5b3b30cdcf0d911489c59b622ec Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Wed, 15 Nov 2023 17:26:29 +0200
+Subject: [PATCH 04/28] add constants for some system package names
+
+---
+ core/api/system-current.txt                   | 24 ++++++++
+ core/java/android/ext/KnownSystemPackage.java | 26 +++++++++
+ .../java/android/ext/KnownSystemPackages.java | 55 +++++++++++++++++++
+ 3 files changed, 105 insertions(+)
+ create mode 100644 core/java/android/ext/KnownSystemPackage.java
+ create mode 100644 core/java/android/ext/KnownSystemPackages.java
+
+diff --git a/core/api/system-current.txt b/core/api/system-current.txt
+index 98531c04e349..b3567540fd21 100644
+--- a/core/api/system-current.txt
++++ b/core/api/system-current.txt
+@@ -5680,6 +5680,30 @@ package android.debug {
+ 
+ }
+ 
++package android.ext {
++
++  public interface KnownSystemPackage {
++    field public static final int SETTINGS = 0; // 0x0
++    field public static final int SETUP_WIZARD = 3; // 0x3
++    field public static final int SHELL = 1; // 0x1
++    field public static final int SYSTEM_UI = 2; // 0x2
++  }
++
++  public final class KnownSystemPackages {
++    method @NonNull public static android.ext.KnownSystemPackages get(@NonNull android.content.Context);
++    method @NonNull public String getById(int);
++    field @NonNull public final String contactsProvider;
++    field @NonNull public final String launcher;
++    field @NonNull public final String mediaProvider;
++    field @NonNull public final String permissionController;
++    field @NonNull public final String settings;
++    field @NonNull public final String setupWizard;
++    field @NonNull public final String shell;
++    field @NonNull public final String systemUi;
++  }
++
++}
++
+ package android.graphics.fonts {
+ 
+   @FlaggedApi("com.android.text.flags.insert_font_family") public final class FallbackFontUpdateRequest {
+diff --git a/core/java/android/ext/KnownSystemPackage.java b/core/java/android/ext/KnownSystemPackage.java
+new file mode 100644
+index 000000000000..bb88a92edad5
+--- /dev/null
++++ b/core/java/android/ext/KnownSystemPackage.java
+@@ -0,0 +1,26 @@
++package android.ext;
++
++import android.annotation.IntDef;
++import android.annotation.SystemApi;
++
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++
++/** @hide */
++@SystemApi
++public interface KnownSystemPackage {
++    int SETTINGS = 0;
++    int SHELL = 1;
++    int SYSTEM_UI = 2;
++    int SETUP_WIZARD = 3;
++
++    /** @hide */
++    @IntDef(value = {
++            SETTINGS,
++            SHELL,
++            SYSTEM_UI,
++            SETUP_WIZARD,
++    })
++    @Retention(RetentionPolicy.SOURCE)
++    @interface Enum {}
++}
+diff --git a/core/java/android/ext/KnownSystemPackages.java b/core/java/android/ext/KnownSystemPackages.java
+new file mode 100644
+index 000000000000..839f04c0773b
+--- /dev/null
++++ b/core/java/android/ext/KnownSystemPackages.java
+@@ -0,0 +1,55 @@
++package android.ext;
++
++import android.annotation.NonNull;
++import android.annotation.SystemApi;
++import android.content.Context;
++import android.content.res.Resources;
++
++import com.android.internal.R;
++
++/** @hide */
++@SystemApi
++public final class KnownSystemPackages {
++    private static volatile KnownSystemPackages INSTANCE;
++
++    @NonNull
++    public static KnownSystemPackages get(@NonNull Context ctx) {
++        var cache = INSTANCE;
++        if (cache != null) {
++            return cache;
++        }
++        return INSTANCE = new KnownSystemPackages(ctx);
++    }
++
++    @NonNull public final String contactsProvider;
++    @NonNull public final String launcher;
++    @NonNull public final String mediaProvider;
++    @NonNull public final String permissionController;
++    @NonNull public final String settings;
++    @NonNull public final String setupWizard;
++    @NonNull public final String shell;
++    @NonNull public final String systemUi;
++
++    private KnownSystemPackages(Context ctx) {
++        Resources res = ctx.getResources();
++        contactsProvider = "com.android.providers.contacts";
++        launcher = "com.android.launcher3";
++        mediaProvider = "com.android.providers.media.module";
++        permissionController = "com.android.permissioncontroller";
++        settings = "com.android.settings";
++        setupWizard = "app.grapheneos.setupwizard";
++        shell = "com.android.shell";
++        systemUi = res.getString(R.string.config_systemUi);
++    }
++
++    @NonNull
++    public String getById(@KnownSystemPackage.Enum int id) {
++        return switch (id) {
++            case KnownSystemPackage.SETTINGS -> settings;
++            case KnownSystemPackage.SHELL -> shell;
++            case KnownSystemPackage.SYSTEM_UI -> systemUi;
++            case KnownSystemPackage.SETUP_WIZARD -> setupWizard;
++            default -> throw new IllegalArgumentException();
++        };
++    }
++}
+-- 
+2.43.0
+

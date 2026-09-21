@@ -1,0 +1,28 @@
+From 131dd0fe4e1c0f59a6ed41082ad3271d99ed41b3 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Sat, 16 Nov 2024 16:58:25 +0200
+Subject: [PATCH] allow GmsCompatLibrary code to access platform APIs
+
+---
+ runtime/hidden_api.cc | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/runtime/hidden_api.cc b/runtime/hidden_api.cc
+index 3bd59c061..da7839c36 100644
+--- a/runtime/hidden_api.cc
++++ b/runtime/hidden_api.cc
+@@ -234,6 +234,11 @@ static Domain DetermineDomainFromDexLocation(const std::string& dex_location,
+     return Domain::kPlatform;
+   }
+ 
++  if (dex_location == "/system/app/GmsCompatLib/GmsCompatLib.apk" ||
++          (dex_location.starts_with("/data/app/~~") && dex_location.find("==/app.grapheneos.gmscompat.lib-") != std::string::npos)) {
++      return Domain::kPlatform;
++  }
++
+   if (class_loader.IsNull()) {
+     if (kIsTargetBuild && !kIsTargetLinux) {
+       // This is unexpected only when running on Android.
+-- 
+2.43.0
+

@@ -1,0 +1,329 @@
+From 17862d75edf62062108714102aed2e5c4faac9c0 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Mon, 18 Dec 2023 19:28:01 +0200
+Subject: [PATCH 14/28] PackageHooks: infrastructure for per-package hooks in
+ system_server
+
+---
+ .../com/android/server/am/ActiveServices.java |  5 +
+ .../server/am/ActiveServicesHooks.java        | 25 +++++
+ .../server/ext/PackageManagerHooks.java       |  9 ++
+ .../com/android/server/pm/ext/PackageExt.java |  7 ++
+ .../android/server/pm/ext/PackageHooks.java   | 92 +++++++++++++++++++
+ .../server/pm/ext/PackageHooksRegistry.java   |  6 ++
+ .../permission/AppIdPermissionPolicy.kt       | 46 ++++++++--
+ .../access/permission/PermissionService.kt    |  7 ++
+ 8 files changed, 190 insertions(+), 7 deletions(-)
+ create mode 100644 services/core/java/com/android/server/am/ActiveServicesHooks.java
+ create mode 100644 services/core/java/com/android/server/pm/ext/PackageHooks.java
+
+diff --git a/services/core/java/com/android/server/am/ActiveServices.java b/services/core/java/com/android/server/am/ActiveServices.java
+index 32c6f6f031c8..5396345940df 100644
+--- a/services/core/java/com/android/server/am/ActiveServices.java
++++ b/services/core/java/com/android/server/am/ActiveServices.java
+@@ -9298,6 +9298,11 @@ public final class ActiveServices {
+                 ret = REASON_DEVICE_DPC;
+             }
+         }
++        if (ret == REASON_DENIED) {
++            if (ActiveServicesHooks.shouldAllowFgsWhileInUsePermission(this, callingUid)) {
++                ret = REASON_ALLOWLISTED_PACKAGE;
++            }
++        }
+         return ret;
+     }
+ 
+diff --git a/services/core/java/com/android/server/am/ActiveServicesHooks.java b/services/core/java/com/android/server/am/ActiveServicesHooks.java
+new file mode 100644
+index 000000000000..b2f648efacde
+--- /dev/null
++++ b/services/core/java/com/android/server/am/ActiveServicesHooks.java
+@@ -0,0 +1,25 @@
++package com.android.server.am;
++
++import android.content.pm.PackageManagerInternal;
++import android.os.UserHandle;
++import android.util.Slog;
++
++import com.android.server.pm.ext.PackageExt;
++import com.android.server.pm.pkg.AndroidPackage;
++
++class ActiveServicesHooks {
++    static final String TAG = ActiveServicesHooks.class.getSimpleName();
++
++    static boolean shouldAllowFgsWhileInUsePermission(ActiveServices activeServices, int uid) {
++        PackageManagerInternal pm = activeServices.mAm.getPackageManagerInternal();
++        AndroidPackage pkg = pm.getPackage(uid);
++        if (pkg == null) {
++            return false;
++        }
++        boolean res = PackageExt.get(pkg).hooks().shouldAllowFgsWhileInUsePermission(pm, UserHandle.getUserId(uid));
++        if (res) {
++            Slog.d(TAG, "shouldAllowFgsWhileInUsePermission for " + pkg.getPackageName() + " returned true");
++        }
++        return res;
++    }
++}
+diff --git a/services/core/java/com/android/server/ext/PackageManagerHooks.java b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+index 444017373b07..f7817fa0e627 100644
+--- a/services/core/java/com/android/server/ext/PackageManagerHooks.java
++++ b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+@@ -14,6 +14,7 @@ import android.util.Slog;
+ 
+ import com.android.server.pm.Computer;
+ import com.android.server.pm.GosPackageStatePmHooks;
++import com.android.server.pm.ext.PackageHooks;
+ import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.PackageStateInternal;
+ 
+@@ -113,6 +114,14 @@ public class PackageManagerHooks {
+                 }
+             }
+         }
++
++        if (PackageHooks.shouldBlockAppsFilterVisibility(
++                callingPkgSetting, callingSharedPkgSettings, callingUserId,
++                targetPkgSetting, targetUserId)
++        ) {
++            return true;
++        }
++
+         return false;
+     }
+ 
+diff --git a/services/core/java/com/android/server/pm/ext/PackageExt.java b/services/core/java/com/android/server/pm/ext/PackageExt.java
+index 6c23fe31d341..9795d23e26e2 100644
+--- a/services/core/java/com/android/server/pm/ext/PackageExt.java
++++ b/services/core/java/com/android/server/pm/ext/PackageExt.java
+@@ -17,6 +17,8 @@ public class PackageExt implements PackageExtIface {
+     private final int packageId;
+     private final int flags;
+ 
++    private final PackageHooks hooks;
++
+     public static PackageExt get(AndroidPackage pkg) {
+         PackageExtIface i = pkg.ext();
+         if (i instanceof PackageExt) {
+@@ -36,12 +38,17 @@ public class PackageExt implements PackageExtIface {
+     public PackageExt(int packageId, int flags) {
+         this.packageId = packageId;
+         this.flags = flags;
++        this.hooks = PackageHooksRegistry.getHooks(packageId);
+     }
+ 
+     public int getPackageId() {
+         return packageId;
+     }
+ 
++    public PackageHooks hooks() {
++        return hooks;
++    }
++
+     public AppInfoExt toAppInfoExt(PackageImpl pkg) {
+         AppCompatProtos.CompatConfig compatConfig = AppCompatConf.get(pkg);
+ 
+diff --git a/services/core/java/com/android/server/pm/ext/PackageHooks.java b/services/core/java/com/android/server/pm/ext/PackageHooks.java
+new file mode 100644
+index 000000000000..5f42cfad0260
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/ext/PackageHooks.java
+@@ -0,0 +1,92 @@
++package com.android.server.pm.ext;
++
++import android.annotation.Nullable;
++import android.content.pm.PackageManager;
++import android.content.pm.PackageManagerInternal;
++import android.util.ArraySet;
++
++import com.android.server.pm.pkg.AndroidPackage;
++import com.android.server.pm.pkg.PackageState;
++import com.android.server.pm.pkg.PackageStateInternal;
++import com.android.server.pm.pkg.PackageUserStateInternal;
++
++public class PackageHooks {
++    static final PackageHooks DEFAULT = new PackageHooks();
++
++    public static boolean isDefault(PackageHooks hooks) {
++        return hooks == DEFAULT;
++    }
++
++    protected static final int NO_PERMISSION_OVERRIDE = -8;
++    public static final int PERMISSION_OVERRIDE_GRANT = PackageManager.PERMISSION_GRANTED;
++    public static final int PERMISSION_OVERRIDE_REVOKE = PackageManager.PERMISSION_DENIED;
++
++    public int overridePermissionState(String permission, int userId) {
++        return NO_PERMISSION_OVERRIDE;
++    }
++
++    /**
++     * @param isSelfToOther direction of visibility: from self to other package or from other
++     * package to self
++     */
++    public boolean shouldBlockPackageVisibility(int userId, PackageStateInternal otherPkg, boolean isSelfToOther) {
++        return shouldBlockPackageVisibility(userId, otherPkg);
++    }
++
++    public boolean shouldBlockPackageVisibility(int userId, PackageStateInternal otherPkg) {
++        return false;
++    }
++
++    public static boolean shouldBlockAppsFilterVisibility(
++            @Nullable PackageStateInternal callingPkgSetting,
++            ArraySet<PackageStateInternal> callingSharedPkgSettings,
++            int callingUserId,
++            PackageStateInternal targetPkgSetting, int targetUserId) {
++        if (callingPkgSetting != null) {
++            return shouldBlockPackageVisibilityTwoWay(
++                    callingPkgSetting, callingUserId,
++                    targetPkgSetting, targetUserId);
++        }
++
++        for (int i = callingSharedPkgSettings.size() - 1; i >= 0; --i) {
++            boolean res = shouldBlockPackageVisibilityTwoWay(
++                    callingSharedPkgSettings.valueAt(i), callingUserId,
++                    targetPkgSetting, targetUserId);
++            if (res) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
++    private static boolean shouldBlockPackageVisibilityTwoWay(
++            PackageStateInternal pkgSetting, int pkgUserId,
++            PackageStateInternal otherPkgSetting, int otherPkgUserId) {
++        boolean res = shouldBlockPackageVisibilityInner(pkgSetting, pkgUserId, otherPkgSetting, true);
++        if (!res) {
++            res = shouldBlockPackageVisibilityInner(otherPkgSetting, otherPkgUserId, pkgSetting, false);
++        }
++        return res;
++    }
++
++    private static boolean shouldBlockPackageVisibilityInner(
++            PackageStateInternal pkgSetting, int pkgUserId, PackageStateInternal otherPkgSetting,
++            boolean isSelfToOther) {
++        AndroidPackage pkg = pkgSetting.getPkg();
++        if (pkg != null) {
++            return PackageExt.get(pkg).hooks()
++                    .shouldBlockPackageVisibility(pkgUserId, otherPkgSetting, isSelfToOther);
++        }
++
++        return false;
++    }
++
++    protected static boolean isUserInstalledPkg(PackageState ps) {
++        return !ps.isSystem();
++    }
++
++    public boolean shouldAllowFgsWhileInUsePermission(PackageManagerInternal pm, int userId) {
++        return false;
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java b/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java
+index b720e2edbca7..aca3bd31f42e 100644
+--- a/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java
++++ b/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java
+@@ -11,4 +11,10 @@ public class PackageHooksRegistry {
+             default -> PackageParsingHooks.DEFAULT;
+         };
+     }
++
++    public static PackageHooks getHooks(int packageId) {
++        return switch (packageId) {
++            default -> PackageHooks.DEFAULT;
++        };
++    }
+ }
+diff --git a/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt b/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt
+index 8ba08f95f564..09a8582f8978 100644
+--- a/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt
++++ b/services/permission/java/com/android/server/permission/access/permission/AppIdPermissionPolicy.kt
+@@ -48,6 +48,8 @@ import com.android.server.permission.access.util.hasAnyBit
+ import com.android.server.permission.access.util.hasBits
+ import com.android.server.permission.access.util.isInternal
+ import com.android.server.pm.KnownPackages
++import com.android.server.pm.ext.PackageExt
++import com.android.server.pm.ext.PackageHooks
+ import com.android.server.pm.parsing.PackageInfoUtils
+ import com.android.server.pm.pkg.AndroidPackage
+ import com.android.server.pm.pkg.PackageState
+@@ -1020,13 +1022,43 @@ class AppIdPermissionPolicy : SchemePolicy() {
+         userId: Int,
+         installedPackageState: PackageState?,
+     ) {
+-        packageState.androidPackage?.requestedPermissions?.forEach { permissionName ->
+-            evaluatePermissionState(
+-                packageState.appId,
+-                userId,
+-                permissionName,
+-                installedPackageState,
+-            )
++        val androidPackage = packageState.androidPackage
++        if (androidPackage != null) {
++            val pkgHooks = PackageExt.get(androidPackage).hooks()
++            androidPackage.requestedPermissions.forEach { permissionName ->
++                val appId = packageState.appId
++                evaluatePermissionState(
++                    appId,
++                    userId,
++                    permissionName,
++                    installedPackageState,
++                )
++
++                val override = pkgHooks.overridePermissionState(permissionName, userId)
++                var flags = -1
++                if (override == PackageHooks.PERMISSION_OVERRIDE_GRANT) {
++                    flags = PermissionFlags.SYSTEM_FIXED or PermissionFlags.RUNTIME_GRANTED
++                } else if (override == PackageHooks.PERMISSION_OVERRIDE_REVOKE) {
++                    if (!getPermissionFlags(appId, userId, permissionName).hasBits(PermissionFlags.USER_SET)) {
++                        flags = 0
++                    }
++                }
++
++                if (flags != -1) {
++                    val mask = PermissionFlags.ROLE or
++                            PermissionFlags.RUNTIME_GRANTED or
++                            PermissionFlags.USER_SET or
++                            PermissionFlags.USER_FIXED or
++                            PermissionFlags.POLICY_FIXED or
++                            PermissionFlags.SYSTEM_FIXED or
++                            PermissionFlags.PREGRANT or
++                            PermissionFlags.LEGACY_GRANTED or
++                            PermissionFlags.APP_OP_REVOKED or
++                            PermissionFlags.ONE_TIME or
++                            PermissionFlags.HIBERNATION
++                    updatePermissionFlags(appId, userId, permissionName, mask, flags)
++                }
++            }
+         }
+     }
+ 
+diff --git a/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt b/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt
+index e6e42d866400..73909925d038 100644
+--- a/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt
++++ b/services/permission/java/com/android/server/permission/access/permission/PermissionService.kt
+@@ -98,6 +98,8 @@ import com.android.server.pm.PackageManagerService
+ import com.android.server.pm.PackageMetrics
+ import com.android.server.pm.UserManagerInternal
+ import com.android.server.pm.UserManagerService
++import com.android.server.pm.ext.PackageExt
++import com.android.server.pm.ext.PackageHooks
+ import com.android.server.pm.permission.LegacyPermission
+ import com.android.server.pm.permission.LegacyPermissionSettings
+ import com.android.server.pm.permission.LegacyPermissionState
+@@ -920,6 +922,11 @@ class PermissionService(private val service: AccessCheckingService) :
+                     permissionName, packageName, userId)) {
+                 return
+             }
++        } else {
++            if (PackageExt.get(androidPackage).hooks().overridePermissionState(
++                    permissionName, userId) == PackageHooks.PERMISSION_OVERRIDE_GRANT) {
++                throw IllegalArgumentException("$permissionName is granted by PackageHooks for $packageName")
++            }
+         }
+ 
+         service.mutateState {
+-- 
+2.43.0
+

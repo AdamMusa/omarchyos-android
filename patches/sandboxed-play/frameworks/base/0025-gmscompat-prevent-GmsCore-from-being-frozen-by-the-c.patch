@@ -1,0 +1,180 @@
+From 179b1e3acf22d5968a69778125f0e3c121a8777a Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Tue, 28 Jul 2026 17:36:22 +0000
+Subject: [PATCH 25/28] gmscompat: prevent GmsCore from being frozen by the
+ cached app freezer
+
+---
+ .../internal/gmscompat/GmsCompatApp.java      | 10 ++++++++--
+ .../android/internal/gmscompat/GmsHooks.java  | 19 +++++++++++++++++++
+ .../android/internal/gmscompat/IGms2Gca.aidl  |  3 ++-
+ .../client/GmsCompatClientService.java        |  3 ++-
+ .../client/GmsCorePersistentService.java      |  3 +++
+ .../android/server/pm/ext/GmsCoreHooks.java   | 18 ++++++++++++------
+ 6 files changed, 46 insertions(+), 10 deletions(-)
+ create mode 100644 core/java/com/android/internal/gmscompat/client/GmsCorePersistentService.java
+
+diff --git a/core/java/com/android/internal/gmscompat/GmsCompatApp.java b/core/java/com/android/internal/gmscompat/GmsCompatApp.java
+index e0a098442479..b9e6528b1c7e 100644
+--- a/core/java/com/android/internal/gmscompat/GmsCompatApp.java
++++ b/core/java/com/android/internal/gmscompat/GmsCompatApp.java
+@@ -299,12 +299,18 @@ public final class GmsCompatApp {
+     // package by binding to it from foreground GmsCompat app
+     public static void raisePackageToForeground(String targetPkg, long durationMs,
+                                                 @Nullable String reason, int reasonCode) {
+-        if (durationMs <= 0) {
++        raisePackageToForeground(targetPkg, durationMs, reason, reasonCode, null);
++    }
++
++    public static void raisePackageToForeground(String targetPkg, long durationMs,
++                                                @Nullable String reason, int reasonCode,
++                                                @Nullable String serviceClassName) {
++        if (durationMs < 0) {
+             Log.e(TAG, "invalid duration: " + durationMs, new Throwable());
+             return;
+         }
+         try {
+-            GmsCompatApp.iGms2Gca().raisePackageToForeground(targetPkg, durationMs, reason, reasonCode);
++            GmsCompatApp.iGms2Gca().raisePackageToForeground(targetPkg, durationMs, reason, reasonCode, serviceClassName);
+         } catch (RemoteException e) {
+             throw callFailed(e);
+         }
+diff --git a/core/java/com/android/internal/gmscompat/GmsHooks.java b/core/java/com/android/internal/gmscompat/GmsHooks.java
+index e268a3f6bcfc..f0c8d248f5ec 100644
+--- a/core/java/com/android/internal/gmscompat/GmsHooks.java
++++ b/core/java/com/android/internal/gmscompat/GmsHooks.java
+@@ -58,11 +58,13 @@ import android.util.SparseArray;
+ import android.webkit.WebView;
+ 
+ import com.android.internal.gmscompat.client.GmsCompatClientService;
++import com.android.internal.gmscompat.client.GmsCorePersistentService;
+ import com.android.internal.gmscompat.flags.GmsFlag;
+ import com.android.internal.gmscompat.flags.GmsFlagOverrides;
+ import com.android.internal.gmscompat.gcarriersettings.GCarrierSettingsApp;
+ import com.android.internal.gmscompat.gcarriersettings.TestCarrierConfigService;
+ import com.android.internal.gmscompat.sysservice.GmcPackageManager;
++import com.android.internal.os.BackgroundThread;
+ 
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -123,6 +125,20 @@ public final class GmsHooks {
+ 
+         if (inPersistentGmsCoreProcess) {
+             GmsFlagOverrides.init(ctx);
++            // The persistent GmsCore process can get frozen if it's not being used by any
++            // non-background process. AlarmManager alarms are dropped for frozen processes,
++            // which breaks FCM notifications.
++            //
++            // Bind to GmsCore persistent process from the never-background GmsCompat app to avoid
++            // this issue.
++            //
++            // It's important to use a non-main thread for this call to prevent a deadlock since
++            // both GmsHooks.init() and GmsCorePersistentService.onCreate() run on the main thread
++            // of the com.google.android.gms.persistent process.
++            BackgroundThread.getHandler().post(() ->
++                    GmsCompatApp.raisePackageToForeground(PackageId.GMS_CORE_NAME, 0L,
++                    "GmsCore persistent process startup", PowerExemptionManager.REASON_OTHER,
++                    GmsCorePersistentService.class.getName()));
+         }
+ 
+         GmcPackageManager.init(ctx);
+@@ -597,6 +613,9 @@ public final class GmsHooks {
+ 
+         if (GmsCompat.isEnabled()) {
+             if (GmsCompat.isGmsCore()) {
++                if (GmsCorePersistentService.class.getName().equals(className)) {
++                    return new GmsCorePersistentService();
++                }
+                 if (GmcMediaProjectionService.class.getName().equals(className)) {
+                     return new GmcMediaProjectionService();
+                 }
+diff --git a/core/java/com/android/internal/gmscompat/IGms2Gca.aidl b/core/java/com/android/internal/gmscompat/IGms2Gca.aidl
+index c4a30840c1f4..8f3e4b93241d 100644
+--- a/core/java/com/android/internal/gmscompat/IGms2Gca.aidl
++++ b/core/java/com/android/internal/gmscompat/IGms2Gca.aidl
+@@ -46,7 +46,8 @@ interface IGms2Gca {
+ 
+     Notification getMediaProjectionNotification();
+ 
+-    void raisePackageToForeground(String targetPkg, long durationMs, @nullable String reason, int reasonCode);
++    void raisePackageToForeground(String targetPkg, long durationMs, @nullable String reason, int reasonCode,
++                                  @nullable String serviceClassName);
+ 
+     oneway void maybeShowRcsRequirementsNotification(boolean isTs43Verification);
+ }
+diff --git a/core/java/com/android/internal/gmscompat/client/GmsCompatClientService.java b/core/java/com/android/internal/gmscompat/client/GmsCompatClientService.java
+index 3948e209d0d3..6e762f719771 100644
+--- a/core/java/com/android/internal/gmscompat/client/GmsCompatClientService.java
++++ b/core/java/com/android/internal/gmscompat/client/GmsCompatClientService.java
+@@ -19,12 +19,13 @@ import android.util.Log;
+  * and to their clients during package parsing.
+  */
+ public class GmsCompatClientService extends Service {
+-    private static final String TAG = GmsCompatClientService.class.getSimpleName();
++    protected String TAG;
+ 
+     private final Binder dummyBinder = new Binder();
+ 
+     @Override
+     public void onCreate() {
++        TAG = getClass().getSimpleName();
+         Log.d(TAG, "onCreate");
+     }
+ 
+diff --git a/core/java/com/android/internal/gmscompat/client/GmsCorePersistentService.java b/core/java/com/android/internal/gmscompat/client/GmsCorePersistentService.java
+new file mode 100644
+index 000000000000..a70e62bc517d
+--- /dev/null
++++ b/core/java/com/android/internal/gmscompat/client/GmsCorePersistentService.java
+@@ -0,0 +1,3 @@
++package com.android.internal.gmscompat.client;
++
++public class GmsCorePersistentService extends GmsCompatClientService {}
+diff --git a/services/core/java/com/android/server/pm/ext/GmsCoreHooks.java b/services/core/java/com/android/server/pm/ext/GmsCoreHooks.java
+index b9d0b195c288..5abcf28bc28a 100644
+--- a/services/core/java/com/android/server/pm/ext/GmsCoreHooks.java
++++ b/services/core/java/com/android/server/pm/ext/GmsCoreHooks.java
+@@ -10,7 +10,9 @@ import android.os.SystemProperties;
+ import android.service.credentials.CredentialProviderService;
+ 
+ import com.android.internal.gmscompat.GmcMediaProjectionService;
++import com.android.internal.gmscompat.GmsCompatApp;
+ import com.android.internal.gmscompat.GmsHooks;
++import com.android.internal.gmscompat.client.GmsCorePersistentService;
+ import com.android.internal.pm.pkg.component.ParsedIntentInfo;
+ import com.android.internal.pm.pkg.component.ParsedPermission;
+ import com.android.internal.pm.pkg.component.ParsedService;
+@@ -19,7 +21,6 @@ import com.android.internal.pm.pkg.component.ParsedUsesPermissionImpl;
+ import com.android.internal.pm.pkg.parsing.ParsingPackage;
+ import com.android.server.LocalServices;
+ 
+-import java.util.Collections;
+ import java.util.List;
+ 
+ class GmsCoreHooks extends PackageHooks {
+@@ -106,12 +107,17 @@ class GmsCoreHooks extends PackageHooks {
+ 
+         @Override
+         public List<ParsedService> addServices(ParsingPackage pkg) {
+-            ParsedServiceImpl s = createService(pkg, GmcMediaProjectionService.class.getName());
+-            s.setProcessName(GmsHooks.PERSISTENT_GmsCore_PROCESS);
+-            s.setForegroundServiceType(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+-            s.setExported(false);
++            ParsedServiceImpl mp = createService(pkg, GmcMediaProjectionService.class.getName());
++            mp.setProcessName(GmsHooks.PERSISTENT_GmsCore_PROCESS);
++            mp.setForegroundServiceType(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
++            mp.setExported(false);
+ 
+-            return Collections.singletonList(s);
++            ParsedServiceImpl persistent = createService(pkg, GmsCorePersistentService.class.getName());
++            persistent.setDirectBootAware(true);
++            persistent.setProcessName(GmsHooks.PERSISTENT_GmsCore_PROCESS);
++            persistent.setPermission(GmsCompatApp.SIGNATURE_PROTECTED_PERMISSION);
++
++            return List.of(mp, persistent);
+         }
+     }
+ }
+-- 
+2.43.0
+

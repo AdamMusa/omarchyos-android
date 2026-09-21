@@ -1,0 +1,207 @@
+From cd85b7be36da5b779c3cb738edd8039d887f88dd Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Tue, 30 May 2023 17:00:09 +0300
+Subject: [PATCH 19/28] integrate Google's eUICC LPA package (EuiccGoogle)
+
+- isolate EuiccGoogle from all non-system package via AppsFilter, which stops it from sending data
+to Google through GmsCore. EuiccGoogle doesn't send data to Google directly
+- keep EuiccGoogle disabled by default, but do not disable it after each reboot
+- remove a misleading "device information will be sent to Google" message that appears before eSIM
+download
+---
+ .../app/ApplicationPackageManager.java        |  9 +++-
+ core/java/android/content/res/Resources.java  | 10 ++++
+ .../internal/ext/EuiccGoogleHooks.java        | 33 +++++++++++++
+ data/etc/preinstalled-packages-platform.xml   |  3 ++
+ .../server/pm/ext/EuiccGoogleHooks.java       | 49 +++++++++++++++++++
+ .../server/pm/ext/PackageHooksRegistry.java   |  2 +
+ 6 files changed, 105 insertions(+), 1 deletion(-)
+ create mode 100644 core/java/com/android/internal/ext/EuiccGoogleHooks.java
+ create mode 100644 services/core/java/com/android/server/pm/ext/EuiccGoogleHooks.java
+
+diff --git a/core/java/android/app/ApplicationPackageManager.java b/core/java/android/app/ApplicationPackageManager.java
+index ce6929f0a2df..e8d822f4fa52 100644
+--- a/core/java/android/app/ApplicationPackageManager.java
++++ b/core/java/android/app/ApplicationPackageManager.java
+@@ -90,6 +90,7 @@ import android.content.res.Configuration;
+ import android.content.res.Resources;
+ import android.content.res.TypedArray;
+ import android.content.res.XmlResourceParser;
++import com.android.internal.ext.EuiccGoogleHooks;
+ import android.graphics.Bitmap;
+ import android.graphics.Canvas;
+ import android.graphics.Rect;
+@@ -2529,7 +2530,13 @@ public class ApplicationPackageManager extends PackageManager {
+         }
+         try {
+             Resources r = getResourcesForApplication(appInfo);
+-            text = r.getText(resid);
++            if (AppGlobals.getInitialPackageId() == android.ext.PackageId.G_EUICC_LPA) {
++                try (var s = new EuiccGoogleHooks.SuppressResourceFiltering()) {
++                    text = r.getText(resid);
++                }
++            } else {
++                text = r.getText(resid);
++            }
+             putCachedString(name, text);
+             return text;
+         } catch (NameNotFoundException e) {
+diff --git a/core/java/android/content/res/Resources.java b/core/java/android/content/res/Resources.java
+index ca1380cea40e..e2dde1c6d264 100644
+--- a/core/java/android/content/res/Resources.java
++++ b/core/java/android/content/res/Resources.java
+@@ -76,6 +76,7 @@ import android.view.WindowManager;
+ 
+ import com.android.internal.annotations.GuardedBy;
+ import com.android.internal.annotations.VisibleForTesting;
++import com.android.internal.ext.EuiccGoogleHooks;
+ import com.android.internal.util.ArrayUtils;
+ import com.android.internal.util.GrowingArrayUtils;
+ import com.android.internal.util.Preconditions;
+@@ -474,6 +475,15 @@ public class Resources {
+     @NonNull public CharSequence getText(@StringRes int id) throws NotFoundException {
+         CharSequence res = mResourcesImpl.getAssets().getResourceText(id);
+         if (res != null) {
++            if (android.app.AppGlobals.getInitialPackageId() == android.ext.PackageId.G_EUICC_LPA) {
++                if (!EuiccGoogleHooks.isResourceFilteringSuppressed()) {
++                    String s = res.toString();
++                    if (s.contains("Google")) {
++                        Log.d("GEuiccLpa", "replaced getText() with empty string: " + s);
++                        return "";
++                    }
++                }
++            }
+             return res;
+         }
+         throw new NotFoundException("String resource ID #0x"
+diff --git a/core/java/com/android/internal/ext/EuiccGoogleHooks.java b/core/java/com/android/internal/ext/EuiccGoogleHooks.java
+new file mode 100644
+index 000000000000..6d337d67d547
+--- /dev/null
++++ b/core/java/com/android/internal/ext/EuiccGoogleHooks.java
+@@ -0,0 +1,33 @@
++package com.android.internal.ext;
++
++public class EuiccGoogleHooks {
++
++    private static final ThreadLocal<Integer> resourceFilteringSuppressionCounter =
++            ThreadLocal.withInitial(() -> Integer.valueOf(0));
++
++    public static boolean isResourceFilteringSuppressed() {
++        return resourceFilteringSuppressionCounter.get() > 0;
++    }
++
++    public static class SuppressResourceFiltering implements AutoCloseable {
++
++        public SuppressResourceFiltering() {
++            var tl = resourceFilteringSuppressionCounter;
++            int newValue = tl.get() + 1;
++            if (newValue <= 0) {
++                throw new IllegalStateException();
++            }
++            tl.set(newValue);
++        }
++
++        @Override
++        public void close() {
++            var tl = resourceFilteringSuppressionCounter;
++            int newValue = tl.get() - 1;
++            if (newValue < 0) {
++                throw new IllegalStateException();
++            }
++            tl.set(newValue);
++        }
++    }
++}
+diff --git a/data/etc/preinstalled-packages-platform.xml b/data/etc/preinstalled-packages-platform.xml
+index 6f92e88094b6..55e6e7c69880 100644
+--- a/data/etc/preinstalled-packages-platform.xml
++++ b/data/etc/preinstalled-packages-platform.xml
+@@ -154,6 +154,9 @@ to pre-existing users, but cannot uninstall pre-existing system packages from pr
+     <install-in-user-type package="com.google.euiccpixel">
+         <install-in user-type="SYSTEM" />
+     </install-in-user-type>
++    <install-in-user-type package="com.google.android.euicc">
++        <install-in user-type="SYSTEM" />
++    </install-in-user-type>
+ 
+    <!-- b/441173306 This is temporary fix to unblock the post submit failures
+       @TODO vladokom@ to Remove this once the package is preinstalled in the
+diff --git a/services/core/java/com/android/server/pm/ext/EuiccGoogleHooks.java b/services/core/java/com/android/server/pm/ext/EuiccGoogleHooks.java
+new file mode 100644
+index 000000000000..a9a3e2b127aa
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/ext/EuiccGoogleHooks.java
+@@ -0,0 +1,49 @@
++package com.android.server.pm.ext;
++
++import android.Manifest;
++import android.content.pm.PackageManager;
++import android.ext.PackageId;
++
++import com.android.internal.pm.pkg.component.ParsedUsesPermission;
++import com.android.internal.pm.pkg.parsing.PackageParsingHooks;
++import com.android.server.pm.pkg.AndroidPackage;
++import com.android.server.pm.pkg.PackageStateInternal;
++
++class EuiccGoogleHooks extends PackageHooks {
++
++    static class ParsingHooks extends PackageParsingHooks {
++
++        @Override
++        public int overrideDefaultPackageEnabledState() {
++            return PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
++        }
++
++        @Override
++        public boolean shouldSkipUsesPermission(ParsedUsesPermission p) {
++            switch (p.getName()) {
++                // Carrier apps aren't shipped on GrapheneOS, these permissions are needed only to
++                // install/enable them
++                case Manifest.permission.INSTALL_EXISTING_PACKAGES:
++                case Manifest.permission.CHANGE_COMPONENT_ENABLED_STATE:
++                    return true;
++            }
++
++            return false;
++        }
++    }
++
++    @Override
++    public boolean shouldBlockPackageVisibility(int userId, PackageStateInternal otherPkg) {
++        // EuiccGoogle is a privileged app, block it from interacting with unprivileged
++        // parts of sandboxed Google Play
++        switch (otherPkg.getPackageName()) {
++            case PackageId.GSF_NAME:
++            case PackageId.GMS_CORE_NAME:
++            case PackageId.PLAY_STORE_NAME:
++                return true;
++        }
++
++        // Some third-party carrier apps need to interact with EuiccGoogle for eSIM activation
++        return false;
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java b/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java
+index 2e2198a96d56..f2801577443f 100644
+--- a/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java
++++ b/services/core/java/com/android/server/pm/ext/PackageHooksRegistry.java
+@@ -9,6 +9,7 @@ public class PackageHooksRegistry {
+     public static PackageParsingHooks getParsingHooks(String pkgName) {
+         return switch (pkgName) {
+             case PackageId.EUICC_SUPPORT_PIXEL_NAME -> new EuiccSupportPixelHooks.ParsingHooks();
++            case PackageId.G_EUICC_LPA_NAME -> new EuiccGoogleHooks.ParsingHooks();
+             default -> PackageParsingHooks.DEFAULT;
+         };
+     }
+@@ -16,6 +17,7 @@ public class PackageHooksRegistry {
+     public static PackageHooks getHooks(int packageId) {
+         return switch (packageId) {
+             case PackageId.EUICC_SUPPORT_PIXEL -> new EuiccSupportPixelHooks();
++            case PackageId.G_EUICC_LPA -> new EuiccGoogleHooks();
+             default -> PackageHooks.DEFAULT;
+         };
+     }
+-- 
+2.43.0
+

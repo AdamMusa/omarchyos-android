@@ -1,0 +1,68 @@
+From 46c09bf4b24beda498101a3c449c42b953705a18 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Tue, 16 May 2023 13:26:22 +0300
+Subject: [PATCH 02/28] add BaseBundle.get{Boolean2,Number}() methods
+
+---
+ core/api/system-current.txt          |  5 +++++
+ core/java/android/os/BaseBundle.java | 23 +++++++++++++++++++++++
+ 2 files changed, 28 insertions(+)
+
+diff --git a/core/api/system-current.txt b/core/api/system-current.txt
+index 66db41d0e89f..9cb5087586b4 100644
+--- a/core/api/system-current.txt
++++ b/core/api/system-current.txt
+@@ -12151,6 +12151,11 @@ package android.nfc.cardemulation {
+ 
+ package android.os {
+ 
++  public class BaseBundle {
++    method @Nullable public Boolean getBoolean2(@NonNull String);
++    method @Nullable public <T extends Number> T getNumber(@NonNull String);
++  }
++
+   public class BatteryManager {
+     method @RequiresPermission(android.Manifest.permission.POWER_SAVER) public boolean setChargingStateUpdateDelayMillis(int);
+     field @RequiresPermission(android.Manifest.permission.BATTERY_STATS) public static final int BATTERY_PROPERTY_CHARGING_POLICY = 9; // 0x9
+diff --git a/core/java/android/os/BaseBundle.java b/core/java/android/os/BaseBundle.java
+index 4231b6dfca54..837cb5360da8 100644
+--- a/core/java/android/os/BaseBundle.java
++++ b/core/java/android/os/BaseBundle.java
+@@ -21,6 +21,8 @@ import static java.util.Objects.requireNonNull;
+ import android.annotation.FlaggedApi;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
++import android.annotation.SuppressLint;
++import android.annotation.SystemApi;
+ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.Intent;
+ import android.security.Flags;
+@@ -1997,4 +1999,25 @@ public class BaseBundle implements Parcel.ClassLoaderProvider {
+         }
+         pw.decreaseIndent();
+     }
++
++    /** @hide */
++    @SystemApi
++    @Nullable
++    public <T extends Number> T getNumber(@NonNull String key) {
++        // get{Boolean,Byte,Short,Int,Long,Float,Double}() methods do not distinguish between
++        // absence of value and value being invalid, and do not allow reliably detecting these cases
++        // at all
++        unparcel();
++        return (T) mMap.get(key);
++    }
++
++    /**@hide */
++    @SystemApi
++    @Nullable
++    @SuppressLint("AutoBoxing")
++    public Boolean getBoolean2(@NonNull String key) {
++        // see getNumber()
++        unparcel();
++        return (Boolean) mMap.get(key);
++    }
+ }
+-- 
+2.43.0
+

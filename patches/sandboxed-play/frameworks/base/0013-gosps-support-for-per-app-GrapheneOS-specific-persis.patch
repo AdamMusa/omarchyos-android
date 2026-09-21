@@ -1,0 +1,2794 @@
+From 4f75bef23502aff42d964f20de0a4faa6d8dcc2a Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Sun, 31 Jul 2022 15:29:26 +0300
+Subject: [PATCH 13/28] gosps: support for per-app GrapheneOS-specific
+ persistent state
+
+Squashed with 0a99fc28522c93149f6d4d4e611ffc1d78a4d7e1 by quh4gko8 <88831734+quh4gko8@users.noreply.github.com>
+---
+ core/api/system-current.txt                   |  60 +++
+ core/java/Android.bp                          |   5 +
+ .../android/app/ActivityManagerInternal.java  |   2 +
+ core/java/android/app/ActivityThread.java     |   5 +
+ .../java/android/app/ActivityThreadHooks.java |  46 ++
+ core/java/android/app/AppBindArgs.java        |   1 +
+ core/java/android/app/IApplicationThread.aidl |   3 +
+ .../android/content/pm/GosPackageState.aidl   |   3 +
+ .../android/content/pm/GosPackageState.java   | 412 +++++++++++++++++
+ .../content/pm/GosPackageStateFlag.java       |  74 ++++
+ .../android/content/pm/IPackageManager.aidl   |   4 +
+ core/java/android/ext/DerivedPackageFlag.java |  53 +++
+ services/api/current.txt                      |   7 +
+ .../content/pm/PackageManagerInternal.java    |   3 +
+ .../server/am/ActivityManagerService.java     |   7 +
+ .../am/NativeApplicationThreadWrapper.java    |   7 +
+ .../com/android/server/am/ProcessList.java    |  21 +
+ .../server/ext/PackageManagerHooks.java       |  14 +
+ .../server/pm/DeletePackageHelper.java        |  11 +
+ .../server/pm/GosPackageStatePermission.java  | 245 +++++++++++
+ .../server/pm/GosPackageStatePermissions.java | 235 ++++++++++
+ .../server/pm/GosPackageStatePersistence.java | 121 +++++
+ .../server/pm/GosPackageStatePmHooks.java     | 413 ++++++++++++++++++
+ .../server/pm/GosPackageStateUtils.java       |  38 ++
+ .../server/pm/PackageManagerLocal.java        |  38 ++
+ .../server/pm/PackageManagerService.java      |  32 ++
+ .../server/pm/PackageManagerShellCommand.java |   2 +
+ .../com/android/server/pm/PackageSetting.java |  23 +-
+ .../java/com/android/server/pm/Settings.java  |  16 +-
+ .../android/server/pm/SharedUserSetting.java  |  65 +++
+ .../pm/local/PackageManagerLocalImpl.java     |  10 +
+ .../server/pm/pkg/PackageUserState.java       |   6 +
+ .../pm/pkg/PackageUserStateDefault.java       |   7 +
+ .../server/pm/pkg/PackageUserStateImpl.java   |  16 +
+ .../pm/pkg/PackageUserStateInternal.java      |   4 +
+ .../android/server/pm/pkg/SharedUserApi.java  |   2 +
+ .../pm/PackageManagerSettingsTests.java       |  17 +-
+ 37 files changed, 2025 insertions(+), 3 deletions(-)
+ create mode 100644 core/java/android/content/pm/GosPackageState.aidl
+ create mode 100644 core/java/android/content/pm/GosPackageState.java
+ create mode 100644 core/java/android/content/pm/GosPackageStateFlag.java
+ create mode 100644 core/java/android/ext/DerivedPackageFlag.java
+ create mode 100644 services/core/java/com/android/server/pm/GosPackageStatePermission.java
+ create mode 100644 services/core/java/com/android/server/pm/GosPackageStatePermissions.java
+ create mode 100644 services/core/java/com/android/server/pm/GosPackageStatePersistence.java
+ create mode 100644 services/core/java/com/android/server/pm/GosPackageStatePmHooks.java
+ create mode 100644 services/core/java/com/android/server/pm/GosPackageStateUtils.java
+
+diff --git a/core/api/system-current.txt b/core/api/system-current.txt
+index 2b11ac50b65d..4aebf8097bd4 100644
+--- a/core/api/system-current.txt
++++ b/core/api/system-current.txt
+@@ -4779,6 +4779,46 @@ package android.content.pm {
+     method @NonNull public final int getType();
+   }
+ 
++  public final class GosPackageState implements android.os.Parcelable {
++    method @NonNull public android.content.pm.GosPackageState.Editor createEditor(@NonNull String, @NonNull android.os.UserHandle);
++    method @NonNull public android.content.pm.GosPackageState.Editor createEditor(@NonNull String, int);
++    method public int describeContents();
++    method @NonNull public static android.content.pm.GosPackageState.Editor edit(@NonNull String, @NonNull android.os.UserHandle);
++    method @NonNull public static android.content.pm.GosPackageState.Editor edit(@NonNull String, int);
++    method @NonNull public static android.content.pm.GosPackageState get(@NonNull String, @NonNull android.os.UserHandle);
++    method @NonNull public static android.content.pm.GosPackageState get(@NonNull String, int);
++    method @NonNull public static android.content.pm.GosPackageState getForSelf(@NonNull android.content.Context);
++    method public boolean hasDerivedFlag(int);
++    method public boolean hasDerivedFlags(int);
++    method public boolean hasFlag(int);
++    method public boolean hasPackageFlag(int);
++    method public boolean isNone();
++    method public void writeToParcel(@NonNull android.os.Parcel, int);
++    field @NonNull public static final android.os.Parcelable.Creator<android.content.pm.GosPackageState> CREATOR;
++    field @Nullable public final byte[] contactScopes;
++    field @Nullable public final byte[] storageScopes;
++  }
++
++  public static class GosPackageState.Editor {
++    method @NonNull public android.content.pm.GosPackageState.Editor addFlag(int);
++    method @NonNull public android.content.pm.GosPackageState.Editor addPackageFlag(int);
++    method public boolean apply();
++    method @NonNull public android.content.pm.GosPackageState.Editor clearFlag(int);
++    method @NonNull public android.content.pm.GosPackageState.Editor clearPackageFlag(int);
++    method @NonNull public android.content.pm.GosPackageState.Editor killUidAfterApply();
++    method @NonNull public android.content.pm.GosPackageState.Editor setContactScopes(@Nullable byte[]);
++    method @NonNull public android.content.pm.GosPackageState.Editor setFlagState(int, boolean);
++    method @NonNull public android.content.pm.GosPackageState.Editor setKillUidAfterApply(boolean);
++    method @NonNull public android.content.pm.GosPackageState.Editor setNotifyUidAfterApply(boolean);
++    method @NonNull public android.content.pm.GosPackageState.Editor setPackageFlagState(int, boolean);
++    method @NonNull public android.content.pm.GosPackageState.Editor setStorageScopes(@Nullable byte[]);
++  }
++
++  public interface GosPackageStateFlag {
++    field public static final int CONTACT_SCOPES_ENABLED = 5; // 0x5
++    field public static final int STORAGE_SCOPES_ENABLED = 0; // 0x0
++  }
++
+   public final class InstallationFile {
+     method public long getLengthBytes();
+     method public int getLocation();
+@@ -5699,6 +5739,26 @@ package android.ext {
+     field public static final int HAS_GMSCORE_CLIENT_LIBRARY = 0; // 0x0
+   }
+ 
++  public interface DerivedPackageFlag {
++    field public static final int DFLAGS_SET = 1; // 0x1
++    field public static final int EXPECTS_ACCESS_TO_MEDIA_FILES_ONLY = 4; // 0x4
++    field public static final int EXPECTS_ALL_FILES_ACCESS = 2; // 0x2
++    field public static final int EXPECTS_LEGACY_EXTERNAL_STORAGE = 8192; // 0x2000
++    field public static final int EXPECTS_STORAGE_WRITE_ACCESS = 8; // 0x8
++    field public static final int HAS_ACCESS_MEDIA_LOCATION_DECLARATION = 256; // 0x100
++    field public static final int HAS_GET_ACCOUNTS_DECLARATION = 4194304; // 0x400000
++    field public static final int HAS_MANAGE_EXTERNAL_STORAGE_DECLARATION = 64; // 0x40
++    field public static final int HAS_MANAGE_MEDIA_DECLARATION = 128; // 0x80
++    field public static final int HAS_READ_CONTACTS_DECLARATION = 1048576; // 0x100000
++    field public static final int HAS_READ_EXTERNAL_STORAGE_DECLARATION = 16; // 0x10
++    field public static final int HAS_READ_MEDIA_AUDIO_DECLARATION = 512; // 0x200
++    field public static final int HAS_READ_MEDIA_IMAGES_DECLARATION = 1024; // 0x400
++    field public static final int HAS_READ_MEDIA_VIDEO_DECLARATION = 2048; // 0x800
++    field public static final int HAS_READ_MEDIA_VISUAL_USER_SELECTED_DECLARATION = 4096; // 0x1000
++    field public static final int HAS_WRITE_CONTACTS_DECLARATION = 2097152; // 0x200000
++    field public static final int HAS_WRITE_EXTERNAL_STORAGE_DECLARATION = 32; // 0x20
++  }
++
+   public interface KnownSystemPackage {
+     field public static final int SETTINGS = 0; // 0x0
+     field public static final int SETUP_WIZARD = 3; // 0x3
+diff --git a/core/java/Android.bp b/core/java/Android.bp
+index aef8f8cc1cf3..4d07d0bc6ba4 100644
+--- a/core/java/Android.bp
++++ b/core/java/Android.bp
+@@ -416,6 +416,11 @@ filegroup {
+     visibility: ["//frameworks/base/test-mock"],
+ }
+ 
++filegroup {
++    name: "GosPackageStateFlags",
++    srcs: [ "android/content/pm/GosPackageStateFlag.java", ],
++}
++
+ filegroup {
+     name: "libincident_aidl",
+     srcs: [
+diff --git a/core/java/android/app/ActivityManagerInternal.java b/core/java/android/app/ActivityManagerInternal.java
+index 83077ffe76e2..74b609c9aa16 100644
+--- a/core/java/android/app/ActivityManagerInternal.java
++++ b/core/java/android/app/ActivityManagerInternal.java
+@@ -1476,4 +1476,6 @@ public abstract class ActivityManagerInternal {
+      * @param clientUid the UID that has a bound client
+      */
+     public abstract boolean hasServiceBindingOrProviderUse(int uid, int clientUid);
++
++    public abstract void dispatchGosPackageStateCallbacks(int uid);
+ }
+diff --git a/core/java/android/app/ActivityThread.java b/core/java/android/app/ActivityThread.java
+index 1dd683ddd6bc..003559438518 100644
+--- a/core/java/android/app/ActivityThread.java
++++ b/core/java/android/app/ActivityThread.java
+@@ -2512,6 +2512,11 @@ public final class ActivityThread extends ClientTransactionHandler
+                 throw e.rethrowFromSystemServer();
+             }
+         }
++
++        @Override
++        public void onGosPackageStateChanged() {
++            ActivityThreadHooks.onGosPackageStateChanged(null);
++        }
+     }
+ 
+     private @NonNull SafeCancellationTransport createSafeCancellationTransport(
+diff --git a/core/java/android/app/ActivityThreadHooks.java b/core/java/android/app/ActivityThreadHooks.java
+index 4d1ed92f2a71..f07986ec7083 100644
+--- a/core/java/android/app/ActivityThreadHooks.java
++++ b/core/java/android/app/ActivityThreadHooks.java
+@@ -2,7 +2,10 @@ package android.app;
+ 
+ import android.annotation.Nullable;
+ import android.content.Context;
++import android.content.pm.GosPackageState;
+ import android.os.Bundle;
++import android.os.Process;
++import android.util.Log;
+ 
+ import com.android.internal.util.Preconditions;
+ 
+@@ -23,6 +26,8 @@ class ActivityThreadHooks {
+         Preconditions.checkState(!onBindCalled);
+         onBindCalled = true;
+ 
++        AppGlobals.setInitialPackageId(appBindData.appInfo.ext().getPackageId());
++
+         int[] flags = Objects.requireNonNull(args.getIntArray(AppBindArgs.KEY_FLAGS_ARRAY));
+ 
+         return args;
+@@ -33,6 +38,47 @@ class ActivityThreadHooks {
+     // ActivityThread.handleBindApplication
+     static void onBind2(Context appContext, Bundle appBindArgs) {
+         ActivityThreadHooks.appContext = appContext;
++        if (!Process.isIsolated()) { // isolated processes don't have access to GosPackageState
++            onGosPackageStateChanged(appBindArgs);
++        }
++    }
++
++    private static final Object gosPackageStateChangeLock = new Object();
++    private static boolean hadInitialGosPsChangeCallback;
++    private static boolean hasPendingGosPsChangeCallback;
++
++    // called from both main and binder threads
++    static void onGosPackageStateChanged(@Nullable Bundle appBindArgs) {
++        Context ctx = appContext;
++        GosPackageState state;
++        synchronized (gosPackageStateChangeLock) {
++            if (appBindArgs != null) {
++                Preconditions.checkState(!hadInitialGosPsChangeCallback);
++                hadInitialGosPsChangeCallback = true;
++                // app context is always initialized by this point
++                Objects.requireNonNull(ctx);
++                if (hasPendingGosPsChangeCallback) {
++                    Log.i("GosPackageState", "ignoring AppBindArgs since hasPendingGosPsChangeCallback is set");
++                }
++                state = hasPendingGosPsChangeCallback ?
++                        // GosPackageState from AppBindArgs is outdated, obtain a fresh one
++                        GosPackageState.getForSelf(ctx) :
++                        // this is the initial onGosPackageStateChanged() call during app binding,
++                        // use GosPackageState from AppBindArgs to avoid IPC
++                        appBindArgs.getParcelable(AppBindArgs.KEY_GOS_PACKAGE_STATE, GosPackageState.class);
++
++                Objects.requireNonNull(state);
++                hasPendingGosPsChangeCallback = false;
++            } else {
++                if (ctx == null) {
++                    Preconditions.checkState(!hadInitialGosPsChangeCallback);
++                    hasPendingGosPsChangeCallback = true;
++                    Log.i("GosPackageState", "set hasPendingGosPsChangeCallback");
++                    return;
++                }
++                state = GosPackageState.getForSelf(ctx);
++            }
++        }
+     }
+ 
+     static Service instantiateService(String className) {
+diff --git a/core/java/android/app/AppBindArgs.java b/core/java/android/app/AppBindArgs.java
+index bd411cd4232a..14a490003363 100644
+--- a/core/java/android/app/AppBindArgs.java
++++ b/core/java/android/app/AppBindArgs.java
+@@ -2,6 +2,7 @@ package android.app;
+ 
+ /** @hide */
+ public interface AppBindArgs {
++    String KEY_GOS_PACKAGE_STATE = "gosPs";
+     String KEY_FLAGS_ARRAY = "flagsArr";
+ 
+     int FLAGS_ARRAY_LEN = 10;
+diff --git a/core/java/android/app/IApplicationThread.aidl b/core/java/android/app/IApplicationThread.aidl
+index d0aeeae3ff3c..d35b6c05d46a 100644
+--- a/core/java/android/app/IApplicationThread.aidl
++++ b/core/java/android/app/IApplicationThread.aidl
+@@ -190,5 +190,8 @@ oneway interface IApplicationThread {
+     void schedulePing(in RemoteCallback pong);
+     void getExecutableMethodFileOffsets(in MethodDescriptor methodDescriptor,
+             in IOffsetCallback resultCallback);
++
++    void onGosPackageStateChanged();
++
+     void requestHandoffActivityData(in IBinder requestToken, in List<IBinder> activityTokens);
+ }
+diff --git a/core/java/android/content/pm/GosPackageState.aidl b/core/java/android/content/pm/GosPackageState.aidl
+new file mode 100644
+index 000000000000..c7a48e85d078
+--- /dev/null
++++ b/core/java/android/content/pm/GosPackageState.aidl
+@@ -0,0 +1,3 @@
++package android.content.pm;
++
++parcelable GosPackageState;
+diff --git a/core/java/android/content/pm/GosPackageState.java b/core/java/android/content/pm/GosPackageState.java
+new file mode 100644
+index 000000000000..58b0a00af696
+--- /dev/null
++++ b/core/java/android/content/pm/GosPackageState.java
+@@ -0,0 +1,412 @@
++package android.content.pm;
++
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.annotation.SuppressLint;
++import android.annotation.SystemApi;
++import android.annotation.UserIdInt;
++import android.app.ActivityThread;
++import android.app.PropertyInvalidatedCache;
++import android.content.Context;
++import android.ext.DerivedPackageFlag;
++import android.os.Parcel;
++import android.os.Parcelable;
++import android.os.RemoteException;
++import android.os.UserHandle;
++import android.permission.PermissionManager;
++import android.util.Log;
++import android.util.SparseArray;
++
++import java.lang.reflect.Field;
++import java.util.Arrays;
++import java.util.Objects;
++
++/**
++ * GrapheneOS-specific persistent package state, stored in per-user PackageUserState.
++ * <p>
++ * GosPackageState has a special handling for sharedUid packages. All packages in a given sharedUid
++ * share the same GosPackageState. This was done because in some cases (e.g. when an app accesses
++ * MediaProvider via FUSE) there's no way to retrieve the package name, only UID is available.
++ * Manually merging GosPackageStates of sharedUid members would be too complex.
++ *
++ * @hide
++ */
++@SystemApi
++public final class GosPackageState implements Parcelable {
++    /** @hide */ public final long flagStorage1;
++    // flags that have package-specific meaning
++    /** @hide */ public final long packageFlagStorage;
++    @Nullable
++    public final byte[] storageScopes;
++    @Nullable
++    public final byte[] contactScopes;
++    /**
++     * These flags are lazily derived from persistent state. They are intentionally skipped from
++     * equals() and hashCode(). derivedFlags are stored here for performance reasons, to avoid
++     * performing separate IPC to fetch them.
++     * <p>
++     * Note that calculation of derived flags is skipped unless a GosPackageState flag is set that
++     * depends on derived flags, @see {@link com.android.server.pm.GosPackageStatePmHooks#maybeDeriveFlags}
++     * <p>
++     * If package is part of sharedUid, then its derivedFlags are calculated across all
++     * sharedUid member packages. See GosPackageState javadoc for reasoning.
++     * @hide
++     */
++    @DerivedPackageFlag.Enum public int derivedFlags;
++
++    /** @hide */ public static final GosPackageState DEFAULT = createEmpty();
++
++    /**
++     * A sentinel value that is returned when the package is not installed (e.g. when it was racily
++     * uninstalled) and when the caller doesn't have access to the actual GosPackageState.
++     *
++     * @hide
++     */
++    public static final GosPackageState NONE = createEmpty();
++
++    /** @hide */
++    public GosPackageState(long flagStorage1, long packageFlagStorage,
++                           @Nullable byte[] storageScopes, @Nullable byte[] contactScopes) {
++        this.flagStorage1 = flagStorage1;
++        this.packageFlagStorage = packageFlagStorage;
++        this.storageScopes = storageScopes;
++        this.contactScopes = contactScopes;
++    }
++
++    private static GosPackageState createEmpty() {
++        return new GosPackageState(0L, 0L, null, null);
++    }
++
++    private static final int TYPE_NONE = 0;
++    private static final int TYPE_DEFAULT = 1;
++    private static final int TYPE_REGULAR = 2;
++
++    @Override
++    public void writeToParcel(@NonNull Parcel dest, int flags) {
++        int type = TYPE_REGULAR;
++        if (this == DEFAULT) {
++            type = TYPE_DEFAULT;
++        } else if (this == NONE) {
++            type = TYPE_NONE;
++        }
++        dest.writeInt(type);
++        if (type != TYPE_REGULAR) {
++            return;
++        }
++        dest.writeLong(this.flagStorage1);
++        dest.writeLong(this.packageFlagStorage);
++        dest.writeByteArray(storageScopes);
++        dest.writeByteArray(contactScopes);
++        dest.writeInt(derivedFlags);
++    }
++
++    @NonNull
++    public static final Creator<GosPackageState> CREATOR = new Creator<>() {
++        @Override
++        public GosPackageState createFromParcel(Parcel in) {
++            switch (in.readInt()) {
++                case TYPE_DEFAULT: return DEFAULT;
++                case TYPE_NONE: return NONE;
++            };
++            var res = new GosPackageState(in.readLong(), in.readLong(),
++                    in.createByteArray(), in.createByteArray());
++            res.derivedFlags = in.readInt();
++            return res;
++        }
++
++        @Override
++        public GosPackageState[] newArray(int size) {
++            return new GosPackageState[size];
++        }
++    };
++
++    @Override
++    public int hashCode() {
++        return Long.hashCode(flagStorage1) + Arrays.hashCode(storageScopes) + Arrays.hashCode(contactScopes) + Long.hashCode(packageFlagStorage);
++    }
++
++    @Override
++    public boolean equals(Object obj) {
++        if (!(obj instanceof GosPackageState o)) {
++            return false;
++        }
++        if (this == o) {
++            return true;
++        }
++        if (flagStorage1 != o.flagStorage1) {
++            return false;
++        }
++        if (!Arrays.equals(storageScopes, o.storageScopes)) {
++            return false;
++        }
++        if (!Arrays.equals(contactScopes, o.contactScopes)) {
++            return false;
++        }
++        if (packageFlagStorage != o.packageFlagStorage) {
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public int describeContents() {
++        return 0;
++    }
++
++    public boolean hasFlag(@GosPackageStateFlag.Enum int flag) {
++        return (this.flagStorage1 & (1L << flag)) != 0;
++    }
++
++    public boolean hasPackageFlag(int packageFlag) {
++        return (this.packageFlagStorage & (1L << packageFlag)) != 0;
++    }
++
++    public boolean hasDerivedFlag(@DerivedPackageFlag.Enum int flag) {
++        return (derivedFlags & flag) != 0;
++    }
++
++    public boolean hasDerivedFlags(@DerivedPackageFlag.Enum int flags) {
++        return (derivedFlags & flags) == flags;
++    }
++
++    /** @see #NONE */
++    public boolean isNone() {
++        return this == NONE;
++    }
++
++    private static volatile SparseArray<String> flagNames;
++
++    @Override
++    public String toString() {
++        if (this == DEFAULT) {
++            return "GosPackageState.DEFAULT";
++        }
++        if (this == NONE) {
++            return "GosPackageState.NONE";
++        }
++        var b = new StringBuilder("GosPackageState{");
++        int origLength = b.length();
++        if (flagStorage1 != 0) {
++            SparseArray<String> flagNames = GosPackageState.flagNames;
++            if (flagNames == null) {
++                Field[] fields = GosPackageStateFlag.class.getDeclaredFields();
++                int numFields = fields.length;
++                flagNames = new SparseArray(numFields);
++                for (int i = 0; i < numFields; ++i) {
++                    Field f = fields[i];
++                    int fieldValue;
++                    try {
++                        fieldValue = (int) f.get(null);
++                    } catch (ReflectiveOperationException e) {
++                        Log.e("GosPackageState", "", e);
++                        continue;
++                    }
++                    flagNames.set(fieldValue, f.getName());
++                }
++                GosPackageState.flagNames = flagNames;
++            }
++            b.append("flags:");
++            boolean first = true;
++            for (int i = 0; i < Long.SIZE; ++i) {
++                if (hasFlag(i)) {
++                    String name = flagNames.get(i);
++                    if (name == null) {
++                        name = "UNKNOWN_FLAG_" + i;
++                    }
++                    b.append(first ? " " : " | ");
++                    first = false;
++                    b.append(name);
++                }
++            }
++            b.append(", ");
++        }
++        if (packageFlagStorage != 0) {
++            b.append("packageFlags: 0x");
++            b.append(Long.toHexString(packageFlagStorage));
++            b.append(", ");
++        }
++        if (storageScopes != null) {
++            b.append("has storageScopes, ");
++        }
++        if (contactScopes != null) {
++            b.append("has contactScopes, ");
++        }
++        if (b.length() != origLength) {
++            // trim trailing comma + space
++            b.setLength(b.length() - 2);
++        }
++        b.append('}');
++        return b.toString();
++    }
++
++    @NonNull
++    public static GosPackageState getForSelf(@NonNull Context context) {
++        return get(context.getPackageName(), context.getUserId());
++    }
++
++    @NonNull
++    @SuppressLint("UserHandleName")
++    public static GosPackageState get(@NonNull String packageName, @NonNull UserHandle user) {
++        return get(packageName, user.getIdentifier());
++    }
++
++    @NonNull
++    public static GosPackageState get(@NonNull String packageName, @UserIdInt int userId) {
++        return Objects.requireNonNull(sCache.query(new CacheQuery(packageName, userId)));
++    }
++
++    private record CacheQuery(String packageName, int userId) {}
++
++    // invalidated by PackageManager#invalidatePackageInfoCache() (e.g. when
++    // PackageManagerService#setGosPackageState succeeds)
++    private static volatile PropertyInvalidatedCache<CacheQuery, GosPackageState> sCache =
++            new PropertyInvalidatedCache<>(256, PermissionManager.CACHE_KEY_PACKAGE_INFO_CACHE,
++                "getGosPackageState") {
++        @Override
++        public GosPackageState recompute(CacheQuery query) {
++            try {
++                return ActivityThread.getPackageManager().getGosPackageState(query.packageName, query.userId);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
++        }
++    };
++
++    @NonNull
++    @SuppressLint("UserHandleName")
++    public Editor createEditor(@NonNull String packageName, @NonNull UserHandle user) {
++        return createEditor(packageName, user.getIdentifier());
++    }
++
++    @NonNull
++    public Editor createEditor(@NonNull String packageName, @UserIdInt int userId) {
++        return new Editor(this, packageName, userId);
++    }
++
++    @NonNull
++    @SuppressLint("UserHandleName")
++    public static Editor edit(@NonNull String packageName, @NonNull UserHandle user) {
++        return edit(packageName, user.getIdentifier());
++    }
++
++    @NonNull
++    public static Editor edit(@NonNull String packageName, @UserIdInt int userId) {
++        return GosPackageState.get(packageName, userId).createEditor(packageName, userId);
++    }
++
++    /** @hide */ public static final int EDITOR_FLAG_KILL_UID_AFTER_APPLY = 1;
++    /** @hide */ public static final int EDITOR_FLAG_NOTIFY_UID_AFTER_APPLY = 1 << 1;
++
++    public static class Editor {
++        private final String packageName;
++        private final int userId;
++        private long flagStorage1;
++        private long packageFlagStorage;
++        private byte[] storageScopes;
++        private byte[] contactScopes;
++        private int editorFlags;
++
++        /** @hide */
++        public Editor(GosPackageState s, String packageName, int userId) {
++            this.packageName = packageName;
++            this.userId = userId;
++            this.flagStorage1 = s.flagStorage1;
++            this.packageFlagStorage = s.packageFlagStorage;
++            this.storageScopes = s.storageScopes;
++            this.contactScopes = s.contactScopes;
++        }
++
++        @NonNull
++        public Editor setFlagState(@GosPackageStateFlag.Enum int flag, boolean state) {
++            if (state) {
++                addFlag(flag);
++            } else {
++                clearFlag(flag);
++            }
++            return this;
++        }
++
++        @NonNull
++        public Editor addFlag(@GosPackageStateFlag.Enum int flag) {
++            this.flagStorage1 |= (1L << flag);
++            return this;
++        }
++
++        @NonNull
++        public Editor clearFlag(@GosPackageStateFlag.Enum int flag) {
++            this.flagStorage1 &= ~(1L << flag);
++            return this;
++        }
++
++        @NonNull
++        public Editor addPackageFlag(int flag) {
++            this.packageFlagStorage |= (1L << flag);
++            return this;
++        }
++
++        @NonNull
++        public Editor clearPackageFlag(int flag) {
++            this.packageFlagStorage &= ~(1L << flag);
++            return this;
++        }
++
++        @NonNull
++        public Editor setPackageFlagState(int flag, boolean state) {
++            if (state) {
++                addPackageFlag(flag);
++            } else {
++                clearPackageFlag(flag);
++            }
++            return this;
++        }
++
++        @NonNull
++        public Editor setStorageScopes(@Nullable byte[] storageScopes) {
++            this.storageScopes = storageScopes;
++            return this;
++        }
++
++        @NonNull
++        public Editor setContactScopes(@Nullable byte[] contactScopes) {
++            this.contactScopes = contactScopes;
++            return this;
++        }
++
++        @NonNull
++        public Editor killUidAfterApply() {
++            return setKillUidAfterApply(true);
++        }
++
++        @NonNull
++        public Editor setKillUidAfterApply(boolean v) {
++            if (v) {
++                this.editorFlags |= EDITOR_FLAG_KILL_UID_AFTER_APPLY;
++            } else {
++                this.editorFlags &= ~EDITOR_FLAG_KILL_UID_AFTER_APPLY;
++            }
++            return this;
++        }
++
++        @NonNull
++        public Editor setNotifyUidAfterApply(boolean v) {
++            if (v) {
++                this.editorFlags |= EDITOR_FLAG_NOTIFY_UID_AFTER_APPLY;
++            } else {
++                this.editorFlags &= ~EDITOR_FLAG_NOTIFY_UID_AFTER_APPLY;
++            }
++            return this;
++        }
++
++        // Returns true if the update was successfully applied and is scheduled to be written back
++        // to storage. Actual writeback is performed asynchronously.
++        public boolean apply() {
++            try {
++                return ActivityThread.getPackageManager().setGosPackageState(packageName, userId,
++                        new GosPackageState(flagStorage1, packageFlagStorage, storageScopes, contactScopes),
++                        editorFlags);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
++        }
++    }
++}
+diff --git a/core/java/android/content/pm/GosPackageStateFlag.java b/core/java/android/content/pm/GosPackageStateFlag.java
+new file mode 100644
+index 000000000000..79c05d16711b
+--- /dev/null
++++ b/core/java/android/content/pm/GosPackageStateFlag.java
+@@ -0,0 +1,74 @@
++package android.content.pm;
++
++import android.annotation.IntDef;
++import android.annotation.SystemApi;
++
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++
++/** @hide */
++@SystemApi
++public interface GosPackageStateFlag {
++    /* SysApi */ int STORAGE_SCOPES_ENABLED = 0;
++    /** @hide */ int ALLOW_ACCESS_TO_OBB_DIRECTORY = 1;
++    // flags 2, 3, 4 were used previously, do not reuse them
++    /* SysApi */ int CONTACT_SCOPES_ENABLED = 5;
++    /** @hide */ int BLOCK_NATIVE_DEBUGGING_NON_DEFAULT = 6;
++    /** @hide */ int BLOCK_NATIVE_DEBUGGING = 7;
++    /** @hide */ int BLOCK_NATIVE_DEBUGGING_SUPPRESS_NOTIF = 8;
++    /** @hide */ int RESTRICT_MEMORY_DYN_CODE_LOADING_NON_DEFAULT = 9;
++    /** @hide */ int RESTRICT_MEMORY_DYN_CODE_LOADING = 10;
++    /** @hide */ int RESTRICT_MEMORY_DYN_CODE_LOADING_SUPPRESS_NOTIF = 11;
++    /** @hide */ int RESTRICT_STORAGE_DYN_CODE_LOADING_NON_DEFAULT = 12;
++    /** @hide */ int RESTRICT_STORAGE_DYN_CODE_LOADING = 13;
++    /** @hide */ int RESTRICT_STORAGE_DYN_CODE_LOADING_SUPPRESS_NOTIF = 14;
++    /** @hide */ int RESTRICT_WEBVIEW_DYN_CODE_LOADING_NON_DEFAULT = 15;
++    /** @hide */ int RESTRICT_WEBVIEW_DYN_CODE_LOADING = 16;
++    /** @hide */ int USE_HARDENED_MALLOC_NON_DEFAULT = 17;
++    /** @hide */ int USE_HARDENED_MALLOC = 18;
++    /** @hide */ int USE_EXTENDED_VA_SPACE_NON_DEFAULT = 19;
++    /** @hide */ int USE_EXTENDED_VA_SPACE = 20;
++    /** @hide */ int FORCE_MEMTAG_NON_DEFAULT = 21;
++    /** @hide */ int FORCE_MEMTAG = 22;
++    /** @hide */ int FORCE_MEMTAG_SUPPRESS_NOTIF = 23;
++    /** @hide */ int ENABLE_EXPLOIT_PROTECTION_COMPAT_MODE = 24;
++    // flag 25 was used previously, do not reuse it
++    /** @hide */ int PLAY_INTEGRITY_API_USED_AT_LEAST_ONCE = 26;
++    /** @hide */ int SUPPRESS_PLAY_INTEGRITY_API_NOTIF = 27;
++    /** @hide */ int BLOCK_PLAY_INTEGRITY_API = 28;
++    /** @hide */ int USE_EXEC_SPAWNING_NON_DEFAULT = 29;
++    /** @hide */ int USE_EXEC_SPAWNING = 30;
++
++    /** @hide */
++    @IntDef(value = {
++            STORAGE_SCOPES_ENABLED,
++            ALLOW_ACCESS_TO_OBB_DIRECTORY,
++            CONTACT_SCOPES_ENABLED,
++            BLOCK_NATIVE_DEBUGGING_NON_DEFAULT,
++            BLOCK_NATIVE_DEBUGGING,
++            BLOCK_NATIVE_DEBUGGING_SUPPRESS_NOTIF,
++            RESTRICT_MEMORY_DYN_CODE_LOADING_NON_DEFAULT,
++            RESTRICT_MEMORY_DYN_CODE_LOADING,
++            RESTRICT_MEMORY_DYN_CODE_LOADING_SUPPRESS_NOTIF,
++            RESTRICT_STORAGE_DYN_CODE_LOADING_NON_DEFAULT,
++            RESTRICT_STORAGE_DYN_CODE_LOADING,
++            RESTRICT_STORAGE_DYN_CODE_LOADING_SUPPRESS_NOTIF,
++            RESTRICT_WEBVIEW_DYN_CODE_LOADING_NON_DEFAULT,
++            RESTRICT_WEBVIEW_DYN_CODE_LOADING,
++            USE_HARDENED_MALLOC_NON_DEFAULT,
++            USE_HARDENED_MALLOC,
++            USE_EXTENDED_VA_SPACE_NON_DEFAULT,
++            USE_EXTENDED_VA_SPACE,
++            FORCE_MEMTAG_NON_DEFAULT,
++            FORCE_MEMTAG,
++            FORCE_MEMTAG_SUPPRESS_NOTIF,
++            ENABLE_EXPLOIT_PROTECTION_COMPAT_MODE,
++            PLAY_INTEGRITY_API_USED_AT_LEAST_ONCE,
++            SUPPRESS_PLAY_INTEGRITY_API_NOTIF,
++            BLOCK_PLAY_INTEGRITY_API,
++            USE_EXEC_SPAWNING_NON_DEFAULT,
++            USE_EXEC_SPAWNING,
++    })
++    @Retention(RetentionPolicy.SOURCE)
++    @interface Enum {}
++}
+diff --git a/core/java/android/content/pm/IPackageManager.aidl b/core/java/android/content/pm/IPackageManager.aidl
+index e2a940953d82..2b5117477497 100644
+--- a/core/java/android/content/pm/IPackageManager.aidl
++++ b/core/java/android/content/pm/IPackageManager.aidl
+@@ -866,4 +866,8 @@ interface IPackageManager {
+     List<String> getAllApexDirectories();
+ 
+     int getAppUidForPrivateComputeCoreUid(int pccUid);
++
++    android.content.pm.GosPackageState getGosPackageState(String packageName, int userId);
++
++    boolean setGosPackageState(String packageName, int userId, in android.content.pm.GosPackageState updatedPs, int editorFlags);
+ }
+diff --git a/core/java/android/ext/DerivedPackageFlag.java b/core/java/android/ext/DerivedPackageFlag.java
+new file mode 100644
+index 000000000000..5258acf92432
+--- /dev/null
++++ b/core/java/android/ext/DerivedPackageFlag.java
+@@ -0,0 +1,53 @@
++package android.ext;
++
++import android.annotation.IntDef;
++import android.annotation.SystemApi;
++
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++
++/** @hide */
++@SystemApi
++public interface DerivedPackageFlag {
++    // to distinguish between the case when no dflags are set and the case when dflags weren't calculated yet
++    int DFLAGS_SET = 1;
++    int EXPECTS_ALL_FILES_ACCESS = 1 << 1;
++    int EXPECTS_ACCESS_TO_MEDIA_FILES_ONLY = 1 << 2;
++    int EXPECTS_STORAGE_WRITE_ACCESS = 1 << 3;
++    int HAS_READ_EXTERNAL_STORAGE_DECLARATION = 1 << 4;
++    int HAS_WRITE_EXTERNAL_STORAGE_DECLARATION = 1 << 5;
++    int HAS_MANAGE_EXTERNAL_STORAGE_DECLARATION = 1 << 6;
++    int HAS_MANAGE_MEDIA_DECLARATION = 1 << 7;
++    int HAS_ACCESS_MEDIA_LOCATION_DECLARATION = 1 << 8;
++    int HAS_READ_MEDIA_AUDIO_DECLARATION = 1 << 9;
++    int HAS_READ_MEDIA_IMAGES_DECLARATION = 1 << 10;
++    int HAS_READ_MEDIA_VIDEO_DECLARATION = 1 << 11;
++    int HAS_READ_MEDIA_VISUAL_USER_SELECTED_DECLARATION = 1 << 12;
++    int EXPECTS_LEGACY_EXTERNAL_STORAGE = 1 << 13;
++    int HAS_READ_CONTACTS_DECLARATION = 1 << 20;
++    int HAS_WRITE_CONTACTS_DECLARATION = 1 << 21;
++    int HAS_GET_ACCOUNTS_DECLARATION = 1 << 22;
++
++    /** @hide */
++    @IntDef(flag = true, value = {
++            DFLAGS_SET,
++            EXPECTS_ALL_FILES_ACCESS,
++            EXPECTS_ACCESS_TO_MEDIA_FILES_ONLY,
++            EXPECTS_STORAGE_WRITE_ACCESS,
++            HAS_READ_EXTERNAL_STORAGE_DECLARATION,
++            HAS_WRITE_EXTERNAL_STORAGE_DECLARATION,
++            HAS_MANAGE_EXTERNAL_STORAGE_DECLARATION,
++            HAS_MANAGE_MEDIA_DECLARATION,
++            HAS_ACCESS_MEDIA_LOCATION_DECLARATION,
++            HAS_READ_MEDIA_AUDIO_DECLARATION,
++            HAS_READ_MEDIA_IMAGES_DECLARATION,
++            HAS_READ_MEDIA_VIDEO_DECLARATION,
++            HAS_READ_MEDIA_VISUAL_USER_SELECTED_DECLARATION,
++            EXPECTS_LEGACY_EXTERNAL_STORAGE,
++            HAS_READ_CONTACTS_DECLARATION,
++            HAS_WRITE_CONTACTS_DECLARATION,
++            HAS_GET_ACCOUNTS_DECLARATION,
++    })
++    @Retention(RetentionPolicy.SOURCE)
++    @interface Enum {}
++}
+diff --git a/services/api/current.txt b/services/api/current.txt
+index 7f285d254a97..79ed2e3d1ed6 100644
+--- a/services/api/current.txt
++++ b/services/api/current.txt
+@@ -84,7 +84,9 @@ package com.android.server.permission {
+ package com.android.server.pm {
+ 
+   public interface PackageManagerLocal {
++    method public void addGosPackageStateChangeCallback(@NonNull com.android.server.pm.PackageManagerLocal.GosPackageStateChangeCallback);
+     method public void reconcileSdkData(@Nullable String, @NonNull String, @NonNull java.util.List<String>, int, int, int, @NonNull String, int) throws java.io.IOException;
++    method public boolean removeGosPackageStateChangeCallback(@NonNull com.android.server.pm.PackageManagerLocal.GosPackageStateChangeCallback);
+     method @NonNull public com.android.server.pm.PackageManagerLocal.FilteredSnapshot withFilteredSnapshot();
+     method @NonNull public com.android.server.pm.PackageManagerLocal.FilteredSnapshot withFilteredSnapshot(int, @NonNull android.os.UserHandle);
+     method @NonNull public com.android.server.pm.PackageManagerLocal.UnfilteredSnapshot withUnfilteredSnapshot();
+@@ -98,6 +100,11 @@ package com.android.server.pm {
+     method @NonNull public java.util.Map<String, com.android.server.pm.pkg.PackageState> getPackageStates();
+   }
+ 
++  public abstract static class PackageManagerLocal.GosPackageStateChangeCallback {
++    ctor public PackageManagerLocal.GosPackageStateChangeCallback(@NonNull android.os.Handler);
++    method public abstract void onGosPackageStateChanged(int, @NonNull android.content.pm.GosPackageState, int);
++  }
++
+   public static interface PackageManagerLocal.UnfilteredSnapshot extends AutoCloseable {
+     method public void close();
+     method @NonNull public com.android.server.pm.PackageManagerLocal.FilteredSnapshot filtered(int, @NonNull android.os.UserHandle);
+diff --git a/services/core/java/android/content/pm/PackageManagerInternal.java b/services/core/java/android/content/pm/PackageManagerInternal.java
+index 3ab443889592..595494a04096 100644
+--- a/services/core/java/android/content/pm/PackageManagerInternal.java
++++ b/services/core/java/android/content/pm/PackageManagerInternal.java
+@@ -1509,6 +1509,9 @@ public abstract class PackageManagerInternal {
+     public abstract boolean isUpgradingFromLowerThanBySdkVersionFull(
+             @Build.SdkIntFull int sdkVersionFull);
+ 
++    @NonNull
++    public abstract GosPackageState getGosPackageState(String packageName, int userId);
++
+     /**
+      * Returns the component access policy for a given package, which declares the set of
+      * other components the app is allowed to associate with.
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 69f21ae7a4f1..9a27ba93a4e6 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -19303,6 +19303,13 @@ public class ActivityManagerService extends IActivityManager.Stub
+                 return hasServiceBindingOrProviderUseLocked(uid, clientUid);
+             }
+         }
++
++        @Override
++        public void dispatchGosPackageStateCallbacks(int uid) {
++            synchronized (mGlobalLock) {
++                mProcessList.dispatchGosPackageStateChangedLOSP(uid);
++            }
++        }
+     }
+ 
+     long inputDispatchingTimedOut(int pid, final boolean aboveSystem, TimeoutRecord timeoutRecord) {
+diff --git a/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java b/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java
+index a2982ebb5ed8..2e750fd2bf88 100644
+--- a/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java
++++ b/services/core/java/com/android/server/am/NativeApplicationThreadWrapper.java
+@@ -39,6 +39,7 @@ import android.content.IIntentReceiver;
+ import android.content.Intent;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.ApplicationInfo;
++import android.content.pm.GosPackageState;
+ import android.content.pm.PackageManager;
+ import android.content.pm.ParceledListSlice;
+ import android.content.pm.ProviderInfo;
+@@ -523,6 +524,12 @@ public class NativeApplicationThreadWrapper implements IApplicationThread {
+     public void getExecutableMethodFileOffsets(
+             @NonNull MethodDescriptor methodDescriptor, @NonNull IOffsetCallback resultCallback) {}
+ 
++    @Override
++    public void onGosPackageStateChanged() {
++        // native processes run in isolated UIDs, onGosPackageStateChanged() is never called for them
++        Slog.wtf(TAG, "onGosPackageStateChanged called");
++    }
++
+     @NeverCompile
+     @Override
+     public void dumpBitmapsProto(ParcelFileDescriptor pfd, String dumpFormat) {}
+diff --git a/services/core/java/com/android/server/am/ProcessList.java b/services/core/java/com/android/server/am/ProcessList.java
+index d8e2cfaae067..6b7f0da6d8c0 100644
+--- a/services/core/java/com/android/server/am/ProcessList.java
++++ b/services/core/java/com/android/server/am/ProcessList.java
+@@ -117,6 +117,7 @@ import android.content.Context;
+ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.pm.ApplicationInfo;
++import android.content.pm.GosPackageState;
+ import android.content.pm.IPackageManager;
+ import android.content.pm.PackageManager;
+ import android.content.pm.PackageManagerInternal;
+@@ -3830,6 +3831,26 @@ public final class ProcessList extends ProcessListInternal
+         }
+     }
+ 
++    @GuardedBy("mService")
++    void dispatchGosPackageStateChangedLOSP(int uid) {
++        for (int i = mLruProcesses.size() - 1; i >= 0; i--) {
++            ProcessRecord r = mLruProcesses.get(i);
++            if (r.uid != uid) {
++                // isolated processes are skipped intentionally (they run in separate UIDs)
++                continue;
++            }
++            final IApplicationThread thread = r.getThread();
++            if (thread != null) {
++                try {
++                    thread.onGosPackageStateChanged();
++                } catch (RemoteException ex) {
++                    Slog.i(TAG, "onGosPackageStateChanged failed; uid " + uid
++                            + ", processName " + r.info.processName, ex);
++                }
++            }
++        }
++    }
++
+     @GuardedBy({"mService", "mProcLock"})
+     private int offerLruProcessInternalLSP(ProcessRecord app, long now, String what, Object obj,
+             ProcessRecord srcApp) {
+diff --git a/services/core/java/com/android/server/ext/PackageManagerHooks.java b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+index 781816d97c9c..444017373b07 100644
+--- a/services/core/java/com/android/server/ext/PackageManagerHooks.java
++++ b/services/core/java/com/android/server/ext/PackageManagerHooks.java
+@@ -3,6 +3,8 @@ package com.android.server.ext;
+ import android.annotation.Nullable;
+ import android.annotation.UserIdInt;
+ import android.app.AppBindArgs;
++import android.content.pm.ApplicationInfo;
++import android.content.pm.GosPackageState;
+ import android.content.Context;
+ import android.content.pm.PackageManagerInternal;
+ import android.os.Bundle;
+@@ -11,9 +13,12 @@ import android.util.ArraySet;
+ import android.util.Slog;
+ 
+ import com.android.server.pm.Computer;
++import com.android.server.pm.GosPackageStatePmHooks;
+ import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.PackageStateInternal;
+ 
++import static java.util.Objects.requireNonNull;
++
+ public class PackageManagerHooks {
+ 
+     // Called when package enabled setting for a system package is deserialized from storage
+@@ -67,9 +72,18 @@ public class PackageManagerHooks {
+         // isSystem() remains true even if isUpdatedSystemApp() is true
+         final boolean isUserApp = !pkgState.isSystem();
+ 
++        GosPackageState unfilteredGosPs = pkgState.getUserStateOrDefault(userId).getGosPackageState();
++        // GosPackageState that is filtered for the target app
++        GosPackageState gosPs = GosPackageStatePmHooks.getFiltered(pmComputer, pkgState, unfilteredGosPs,
++                appUid, pid, userId);
++
++        ApplicationInfo appInfo =
++                requireNonNull(pmComputer.getApplicationInfo(packageName, 0L, userId));
++
+         int[] flagsArr = new int[AppBindArgs.FLAGS_ARRAY_LEN];
+ 
+         var b = new Bundle();
++        b.putParcelable(AppBindArgs.KEY_GOS_PACKAGE_STATE, gosPs);
+         b.putIntArray(AppBindArgs.KEY_FLAGS_ARRAY, flagsArr);
+ 
+         return b;
+diff --git a/services/core/java/com/android/server/pm/DeletePackageHelper.java b/services/core/java/com/android/server/pm/DeletePackageHelper.java
+index 851bd6011538..f3bf2d1208c6 100644
+--- a/services/core/java/com/android/server/pm/DeletePackageHelper.java
++++ b/services/core/java/com/android/server/pm/DeletePackageHelper.java
+@@ -44,6 +44,7 @@ import android.app.ApplicationExitInfo;
+ import android.content.Intent;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.Flags;
++import android.content.pm.GosPackageState;
+ import android.content.pm.IPackageDeleteObserver2;
+ import android.content.pm.PackageInstaller;
+ import android.content.pm.PackageManager;
+@@ -624,6 +625,15 @@ final class DeletePackageHelper {
+                     ? 0
+                     : ps.getUserStateOrDefault(nextUserId).getFirstInstallTimeMillis();
+ 
++            // Preserve GosPackageState if archiving an app.
++            final android.content.pm.GosPackageState gosPackageState;
++            if ((flags & (PackageManager.DELETE_KEEP_DATA | PackageManager.DELETE_ARCHIVE))
++                    == (PackageManager.DELETE_KEEP_DATA | PackageManager.DELETE_ARCHIVE)) {
++                gosPackageState = ps.getUserStateOrDefault(nextUserId).getGosPackageState();
++            } else {
++                gosPackageState = GosPackageState.DEFAULT;
++            }
++
+             // Preserve App Lock state in case of DELETE_KEEP_DATA
+             final boolean appLockEnablementState = android.security.Flags.appLockApis()
+                     && (flags & PackageManager.DELETE_KEEP_DATA) != 0
+@@ -639,6 +649,7 @@ final class DeletePackageHelper {
+                     true /*stopped*/,
+                     true /*notLaunched*/,
+                     false /*hidden*/,
++                    gosPackageState,
+                     0 /*distractionFlags*/,
+                     null /*suspendParams*/,
+                     false /*instantApp*/,
+diff --git a/services/core/java/com/android/server/pm/GosPackageStatePermission.java b/services/core/java/com/android/server/pm/GosPackageStatePermission.java
+new file mode 100644
+index 000000000000..1013ec825b42
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/GosPackageStatePermission.java
+@@ -0,0 +1,245 @@
++package com.android.server.pm;
++
++import android.annotation.AppIdInt;
++import android.annotation.IntDef;
++import android.content.pm.GosPackageState;
++import android.content.pm.GosPackageStateFlag;
++import android.os.Build;
++import android.os.UserHandle;
++import android.util.Slog;
++
++import com.android.server.pm.pkg.PackageStateInternal;
++
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++
++import static com.android.internal.util.Preconditions.checkState;
++
++class GosPackageStatePermission {
++    static final String TAG = "GosPackageStatePermission";
++
++    // bitmask of flags that can be read/written
++    private final long readFlagStorage1;
++    private final long writeFlagStorage1;
++
++    static final int FIELD_STORAGE_SCOPES = 0;
++    static final int FIELD_CONTACT_SCOPES = 1;
++    static final int FIELD_PACKAGE_FLAGS = 2;
++
++    @IntDef(prefix = "FIELD_", value = {
++            FIELD_STORAGE_SCOPES, FIELD_CONTACT_SCOPES, FIELD_PACKAGE_FLAGS
++    })
++    @Retention(RetentionPolicy.SOURCE)
++    @interface Field {}
++
++    // bitmask of fields that can be read/written
++    private final int readFields;
++    private final int writeFields;
++
++    private final int crossUserPermissions;
++
++    static final int ALLOW_CROSS_USER_PROFILE_READS = 0;
++    static final int ALLOW_CROSS_USER_PROFILE_WRITES = 1;
++    static final int ALLOW_CROSS_ANY_USER_READS = 2;
++    static final int ALLOW_CROSS_ANY_USER_WRITES = 3;
++
++    @IntDef(prefix = "ALLOW_CROSS_", value = {
++            ALLOW_CROSS_USER_PROFILE_READS, ALLOW_CROSS_USER_PROFILE_WRITES,
++            ALLOW_CROSS_ANY_USER_READS, ALLOW_CROSS_ANY_USER_WRITES,
++    })
++    @interface CrossUserPermission {}
++
++    private GosPackageStatePermission(long readFlagStorage1, long writeFlagStorage1,
++                                      int readFields, int writeFields,
++                                      int crossUserPermissions) {
++        this.readFlagStorage1 = readFlagStorage1;
++        this.writeFlagStorage1 = writeFlagStorage1;
++        this.readFields = readFields;
++        this.writeFields = writeFields;
++        this.crossUserPermissions = crossUserPermissions;
++    }
++
++    static GosPackageStatePermission createFull() {
++        return new GosPackageStatePermission(-1, -1, -1, -1, -1);
++    }
++
++    boolean canReadField(@Field int field) {
++        return (readFields & (1 << field)) != 0;
++    }
++
++    boolean canWriteField(@Field int field) {
++        return (writeFields & (1 << field)) != 0;
++    }
++
++    boolean hasCrossUserPermission(@CrossUserPermission int perm) {
++        return (crossUserPermissions & (1 << perm)) != 0;
++    }
++
++    static class Builder {
++        private long readFlagStorage1;
++        private long writeFlagStorage1;
++
++        private int readFields;
++        private int writeFields;
++
++        private int crossUserPerms;
++
++        Builder readFlag(@GosPackageStateFlag.Enum int flag) {
++            readFlagStorage1 |= (1L << flag);
++            return this;
++        }
++
++        Builder readFlags(@GosPackageStateFlag.Enum int... flags) {
++            for (int flag : flags) {
++                readFlagStorage1 |= (1L << flag);
++            }
++            return this;
++        }
++
++        Builder readWriteFlag(@GosPackageStateFlag.Enum int flag) {
++            readFlagStorage1 |= (1L << flag);
++            writeFlagStorage1 |= (1L << flag);
++            return this;
++        }
++
++        Builder readWriteFlags(@GosPackageStateFlag.Enum int... flags) {
++            for (int flag : flags) {
++                readFlagStorage1 |= (1L << flag);
++                writeFlagStorage1 |= (1L << flag);
++            }
++            return this;
++        }
++
++        Builder readField(@Field int field) {
++            readFields |= (1 << field);
++            return this;
++        }
++
++        Builder readFields(@Field int... fields) {
++            for (int field : fields) {
++                readFields |= (1 << field);
++            }
++            return this;
++        }
++
++        Builder readWriteField(@Field int field) {
++            readFields |= (1 << field);
++            writeFields |= (1 << field);
++            return this;
++        }
++
++        Builder readWriteFields(@Field int... fields) {
++            for (int field : fields) {
++                readFields |= (1 << field);
++                writeFields |= (1 << field);
++            }
++            return this;
++        }
++
++        Builder crossUserPermission(@CrossUserPermission int perm) {
++            crossUserPerms |= (1 << perm);
++            return this;
++        }
++
++        Builder crossUserPermissions(@CrossUserPermission int... perms) {
++            for (int perm : perms) {
++                crossUserPerms |= (1 << perm);
++            }
++            return this;
++        }
++
++        GosPackageStatePermission create() {
++            return new GosPackageStatePermission(readFlagStorage1, writeFlagStorage1, readFields, writeFields,
++                    crossUserPerms);
++        }
++
++        void apply(String pkgName, Computer computer) {
++            PackageStateInternal psi = computer.getPackageStateInternal(pkgName);
++            if (psi == null || !psi.isSystem()) {
++                String msg = pkgName + " is not a system package";
++                Slog.d(TAG, msg);
++                if (Build.IS_DEBUGGABLE) {
++                    throw new IllegalStateException(msg);
++                }
++                return;
++            }
++            apply(psi.getAppId());
++        }
++
++        void apply(@AppIdInt int appId) {
++            if (Build.IS_DEBUGGABLE) {
++                checkState(GosPackageStatePermissions.grantedPermissions.get(appId) == null);
++            }
++            GosPackageStatePermissions.grantedPermissions.put(appId, create());
++        }
++    }
++
++    boolean canWrite() {
++        return writeFlagStorage1 != 0L || writeFields != 0L;
++    }
++
++    boolean checkCrossUserPermissions(int callingUid, int targetUserId, boolean forWrite) {
++        int callingUserId = UserHandle.getUserId(callingUid);
++
++        if (targetUserId == callingUserId) {
++            // caller and target are in the same userId
++            return true;
++        }
++
++        final int crossAnyUserFlag = forWrite?
++                ALLOW_CROSS_ANY_USER_WRITES : ALLOW_CROSS_ANY_USER_READS;
++
++        if (hasCrossUserPermission(crossAnyUserFlag)) {
++            // caller is allowed to access any user
++            return true;
++        }
++
++        final int crossProfileFlag = forWrite?
++                ALLOW_CROSS_USER_PROFILE_WRITES : ALLOW_CROSS_USER_PROFILE_READS;
++
++        if (hasCrossUserPermission(crossProfileFlag)) {
++            if (GosPackageStatePermissions.userManager.getProfileParentId(targetUserId) == callingUserId) {
++                // caller is allowed to access its child profile
++                return true;
++            }
++        }
++
++        Slog.d(TAG, "not allowed to access userId " + targetUserId + " from uid " + callingUid);
++        return false;
++    }
++
++    GosPackageState filterRead(GosPackageState ps) {
++        var default_ = GosPackageState.DEFAULT;
++        var res = new GosPackageState(ps.flagStorage1 & readFlagStorage1
++                , canReadField(FIELD_PACKAGE_FLAGS) ? ps.packageFlagStorage : default_.packageFlagStorage
++                , canReadField(FIELD_STORAGE_SCOPES) ? ps.storageScopes : default_.storageScopes
++                , canReadField(FIELD_CONTACT_SCOPES) ? ps.contactScopes : default_.contactScopes
++        );
++        if (default_.equals(res)) {
++            return default_;
++        }
++        // derivedFlags are intentionally not filtered, see its javadoc
++        res.derivedFlags = ps.derivedFlags;
++        return res;
++    }
++
++    GosPackageState filterWrite(GosPackageState current, GosPackageState update) {
++        long flagStorage1 = (current.flagStorage1 & ~writeFlagStorage1) | (update.flagStorage1 & writeFlagStorage1);
++
++        // flags that can't be unset
++        long oneWayFlags1 = (1L << GosPackageStateFlag.PLAY_INTEGRITY_API_USED_AT_LEAST_ONCE);
++        flagStorage1 |= current.flagStorage1 & oneWayFlags1;
++
++        var res = new GosPackageState(
++                flagStorage1
++                , canWriteField(FIELD_PACKAGE_FLAGS) ? update.packageFlagStorage : current.packageFlagStorage
++                , canWriteField(FIELD_STORAGE_SCOPES) ? update.storageScopes : current.storageScopes
++                , canWriteField(FIELD_CONTACT_SCOPES) ? update.contactScopes : current.contactScopes
++        );
++        var default_ = GosPackageState.DEFAULT;
++        if (default_.equals(res)) {
++            return default_;
++        }
++        return res;
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/GosPackageStatePermissions.java b/services/core/java/com/android/server/pm/GosPackageStatePermissions.java
+new file mode 100644
+index 000000000000..a13b15fb3a0b
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/GosPackageStatePermissions.java
+@@ -0,0 +1,235 @@
++package com.android.server.pm;
++
++import android.annotation.Nullable;
++import android.app.PropertyInvalidatedCache;
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.pm.GosPackageStateFlag;
++import android.ext.KnownSystemPackages;
++import android.os.Build;
++import android.os.Process;
++import android.os.UserHandle;
++import android.permission.PermissionManager;
++import android.util.EmptyArray;
++import android.util.Slog;
++import android.util.SparseArray;
++
++import com.android.internal.gmscompat.GmsCompatApp;
++import com.android.server.LocalServices;
++
++import java.util.Objects;
++
++import static android.content.pm.GosPackageStateFlag.ALLOW_ACCESS_TO_OBB_DIRECTORY;
++import static android.content.pm.GosPackageStateFlag.BLOCK_NATIVE_DEBUGGING;
++import static android.content.pm.GosPackageStateFlag.BLOCK_NATIVE_DEBUGGING_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.BLOCK_NATIVE_DEBUGGING_SUPPRESS_NOTIF;
++import static android.content.pm.GosPackageStateFlag.BLOCK_PLAY_INTEGRITY_API;
++import static android.content.pm.GosPackageStateFlag.CONTACT_SCOPES_ENABLED;
++import static android.content.pm.GosPackageStateFlag.ENABLE_EXPLOIT_PROTECTION_COMPAT_MODE;
++import static android.content.pm.GosPackageStateFlag.FORCE_MEMTAG;
++import static android.content.pm.GosPackageStateFlag.FORCE_MEMTAG_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.FORCE_MEMTAG_SUPPRESS_NOTIF;
++import static android.content.pm.GosPackageStateFlag.PLAY_INTEGRITY_API_USED_AT_LEAST_ONCE;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_MEMORY_DYN_CODE_LOADING;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_MEMORY_DYN_CODE_LOADING_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_MEMORY_DYN_CODE_LOADING_SUPPRESS_NOTIF;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_STORAGE_DYN_CODE_LOADING;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_STORAGE_DYN_CODE_LOADING_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_STORAGE_DYN_CODE_LOADING_SUPPRESS_NOTIF;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_WEBVIEW_DYN_CODE_LOADING;
++import static android.content.pm.GosPackageStateFlag.RESTRICT_WEBVIEW_DYN_CODE_LOADING_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.STORAGE_SCOPES_ENABLED;
++import static android.content.pm.GosPackageStateFlag.SUPPRESS_PLAY_INTEGRITY_API_NOTIF;
++import static android.content.pm.GosPackageStateFlag.USE_EXEC_SPAWNING;
++import static android.content.pm.GosPackageStateFlag.USE_EXEC_SPAWNING_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.USE_EXTENDED_VA_SPACE;
++import static android.content.pm.GosPackageStateFlag.USE_EXTENDED_VA_SPACE_NON_DEFAULT;
++import static android.content.pm.GosPackageStateFlag.USE_HARDENED_MALLOC;
++import static android.content.pm.GosPackageStateFlag.USE_HARDENED_MALLOC_NON_DEFAULT;
++import static com.android.server.pm.GosPackageStatePermission.ALLOW_CROSS_USER_PROFILE_READS;
++import static com.android.server.pm.GosPackageStatePermission.ALLOW_CROSS_USER_PROFILE_WRITES;
++import static com.android.server.pm.GosPackageStatePermission.FIELD_CONTACT_SCOPES;
++import static com.android.server.pm.GosPackageStatePermission.FIELD_PACKAGE_FLAGS;
++import static com.android.server.pm.GosPackageStatePermission.FIELD_STORAGE_SCOPES;
++
++class GosPackageStatePermissions {
++    private static final String TAG = "GosPackageStatePermissions";
++    // Permission that each package has for accessing its own GosPackageState
++    private static GosPackageStatePermission selfAccessPermission;
++    private static GosPackageStatePermission fullPermission;
++    private static int myPid;
++    // Maps app's appId to its permission.
++    // Written only during PackageManager init, no need to synchronize reads
++    static SparseArray<GosPackageStatePermission> grantedPermissions;
++    static UserManagerInternal userManager;
++
++    static final int UNKNOWN_CALLING_PID = 0;
++
++    static void init(PackageManagerService pm) {
++        myPid = Process.myPid();
++
++        @GosPackageStateFlag.Enum int[] playIntegrityFlags = {
++                PLAY_INTEGRITY_API_USED_AT_LEAST_ONCE,
++                BLOCK_PLAY_INTEGRITY_API,
++                SUPPRESS_PLAY_INTEGRITY_API_NOTIF,
++        };
++
++        selfAccessPermission = builder()
++                .readFlags(STORAGE_SCOPES_ENABLED, ALLOW_ACCESS_TO_OBB_DIRECTORY,
++                        CONTACT_SCOPES_ENABLED)
++                .readFlags(playIntegrityFlags)
++                .readWriteFlag(PLAY_INTEGRITY_API_USED_AT_LEAST_ONCE)
++                .create();
++
++        grantedPermissions = new SparseArray<>();
++
++        GosPackageStatePermission full = GosPackageStatePermission.createFull();
++        fullPermission = full;
++
++        grantedPermissions.put(Process.SHELL_UID, full);
++        if (Build.isDebuggable()) {
++            // for root adb
++            grantedPermissions.put(Process.ROOT_UID, full);
++        }
++        Computer computer = pm.snapshotComputer();
++
++        KnownSystemPackages ksp = KnownSystemPackages.get(pm.getContext());
++        builder()
++                .readFlag(STORAGE_SCOPES_ENABLED)
++                .readField(FIELD_STORAGE_SCOPES)
++                .apply(ksp.mediaProvider, computer);
++        builder()
++                .readFlag(CONTACT_SCOPES_ENABLED)
++                .readField(FIELD_CONTACT_SCOPES)
++                .apply(ksp.contactsProvider, computer);
++        builder()
++                .readFlags(STORAGE_SCOPES_ENABLED, CONTACT_SCOPES_ENABLED)
++                // user profiles are handled by the launcher instance in profile parent user
++                .crossUserPermission(ALLOW_CROSS_USER_PROFILE_READS)
++                .apply(ksp.launcher, computer);
++        builder()
++                .readWriteFlags(STORAGE_SCOPES_ENABLED, CONTACT_SCOPES_ENABLED)
++                .readWriteFields(FIELD_STORAGE_SCOPES, FIELD_CONTACT_SCOPES,
++                        FIELD_PACKAGE_FLAGS)
++                // in some cases PermissionController handles user profile from profile parent user
++                .crossUserPermission(ALLOW_CROSS_USER_PROFILE_READS)
++                .apply(ksp.permissionController, computer);
++        builder()
++                .readFlags(playIntegrityFlags)
++                .readWriteFlag(SUPPRESS_PLAY_INTEGRITY_API_NOTIF)
++                .apply(GmsCompatApp.PKG_NAME, computer);
++
++        @GosPackageStateFlag.Enum int[] settingsReadWriteFlags = {
++                ALLOW_ACCESS_TO_OBB_DIRECTORY,
++                BLOCK_NATIVE_DEBUGGING_NON_DEFAULT,
++                BLOCK_NATIVE_DEBUGGING,
++                BLOCK_NATIVE_DEBUGGING_SUPPRESS_NOTIF,
++                RESTRICT_MEMORY_DYN_CODE_LOADING_NON_DEFAULT,
++                RESTRICT_MEMORY_DYN_CODE_LOADING,
++                RESTRICT_MEMORY_DYN_CODE_LOADING_SUPPRESS_NOTIF,
++                RESTRICT_STORAGE_DYN_CODE_LOADING_NON_DEFAULT,
++                RESTRICT_STORAGE_DYN_CODE_LOADING,
++                RESTRICT_STORAGE_DYN_CODE_LOADING_SUPPRESS_NOTIF,
++                RESTRICT_WEBVIEW_DYN_CODE_LOADING_NON_DEFAULT,
++                RESTRICT_WEBVIEW_DYN_CODE_LOADING,
++                USE_HARDENED_MALLOC_NON_DEFAULT,
++                USE_HARDENED_MALLOC,
++                USE_EXTENDED_VA_SPACE_NON_DEFAULT,
++                USE_EXTENDED_VA_SPACE,
++                FORCE_MEMTAG_NON_DEFAULT,
++                FORCE_MEMTAG,
++                FORCE_MEMTAG_SUPPRESS_NOTIF,
++                USE_EXEC_SPAWNING_NON_DEFAULT,
++                USE_EXEC_SPAWNING,
++                ENABLE_EXPLOIT_PROTECTION_COMPAT_MODE,
++        };
++        builder()
++                .readWriteFlags(settingsReadWriteFlags)
++                .readWriteFlags(playIntegrityFlags)
++                .readFlags(STORAGE_SCOPES_ENABLED, CONTACT_SCOPES_ENABLED)
++                .readFields(FIELD_PACKAGE_FLAGS)
++                .crossUserPermission(ALLOW_CROSS_USER_PROFILE_READS)
++                .crossUserPermission(ALLOW_CROSS_USER_PROFILE_WRITES)
++                // note that this applies to all packages that run in the android.uid.system sharedUserId,
++                // not just the Settings app.
++                .apply(ksp.settings, computer);
++
++        userManager = Objects.requireNonNull(LocalServices.getService(UserManagerInternal.class));
++
++        registerDevModeReceiver(pm);
++    }
++
++    @Nullable
++    static GosPackageStatePermission get(int callingUid, int callingPid, int targetAppId, int targetUserId, boolean forWrite) {
++        if (callingUid == android.os.Process.SYSTEM_UID && callingPid == myPid) {
++            return fullPermission;
++        }
++        int callingAppId = UserHandle.getAppId(callingUid);
++        GosPackageStatePermission permission = grantedPermissions.get(callingAppId);
++
++        if (permission == null) {
++            if (targetAppId == callingAppId) {
++                permission = selfAccessPermission;
++            } else {
++                Slog.d(TAG, "uid " + callingUid + " doesn't have permission to " +
++                        "access GosPackageState of other packages");
++                return null;
++            }
++        }
++        if (forWrite && !permission.canWrite()) {
++            return null;
++        }
++        if (!permission.checkCrossUserPermissions(callingUid, targetUserId, forWrite)) {
++            return null;
++        }
++        return permission;
++    }
++
++    private static void registerDevModeReceiver(PackageManagerService pm) {
++        if (!Build.IS_DEBUGGABLE) {
++            return;
++        }
++
++        var receiver = new BroadcastReceiver() {
++            @Override
++            public void onReceive(Context context, Intent i) {
++                builder()
++                        .readFlags(flagsArr(i, "readFlags"))
++                        .readWriteFlags(flagsArr(i, "readWriteFlags"))
++                        .readFields(intArr(i, "readFields"))
++                        .readWriteFields(intArr(i, "readWriteFields"))
++                        .crossUserPermissions(intArr(i, "crossUserPermissions"))
++                        .apply(i.getStringExtra("pkgName"), pm.snapshotComputer());
++
++                PackageManagerService.invalidatePackageInfoCache(PackageMetrics.INVALIDATION_REASON_UNSPECIFIED);
++                Slog.d(TAG, "granted permission " + i.getExtras());
++            }
++
++            private static int[] flagsArr(Intent intent, String name) {
++                String[] strings = intent.getStringArrayExtra(name);
++                if (strings == null) {
++                    return EmptyArray.INT;
++                }
++
++                int[] res = new int[strings.length];
++                for (int i = 0; i < strings.length; ++i) {
++                    res[i] = GosPackageStateUtils.parseFlag(strings[i]);
++                }
++                return res;
++            }
++
++            private static int[] intArr(Intent i, String name) {
++                int[] res = i.getIntArrayExtra(name);
++                return res != null ? res : EmptyArray.INT;
++            }
++        };
++        pm.getContext().registerReceiver(receiver, new IntentFilter("GosPackageState.grant_permission"),
++                Context.RECEIVER_EXPORTED);
++    }
++
++    private static GosPackageStatePermission.Builder builder() {
++        return new GosPackageStatePermission.Builder();
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/GosPackageStatePersistence.java b/services/core/java/com/android/server/pm/GosPackageStatePersistence.java
+new file mode 100644
+index 000000000000..ee90810b457c
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/GosPackageStatePersistence.java
+@@ -0,0 +1,121 @@
++package com.android.server.pm;
++
++import android.annotation.Nullable;
++import android.content.pm.GosPackageState;
++import android.content.pm.GosPackageStateFlag;
++import android.util.Slog;
++
++import com.android.modules.utils.TypedXmlPullParser;
++import com.android.modules.utils.TypedXmlSerializer;
++import com.android.server.pm.pkg.PackageUserStateInternal;
++
++import org.xmlpull.v1.XmlPullParserException;
++
++import java.io.IOException;
++
++class GosPackageStatePersistence {
++    private static final String TAG = "GosPackageStatePersistence";
++
++    public static final String TAG_GOS_PACKAGE_STATE = "GrapheneOS-package-state";
++    private static final String ATTR_FLAG_STORAGE_1 = "flags-1";
++    private static final String ATTR_PACKAGE_FLAG_STORAGE = "package-flags";
++    private static final String ATTR_STORAGE_SCOPES = "storage-scopes";
++    private static final String ATTR_CONTACT_SCOPES = "contact-scopes";
++
++    /** @see Settings#writePackageRestrictions */
++    static void serialize(PackageUserStateInternal packageUserState, TypedXmlSerializer serializer) throws IOException {
++        GosPackageState ps = packageUserState.getGosPackageState();
++        if (GosPackageState.DEFAULT.equals(ps)) {
++            return;
++        }
++        serializer.startTag(null, TAG_GOS_PACKAGE_STATE);
++        serializeInner(ps, serializer);
++        serializer.endTag(null, TAG_GOS_PACKAGE_STATE);
++    }
++
++    private static void serializeInner(GosPackageState ps, TypedXmlSerializer serializer) throws IOException {
++        long flagStorage1 = ps.flagStorage1;
++        if (flagStorage1 != 0L) {
++            serializer.attributeLong(null, ATTR_FLAG_STORAGE_1, flagStorage1);
++        }
++        if (ps.hasFlag(GosPackageStateFlag.STORAGE_SCOPES_ENABLED)) {
++            byte[] s = ps.storageScopes;
++            if (s != null) {
++                serializer.attributeBytesHex(null, ATTR_STORAGE_SCOPES, s);
++            }
++        }
++        if (ps.hasFlag(GosPackageStateFlag.CONTACT_SCOPES_ENABLED)) {
++            byte[] s = ps.contactScopes;
++            if (s != null) {
++                serializer.attributeBytesHex(null, ATTR_CONTACT_SCOPES, s);
++            }
++        }
++        long packageFlagStorage = ps.packageFlagStorage;
++        if (packageFlagStorage != 0L) {
++            serializer.attributeLong(null, ATTR_PACKAGE_FLAG_STORAGE, ps.packageFlagStorage);
++        }
++    }
++
++    static GosPackageState deserialize(TypedXmlPullParser parser) throws XmlPullParserException {
++        long flagStorage1 = 0L;
++        long packageFlagStorage = 0L;
++        byte[] storageScopes = null;
++        byte[] contactScopes = null;
++
++        for (int i = 0, numAttr = parser.getAttributeCount(); i < numAttr; ++i) {
++            String attr = parser.getAttributeName(i);
++            switch (attr) {
++                case ATTR_FLAG_STORAGE_1 ->
++                    flagStorage1 = parser.getAttributeLong(i);
++                case ATTR_PACKAGE_FLAG_STORAGE ->
++                    packageFlagStorage = parser.getAttributeLong(i);
++                case ATTR_STORAGE_SCOPES ->
++                    storageScopes = parser.getAttributeBytesHex(i);
++                case ATTR_CONTACT_SCOPES ->
++                    contactScopes = parser.getAttributeBytesHex(i);
++                default ->
++                    Slog.e(TAG, "deserialize: unknown attribute " + attr);
++            }
++        }
++        return new GosPackageState(flagStorage1, packageFlagStorage, storageScopes, contactScopes);
++    }
++
++    // Compatibility with legacy serialized GosPackageState.
++    @Nullable
++    static GosPackageState maybeDeserializeLegacy(TypedXmlPullParser parser) {
++        int legacyFlags = parser.getAttributeInt(null, "GrapheneOS-flags", 0);
++        if (legacyFlags == 0) {
++            return null;
++        }
++        long flagStorage1 = migrateLegacyFlags(legacyFlags);
++        long packageFlagStorage = parser.getAttributeLong(null, "GrapheneOS-package-flags", 0L);
++        byte[] storageScopes = parser.getAttributeBytesHex(null, "GrapheneOS-storage-scopes", null);
++        byte[] contactScopes = parser.getAttributeBytesHex(null, "GrapheneOS-contact-scopes", null);
++        return new GosPackageState(flagStorage1, packageFlagStorage, storageScopes, contactScopes);
++    }
++
++    private static long migrateLegacyFlags(int flags) {
++        final int FLAG_DISABLE_HARDENED_MALLOC = 1 << 2;
++        if ((flags & FLAG_DISABLE_HARDENED_MALLOC) != 0) {
++            flags &= ~(1 << GosPackageStateFlag.USE_HARDENED_MALLOC);
++            flags |= (1 << GosPackageStateFlag.USE_HARDENED_MALLOC_NON_DEFAULT);
++        }
++
++        final int FLAG_ENABLE_COMPAT_VA_39_BIT = 1 << 3;
++        if ((flags & FLAG_ENABLE_COMPAT_VA_39_BIT) != 0) {
++            flags &= ~(1 << GosPackageStateFlag.USE_EXTENDED_VA_SPACE);
++            flags |= (1 << GosPackageStateFlag.USE_EXTENDED_VA_SPACE_NON_DEFAULT);
++        }
++
++        final int FLAG_DO_NOT_SHOW_RELAX_APP_HARDENING_NOTIFICATION = 1 << 4;
++        final int FLAG_HAS_PACKAGE_FLAGS = 1 << 25;
++
++        final int unusedFlags = FLAG_DISABLE_HARDENED_MALLOC
++                | FLAG_ENABLE_COMPAT_VA_39_BIT
++                | FLAG_DO_NOT_SHOW_RELAX_APP_HARDENING_NOTIFICATION
++                | FLAG_HAS_PACKAGE_FLAGS;
++
++        // clear unused flags
++        return flags & ~unusedFlags;
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/GosPackageStatePmHooks.java b/services/core/java/com/android/server/pm/GosPackageStatePmHooks.java
+new file mode 100644
+index 000000000000..4a8c2b52a80c
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/GosPackageStatePmHooks.java
+@@ -0,0 +1,413 @@
++package com.android.server.pm;
++
++import android.Manifest;
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.app.ActivityManager;
++import android.app.ActivityManagerInternal;
++import android.content.pm.GosPackageState;
++import android.content.pm.GosPackageStateFlag;
++import android.ext.KnownSystemPackages;
++import android.ext.DerivedPackageFlag;
++import android.os.Binder;
++import android.os.Process;
++import android.os.RemoteException;
++import android.os.ShellCommand;
++import android.os.UserHandle;
++import android.util.Slog;
++
++import com.android.internal.pm.parsing.pkg.AndroidPackageInternal;
++import com.android.internal.pm.pkg.component.ParsedUsesPermission;
++import com.android.server.LocalServices;
++import com.android.server.pm.PackageManagerLocal.GosPackageStateChangeCallback;
++import com.android.server.pm.pkg.AndroidPackage;
++import com.android.server.pm.pkg.PackageStateInternal;
++import com.android.server.pm.pkg.PackageUserStateInternal;
++import com.android.server.pm.pkg.SharedUserApi;
++import com.android.server.utils.Slogf;
++
++import java.util.List;
++import java.util.concurrent.CopyOnWriteArrayList;
++
++import static android.content.pm.GosPackageState.*;
++import static com.android.server.pm.GosPackageStateUtils.parseFlag;
++
++public class GosPackageStatePmHooks {
++    private static final String TAG = "GosPackageStatePmHooks";
++
++    private final PackageManagerService pkgManager;
++
++    private final CopyOnWriteArrayList<GosPackageStateChangeCallback> changeCallbacks = new CopyOnWriteArrayList<>();
++
++    GosPackageStatePmHooks(PackageManagerService pkgManager) {
++        this.pkgManager = pkgManager;
++    }
++
++    void init() {
++        GosPackageStatePermissions.init(pkgManager);
++    }
++
++    @NonNull
++    GosPackageState getUnfiltered(String packageName, int userId) {
++        return getUnfiltered(pkgManager.snapshotComputer(), packageName, userId);
++    }
++
++    @NonNull
++    private static GosPackageState getUnfiltered(Computer snapshot, String packageName, int userId) {
++        PackageStateInternal psi = snapshot.getPackageStates().get(packageName);
++        if (psi == null) {
++            return NONE;
++        }
++        return psi.getUserStateOrDefault(userId).getGosPackageState();
++    }
++
++    @NonNull
++    GosPackageState getFiltered(int callingUid, int callingPid, String packageName, int userId) {
++        Computer pmComputer = pkgManager.snapshotComputer();
++        PackageStateInternal packageState = pmComputer.getPackageStates().get(packageName);
++        if (packageState == null) {
++            // the package was likely racily uninstalled
++            return NONE;
++        }
++        return getFiltered(pmComputer, packageState,
++                packageState.getUserStateOrDefault(userId).getGosPackageState(),
++                callingUid, callingPid, userId);
++    }
++
++    @NonNull
++    public static GosPackageState getFiltered(Computer pmComputer,
++                                      PackageStateInternal packageState, GosPackageState gosPs,
++                                      int callingUid, int callingPid, int userId) {
++        final int appId = packageState.getAppId();
++
++        GosPackageStatePermission permission = GosPackageStatePermissions.get(callingUid, callingPid, appId, userId, false);
++        if (permission == null) {
++            return NONE;
++        }
++
++        maybeDeriveFlags(pmComputer, gosPs, packageState);
++        return permission.filterRead(gosPs);
++    }
++
++    boolean set(final int callingUid, final int callingPid,
++                       String packageName, int userId,
++                       GosPackageState update, int editorFlags) {
++        final int appId;
++        final int uid;
++        final GosPackageState updatedGosPs;
++
++        final PackageManagerService pm = pkgManager;
++        synchronized (pm.mLock) {
++            PackageSetting packageSetting = pm.mSettings.getPackageLPr(packageName);
++            if (packageSetting == null) {
++                Slogf.d(TAG, "set: no packageSetting for %s", packageName);
++                return false;
++            }
++
++            appId = packageSetting.getAppId();
++
++            // Packages with this appId use the "android.uid.system" sharedUserId, which is expensive
++            // to deal with due to the large number of packages that it includes (see GosPackageState
++            // doc). These packages have no need for GosPackageState.
++            if (appId == Process.SYSTEM_UID) {
++                Slogf.d(TAG, "set: appId of %s == SYSTEM_UID", packageName);
++                return false;
++            }
++
++            GosPackageStatePermission permission = GosPackageStatePermissions.get(
++                    callingUid, callingPid, appId, userId, true);
++
++            if (permission == null) {
++                Slog.d(TAG, "no write permission");
++                return false;
++            }
++
++            PackageUserStateInternal userState = packageSetting.getUserStates().get(userId);
++            if (userState == null) {
++                Slog.d(TAG, "no user state");
++                return false;
++            }
++
++            GosPackageState currentGosPs = userState.getGosPackageState();
++            updatedGosPs = permission.filterWrite(currentGosPs, update);
++
++            SharedUserSetting sharedUser = pm.mSettings.getSharedUserSettingLPr(packageSetting);
++
++            if (sharedUser != null) {
++                List<AndroidPackage> sharedPkgs = sharedUser.getPackages();
++
++                // see GosPackageState doc
++                for (AndroidPackage sharedPkg : sharedPkgs) {
++                    PackageSetting sharedPkgSetting = pm.mSettings.getPackageLPr(sharedPkg.getPackageName());
++                    if (sharedPkgSetting != null) {
++                        sharedPkgSetting.setGosPackageState(userId, updatedGosPs);
++                    }
++                }
++            } else {
++                packageSetting.setGosPackageState(userId, updatedGosPs);
++            }
++
++            // will invalidate app-side caches (GosPackageState.sCache)
++            pm.scheduleWritePackageRestrictions(userId);
++
++            uid = UserHandle.getUid(userId, appId);
++
++            // changeCallbacks is a CopyOnWriteArrayList, no need for external synchronization
++            for (GosPackageStateChangeCallback callback : changeCallbacks) {
++                callback.getHandler().post(() ->
++                        callback.onGosPackageStateChanged(uid, updatedGosPs, userId));
++            }
++        }
++        Slogf.i(TAG, "set: callingUid: %s, uid: %s, pkgName: %s, value: %s", callingUid, uid, packageName, updatedGosPs);
++
++        if ((editorFlags & EDITOR_FLAG_KILL_UID_AFTER_APPLY) != 0) {
++            final long token = Binder.clearCallingIdentity();
++            try {
++                // important to call outside the 'synchronized (pm.mLock)' section, may deadlock otherwise
++                ActivityManager.getService().killUid(appId, userId, "GosPackageStateChange");
++            } catch (RemoteException e) {
++                e.rethrowAsRuntimeException();
++            } finally {
++                Binder.restoreCallingIdentity(token);
++            }
++        }
++        if ((editorFlags & EDITOR_FLAG_NOTIFY_UID_AFTER_APPLY) != 0) {
++            final long token = Binder.clearCallingIdentity();
++            try {
++                var am = LocalServices.getService(ActivityManagerInternal.class);
++                // New GosPackageState is intentionally not passed since the GosPackageState change
++                // callback is delivered to the app process via a oneway binder call. Oneway binder
++                // calls to frozen processes are queued until the process is unfrozen. Not passing
++                // the GosPackageState also removes the need to maintain ordering between
++                // concurrent GosPackageState changes.
++                am.dispatchGosPackageStateCallbacks(uid);
++            } finally {
++                Binder.restoreCallingIdentity(token);
++            }
++        }
++        return true;
++    }
++
++    public void addChangeCallback(GosPackageStateChangeCallback callback) {
++        synchronized (changeCallbacks) {
++            changeCallbacks.add(callback);
++        }
++    }
++
++    public boolean removeChangeCallback(GosPackageStateChangeCallback callback) {
++        boolean res;
++        synchronized (changeCallbacks) {
++            res = changeCallbacks.remove(callback);
++        }
++        if (!res) {
++            Slog.e(TAG, "removeChangeCallback: callback is not in changeCallbacks list");
++        }
++        return res;
++    }
++
++    private static void maybeDeriveFlags(Computer snapshot, GosPackageState gosPs, PackageStateInternal pkgState) {
++        if ((gosPs.derivedFlags & DerivedPackageFlag.DFLAGS_SET) != 0) {
++            return;
++        }
++
++        if (!gosPs.hasFlag(GosPackageStateFlag.STORAGE_SCOPES_ENABLED) && !gosPs.hasFlag(GosPackageStateFlag.CONTACT_SCOPES_ENABLED)) {
++            return;
++        }
++
++        AndroidPackageInternal pkg = pkgState.getPkg();
++        if (pkg == null) {
++            // see AndroidPackage.pkg javadoc for an explanation
++            return;
++        }
++
++        SharedUserApi sharedUser = null;
++        if (pkgState.hasSharedUser()) {
++            sharedUser = snapshot.getSharedUser(pkgState.getSharedUserAppId());
++        }
++
++        int flags;
++        if (sharedUser != null) {
++            flags = 0;
++            for (AndroidPackage sharedPkg : sharedUser.getPackages()) {
++                // see GosPackageState doc
++                flags = deriveFlags(flags, sharedPkg);
++            }
++        } else {
++            flags = deriveFlags(0, pkg);
++        }
++        gosPs.derivedFlags = flags | DerivedPackageFlag.DFLAGS_SET;
++    }
++
++    private static int deriveFlags(int flags, AndroidPackage pkg) {
++        for (ParsedUsesPermission perm : pkg.getUsesPermissionMapping().values()) {
++            String name = perm.getName();
++            switch (name) {
++                case Manifest.permission.READ_EXTERNAL_STORAGE:
++                case Manifest.permission.WRITE_EXTERNAL_STORAGE: {
++                    boolean writePerm = name.equals(Manifest.permission.WRITE_EXTERNAL_STORAGE);
++                    flags |= writePerm ?
++                            DerivedPackageFlag.HAS_WRITE_EXTERNAL_STORAGE_DECLARATION :
++                            DerivedPackageFlag.HAS_READ_EXTERNAL_STORAGE_DECLARATION;
++
++                    int targetSdk = pkg.getTargetSdkVersion();
++
++                    boolean legacy = targetSdk < 29
++                                || (targetSdk == 29 && pkg.isRequestLegacyExternalStorage());
++
++                    if (writePerm && legacy) {
++                        // when app doesn't have "legacy external storage", WRITE_EXTERNAL_STORAGE
++                        // doesn't grant write access
++                        flags |= DerivedPackageFlag.EXPECTS_STORAGE_WRITE_ACCESS;
++                    }
++
++                    if ((flags & DerivedPackageFlag.EXPECTS_ALL_FILES_ACCESS) == 0) {
++                        if (legacy) {
++                            flags |= (DerivedPackageFlag.EXPECTS_ALL_FILES_ACCESS
++                                    | DerivedPackageFlag.EXPECTS_LEGACY_EXTERNAL_STORAGE);
++                        } else {
++                            flags |= DerivedPackageFlag.EXPECTS_ACCESS_TO_MEDIA_FILES_ONLY;
++                        }
++                    }
++                    continue;
++                }
++
++                case Manifest.permission.MANAGE_EXTERNAL_STORAGE:
++                    flags &= ~DerivedPackageFlag.EXPECTS_ACCESS_TO_MEDIA_FILES_ONLY;
++                    flags |= DerivedPackageFlag.EXPECTS_ALL_FILES_ACCESS
++                            | DerivedPackageFlag.EXPECTS_STORAGE_WRITE_ACCESS
++                            | DerivedPackageFlag.HAS_MANAGE_EXTERNAL_STORAGE_DECLARATION;
++                    continue;
++
++                case Manifest.permission.MANAGE_MEDIA:
++                    flags |= DerivedPackageFlag.HAS_MANAGE_MEDIA_DECLARATION;
++                    continue;
++
++                case Manifest.permission.ACCESS_MEDIA_LOCATION:
++                    flags |= DerivedPackageFlag.HAS_ACCESS_MEDIA_LOCATION_DECLARATION;
++                    continue;
++
++                case Manifest.permission.READ_MEDIA_AUDIO:
++                    flags |= DerivedPackageFlag.HAS_READ_MEDIA_AUDIO_DECLARATION;
++                    continue;
++
++                case Manifest.permission.READ_MEDIA_IMAGES:
++                    flags |= DerivedPackageFlag.HAS_READ_MEDIA_IMAGES_DECLARATION;
++                    continue;
++
++                case Manifest.permission.READ_MEDIA_VIDEO:
++                    flags |= DerivedPackageFlag.HAS_READ_MEDIA_VIDEO_DECLARATION;
++                    continue;
++
++                case Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED:
++                    flags |= DerivedPackageFlag.HAS_READ_MEDIA_VISUAL_USER_SELECTED_DECLARATION;
++                    continue;
++
++                case Manifest.permission.READ_CONTACTS:
++                    flags |= DerivedPackageFlag.HAS_READ_CONTACTS_DECLARATION;
++                    continue;
++
++                case Manifest.permission.WRITE_CONTACTS:
++                    flags |= DerivedPackageFlag.HAS_WRITE_CONTACTS_DECLARATION;
++                    continue;
++
++                case Manifest.permission.GET_ACCOUNTS:
++                    flags |= DerivedPackageFlag.HAS_GET_ACCOUNTS_DECLARATION;
++                    continue;
++            }
++        }
++
++        if ((flags & DerivedPackageFlag.HAS_MANAGE_MEDIA_DECLARATION) != 0) {
++            if ((flags & (DerivedPackageFlag.HAS_READ_EXTERNAL_STORAGE_DECLARATION
++                    | DerivedPackageFlag.HAS_READ_MEDIA_AUDIO_DECLARATION
++                    | DerivedPackageFlag.HAS_READ_MEDIA_IMAGES_DECLARATION
++                    | DerivedPackageFlag.HAS_READ_MEDIA_VIDEO_DECLARATION
++                    | DerivedPackageFlag.HAS_MANAGE_EXTERNAL_STORAGE_DECLARATION)) == 0)
++            {
++                flags &= ~DerivedPackageFlag.HAS_MANAGE_MEDIA_DECLARATION;
++            }
++        }
++
++        if ((flags & DerivedPackageFlag.HAS_MANAGE_MEDIA_DECLARATION) != 0) {
++            flags |= DerivedPackageFlag.EXPECTS_STORAGE_WRITE_ACCESS;
++        }
++
++        if ((flags & DerivedPackageFlag.HAS_ACCESS_MEDIA_LOCATION_DECLARATION) != 0) {
++            if ((flags & (DerivedPackageFlag.HAS_READ_EXTERNAL_STORAGE_DECLARATION
++                    | DerivedPackageFlag.HAS_READ_MEDIA_IMAGES_DECLARATION
++                    | DerivedPackageFlag.HAS_READ_MEDIA_VIDEO_DECLARATION
++                    | DerivedPackageFlag.HAS_MANAGE_EXTERNAL_STORAGE_DECLARATION)) == 0)
++            {
++                flags &= ~DerivedPackageFlag.HAS_ACCESS_MEDIA_LOCATION_DECLARATION;
++            }
++        }
++
++        return flags;
++    }
++
++    /** @see PackageManagerService.IPackageManagerImpl#clearApplicationUserData */
++    public static void onClearApplicationUserData(PackageManagerService pm, String packageName, int userId) {
++        if (packageName.equals(KnownSystemPackages.get(pm.getContext()).contactsProvider)) {
++            // discard IDs that refer to entries in the contacts provider database
++            clearContactScopesStorage(pm, userId);
++        }
++    }
++
++    private static void clearContactScopesStorage(PackageManagerService pm, int userId) {
++        for (PackageStateInternal ps : pm.snapshotComputer().getPackageStates().values()) {
++            PackageUserStateInternal us = ps.getUserStateOrDefault(userId);
++            GosPackageState gosPs = us.getGosPackageState();
++            if (gosPs.contactScopes != null) {
++                gosPs.createEditor(ps.getPackageName(), userId)
++                        .setContactScopes(null)
++                        .apply();
++            }
++        }
++    }
++
++    static int runShellCommand(PackageManagerShellCommand cmd) {
++        String packageName = cmd.getNextArgRequired();
++        int userId = Integer.parseInt(cmd.getNextArgRequired());
++
++        GosPackageState.Editor ed = GosPackageState.edit(packageName, userId);
++        boolean updatePermissionState = false;
++
++        for (;;) {
++            String arg = cmd.getNextArg();
++            if (arg == null) {
++                if (!ed.apply()) {
++                    return 1;
++                }
++                if (updatePermissionState) {
++                    cmd.mPermissionManager.updatePermissionStateAndInvalidateCache(
++                            packageName, userId);
++                }
++                return 0;
++            }
++            switch (arg) {
++                case "add-flag", "clear-flag" ->
++                    ed.setFlagState(parseFlag(cmd.getNextArgRequired()), "add-flag".equals(arg));
++                case "add-package-flag", "clear-package-flag" ->
++                    ed.setPackageFlagState(Integer.parseInt(cmd.getNextArgRequired()),
++                            "add-package-flag".equals(arg));
++                case "set-storage-scopes" ->
++                    ed.setStorageScopes(getByteArrArg(cmd));
++                case "set-contact-scopes" ->
++                    ed.setContactScopes(getByteArrArg(cmd));
++                case "set-kill-uid-after-apply" ->
++                    ed.setKillUidAfterApply(Boolean.parseBoolean(cmd.getNextArgRequired()));
++                case "set-notify-uid-after-apply" ->
++                    ed.setNotifyUidAfterApply(Boolean.parseBoolean(cmd.getNextArgRequired()));
++                case "update-permission-state" ->
++                    updatePermissionState = true;
++                default ->
++                    throw new IllegalArgumentException(arg);
++            }
++        }
++    }
++
++    @Nullable
++    private static byte[] getByteArrArg(ShellCommand cmd) {
++        String s = cmd.getNextArgRequired();
++        return "null".equals(s) ? null : libcore.util.HexEncoding.decode(s);
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/GosPackageStateUtils.java b/services/core/java/com/android/server/pm/GosPackageStateUtils.java
+new file mode 100644
+index 000000000000..d93a2e473b0c
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/GosPackageStateUtils.java
+@@ -0,0 +1,38 @@
++package com.android.server.pm;
++
++import android.content.pm.GosPackageStateFlag;
++
++import java.lang.reflect.Field;
++import java.util.BitSet;
++
++class GosPackageStateUtils {
++    private static volatile BitSet knownFlagsCache;
++
++    static @GosPackageStateFlag.Enum int parseFlag(String s) {
++        if (Character.isDigit(s.charAt(0))) {
++            int value = Integer.parseInt(s);
++            BitSet knownFlags = knownFlagsCache;
++            if (knownFlags == null) {
++                knownFlags = new BitSet();
++                for (Field f : GosPackageStateFlag.class.getDeclaredFields()) {
++                    try {
++                        knownFlags.set(f.getInt(null));
++                    } catch (ReflectiveOperationException e) {
++                        throw new IllegalStateException(e);
++                    }
++                }
++                knownFlagsCache = knownFlags;
++            }
++            if (!knownFlags.get(value)) {
++                throw new IllegalArgumentException(s);
++            }
++            return value;
++        }
++
++        try {
++            return GosPackageStateFlag.class.getDeclaredField(s).getInt(null);
++        } catch (ReflectiveOperationException e) {
++            throw new IllegalArgumentException(e);
++        }
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/PackageManagerLocal.java b/services/core/java/com/android/server/pm/PackageManagerLocal.java
+index 5958e6bd8675..694c24cd278b 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerLocal.java
++++ b/services/core/java/com/android/server/pm/PackageManagerLocal.java
+@@ -21,8 +21,11 @@ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.annotation.SystemApi;
+ import android.annotation.TestApi;
++import android.annotation.UserIdInt;
++import android.content.pm.GosPackageState;
+ import android.content.pm.SigningDetails;
+ import android.os.Binder;
++import android.os.Handler;
+ import android.os.UserHandle;
+ 
+ import com.android.server.pm.pkg.PackageState;
+@@ -34,6 +37,7 @@ import java.lang.annotation.Retention;
+ import java.lang.annotation.RetentionPolicy;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Objects;
+ 
+ /**
+  * In-process API for server side PackageManager related infrastructure.
+@@ -46,6 +50,40 @@ import java.util.Map;
+ @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
+ public interface PackageManagerLocal {
+ 
++    /** @hide */
++    @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
++    abstract class GosPackageStateChangeCallback {
++        private final Handler handler;
++
++        /** @param handler Handler for dispatching {@link #onGosPackageStateChanged} callbacks. */
++        public GosPackageStateChangeCallback(@NonNull Handler handler) {
++            this.handler = Objects.requireNonNull(handler);
++        }
++
++        /** @hide */
++        @NonNull
++        public final Handler getHandler() {
++            return this.handler;
++        }
++
++         /**
++          * Called after each successful GosPackageState update.
++          *
++          * @param uid UID of the package(s). GosPackageState is shared for sharedUid packages.
++          * @param state Updated GosPackageState.
++          * @param userId The user id.
++          */
++        public abstract void onGosPackageStateChanged(int uid, @NonNull GosPackageState state, @UserIdInt int userId);
++    }
++
++    void addGosPackageStateChangeCallback(@NonNull GosPackageStateChangeCallback callback);
++
++    /**
++     * @param callback A callback that was previously registered with {@link #addGosPackageStateChangeCallback}.
++     * @return {@code false} if the callback was missing from the list of callbacks, {@code true} otherwise.
++     */
++    boolean removeGosPackageStateChangeCallback(@NonNull GosPackageStateChangeCallback callback);
++
+     /**
+      * Indicates if operation should include device encrypted storage.
+      */
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index e3d1fd1f251d..fda8ceb52825 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -96,6 +96,7 @@ import android.content.pm.DataLoaderType;
+ import android.content.pm.FallbackCategoryProvider;
+ import android.content.pm.FeatureInfo;
+ import android.content.pm.Flags;
++import android.content.pm.GosPackageState;
+ import android.content.pm.IDexModuleRegisterCallback;
+ import android.content.pm.IOnChecksumsReadyListener;
+ import android.content.pm.IPackageDataObserver;
+@@ -345,6 +346,7 @@ import java.util.function.Predicate;
+  * </pre>
+  */
+ public class PackageManagerService implements PackageSender, TestUtilityService {
++    public final GosPackageStatePmHooks gosPackageStatePmHooks;
+ 
+     static final String TAG = "PackageManager";
+     public static final boolean DEBUG_SETTINGS = false;
+@@ -1902,6 +1904,7 @@ public class PackageManagerService implements PackageSender, TestUtilityService
+     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+     public PackageManagerService(@NonNull PackageManagerServiceInjector injector,
+             @NonNull PackageManagerServiceTestParams testParams) {
++        gosPackageStatePmHooks = new GosPackageStatePmHooks(this);
+         mInjector = injector;
+         mInjector.bootstrap(this);
+         mAppsFilter = injector.getAppsFilter();
+@@ -2017,6 +2020,7 @@ public class PackageManagerService implements PackageSender, TestUtilityService
+             final String partitionsFingerprint, final boolean isEngBuild,
+             final boolean isUserDebugBuild, final int sdkVersion, final String incrementalVersion,
+             final int sdkVersionFull) {
++        gosPackageStatePmHooks = new GosPackageStatePmHooks(this);
+         mIsEngBuild = isEngBuild;
+         mIsUserDebugBuild = isUserDebugBuild;
+         mSdkVersion = sdkVersion;
+@@ -4678,6 +4682,8 @@ public class PackageManagerService implements PackageSender, TestUtilityService
+             dexUseManager.systemReady();
+         }
+ 
++        gosPackageStatePmHooks.init();
++
+         PackageMetrics.logInvalidationMetrics();
+     }
+ 
+@@ -5139,6 +5145,10 @@ public class PackageManagerService implements PackageSender, TestUtilityService
+             mHandler.post(new Runnable() {
+                 public void run() {
+                     mHandler.removeCallbacks(this);
++
++                    GosPackageStatePmHooks.onClearApplicationUserData(
++                            PackageManagerService.this, packageName, userId);
++
+                     final boolean succeeded;
+                     try (PackageFreezer freezer = freezePackage(packageName, userId,
+                             "clearApplicationUserData",
+@@ -7107,6 +7117,22 @@ public class PackageManagerService implements PackageSender, TestUtilityService
+                     getPerUidReadTimeouts(snapshot), mSnapshotStatistics
+             ).doDump(snapshot, fd, pw, args);
+         }
++
++        @Override
++        public GosPackageState getGosPackageState(@NonNull String packageName, int userId) {
++            int callingUid = Binder.getCallingUid();
++            int callingPid = Binder.getCallingPid();
++            return gosPackageStatePmHooks.getFiltered(callingUid, callingPid, packageName, userId);
++        }
++
++        @Override
++        public boolean setGosPackageState(@NonNull String packageName, int userId,
++                                                  @NonNull GosPackageState updatedPs, int editorFlags) {
++            int callingUid = Binder.getCallingUid();
++            int callingPid = Binder.getCallingPid();
++            return gosPackageStatePmHooks.set(callingUid, callingPid, packageName, userId,
++                    updatedPs, editorFlags);
++        }
+     }
+ 
+     @VisibleForTesting
+@@ -7709,6 +7735,12 @@ public class PackageManagerService implements PackageSender, TestUtilityService
+             return isUpgrading && (mPriorSdkVersionFull < sdkVersionFull);
+         }
+ 
++        @NonNull
++        @Override
++        public GosPackageState getGosPackageState(String packageName, int userId) {
++            return gosPackageStatePmHooks.getUnfiltered(packageName, userId);
++        }
++
+         @Override
+         public boolean isPackageAppLockEnabled(String packageName, int userId) {
+             if (!android.security.Flags.appLockApis()) {
+diff --git a/services/core/java/com/android/server/pm/PackageManagerShellCommand.java b/services/core/java/com/android/server/pm/PackageManagerShellCommand.java
+index 0a74bbf11976..6642a6e49dc1 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerShellCommand.java
++++ b/services/core/java/com/android/server/pm/PackageManagerShellCommand.java
+@@ -227,6 +227,8 @@ class PackageManagerShellCommand extends ShellCommand {
+                 case "help":
+                     onHelp();
+                     return 0;
++                case "edit-gos-package-state":
++                    return GosPackageStatePmHooks.runShellCommand(this);
+                 case "path":
+                     return runPath();
+                 case "dump":
+diff --git a/services/core/java/com/android/server/pm/PackageSetting.java b/services/core/java/com/android/server/pm/PackageSetting.java
+index 78e4ab8aad62..e18f9762676b 100644
+--- a/services/core/java/com/android/server/pm/PackageSetting.java
++++ b/services/core/java/com/android/server/pm/PackageSetting.java
+@@ -31,7 +31,9 @@ import android.annotation.UserIdInt;
+ import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.pm.ApplicationInfo;
++import android.content.pm.GosPackageState;
+ import android.content.pm.PackageManager;
++import android.content.pm.PackageManagerInternal;
+ import android.content.pm.SharedLibraryInfo;
+ import android.content.pm.SigningDetails;
+ import android.content.pm.SigningInfo;
+@@ -58,6 +60,7 @@ import com.android.internal.content.LibraryAlignmentInfo;
+ import com.android.internal.pm.parsing.pkg.AndroidPackageInternal;
+ import com.android.internal.util.CollectionUtils;
+ import com.android.internal.util.DataClass;
++import com.android.server.LocalServices;
+ import com.android.server.pm.parsing.pkg.AndroidPackageUtils;
+ import com.android.server.pm.permission.LegacyPermissionDataProvider;
+ import com.android.server.pm.permission.LegacyPermissionState;
+@@ -71,6 +74,7 @@ import com.android.server.pm.pkg.PackageUserStateImpl;
+ import com.android.server.pm.pkg.PackageUserStateInternal;
+ import com.android.server.pm.pkg.SharedLibrary;
+ import com.android.server.pm.pkg.SharedLibraryWrapper;
++import com.android.server.pm.pkg.SharedUserApi;
+ import com.android.server.pm.pkg.SuspendParams;
+ import com.android.server.pm.verify.developer.DeveloperVerificationStatusInternal;
+ import com.android.server.utils.SnapshotCache;
+@@ -451,6 +455,11 @@ public class PackageSetting extends SettingBase implements PackageStateInternal
+         return this;
+     }
+ 
++    public void setGosPackageState(@UserIdInt int userId, @NonNull GosPackageState state) {
++        modifyUserState(userId).setGosPackageState(state);
++        onChanged();
++    }
++
+     public PackageSetting setForceQueryableOverride(boolean forceQueryableOverride) {
+         setBoolean(Booleans.FORCE_QUERYABLE_OVERRIDE, forceQueryableOverride);
+         onChanged();
+@@ -980,6 +989,16 @@ public class PackageSetting extends SettingBase implements PackageStateInternal
+ 
+     void setInstalled(boolean inst, int userId) {
+         modifyUserState(userId).setInstalled(inst);
++        if (inst) {
++            int sharedUserAppId = getSharedUserAppId();
++            if (sharedUserAppId > 0) {
++                var pmi = LocalServices.getService(PackageManagerInternal.class);
++                SharedUserApi sharedUser = pmi.getSharedUserApi(sharedUserAppId);
++                if (sharedUser != null) {
++                    sharedUser.syncGosPackageState();
++                }
++            }
++        }
+         onChanged();
+     }
+ 
+@@ -1192,6 +1211,7 @@ public class PackageSetting extends SettingBase implements PackageStateInternal
+     void setUserState(int userId, long ceDataInode, long deDataInode,
+                       long pccCeDataInode, long pccDeDataInode, int enabled,
+                       boolean installed, boolean stopped, boolean notLaunched, boolean hidden,
++                      GosPackageState gosPackageState,
+                       int distractionFlags, ArrayMap<UserPackage, SuspendParams> suspendParams,
+                       boolean instantApp, boolean virtualPreload, String lastDisableAppCaller,
+                       ArraySet<String> enabledComponents, ArraySet<String> disabledComponents,
+@@ -1211,6 +1231,7 @@ public class PackageSetting extends SettingBase implements PackageStateInternal
+                 .setStopped(stopped)
+                 .setNotLaunched(notLaunched)
+                 .setHidden(hidden)
++                .setGosPackageState(gosPackageState)
+                 .setDistractionFlags(distractionFlags)
+                 .setLastDisableAppCaller(lastDisableAppCaller)
+                 .setEnabledComponents(enabledComponents)
+@@ -1234,7 +1255,7 @@ public class PackageSetting extends SettingBase implements PackageStateInternal
+         setUserState(userId, otherState.getCeDataInode(), otherState.getDeDataInode(),
+                 otherState.getPccCeDataInode(), otherState.getPccDeDataInode(),
+                 otherState.getEnabledState(),  otherState.isInstalled(), otherState.isStopped(),
+-                otherState.isNotLaunched(), otherState.isHidden(), otherState.getDistractionFlags(),
++                otherState.isNotLaunched(), otherState.isHidden(), otherState.getGosPackageState(), otherState.getDistractionFlags(),
+                 otherState.getSuspendParams() == null
+                         ? null : otherState.getSuspendParams().untrackedStorage(),
+                 otherState.isInstantApp(), otherState.isVirtualPreload(),
+diff --git a/services/core/java/com/android/server/pm/Settings.java b/services/core/java/com/android/server/pm/Settings.java
+index e601067a59f4..70016b3770ee 100644
+--- a/services/core/java/com/android/server/pm/Settings.java
++++ b/services/core/java/com/android/server/pm/Settings.java
+@@ -51,6 +51,7 @@ import android.content.IntentFilter;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.Flags;
++import android.content.pm.GosPackageState;
+ import android.content.pm.IntentFilterVerificationInfo;
+ import android.content.pm.PackageInstaller;
+ import android.content.pm.PackageManager;
+@@ -1202,6 +1203,7 @@ public final class Settings implements Watchable, Snappable, ResilientAtomicFile
+                                 true /*stopped*/,
+                                 true /*notLaunched*/,
+                                 false /*hidden*/,
++                                GosPackageState.DEFAULT,
+                                 0 /*distractionFlags*/,
+                                 null /*suspendParams*/,
+                                 instantApp,
+@@ -1959,6 +1961,7 @@ public final class Settings implements Watchable, Snappable, ResilientAtomicFile
+                                     false /*stopped*/,
+                                     false /*notLaunched*/,
+                                     false /*hidden*/,
++                                    GosPackageState.DEFAULT,
+                                     0 /*distractionFlags*/,
+                                     null /*suspendParams*/,
+                                     false /*instantApp*/,
+@@ -2091,6 +2094,11 @@ public final class Settings implements Watchable, Snappable, ResilientAtomicFile
+                                 ATTR_PERSONAL_CONTEXT_MODE,
+                                 PackageManager.PERSONAL_CONTEXT_MODE_UNSET);
+ 
++                        GosPackageState gosPackageState = GosPackageStatePersistence.maybeDeserializeLegacy(parser);
++                        if (gosPackageState == null) {
++                            gosPackageState = GosPackageState.DEFAULT;
++                        }
++
+                         ArraySet<String> enabledComponents = null;
+                         ArraySet<String> disabledComponents = null;
+                         SuspendDialogInfo oldSuspendDialogInfo = null;
+@@ -2139,6 +2147,9 @@ public final class Settings implements Watchable, Snappable, ResilientAtomicFile
+                                 case TAG_ARCHIVE_STATE:
+                                     archiveState = parseArchiveState(parser);
+                                     break;
++                                case GosPackageStatePersistence.TAG_GOS_PACKAGE_STATE:
++                                    gosPackageState = GosPackageStatePersistence.deserialize(parser);
++                                    break;
+                                 default:
+                                     Slog.wtf(TAG, "Unknown tag " + parser.getName() + " under tag "
+                                             + TAG_PACKAGE);
+@@ -2166,7 +2177,7 @@ public final class Settings implements Watchable, Snappable, ResilientAtomicFile
+                         ps.setUserState(
+                                 userId, ceDataInode, deDataInode, pccCeDataInode, pccDeDataInode,
+                                 enabled, installed, stopped,
+-                                notLaunched, hidden, distractionFlags, suspendParamsMap, instantApp,
++                                notLaunched, hidden, gosPackageState, distractionFlags, suspendParamsMap, instantApp,
+                                 virtualPreload, enabledCaller, enabledComponents,
+                                 disabledComponents, installReason, uninstallReason,
+                                 harmfulAppWarning, splashScreenTheme,
+@@ -2613,6 +2624,9 @@ public final class Settings implements Watchable, Snappable, ResilientAtomicFile
+                             serializer.attributeInt(null, ATTR_PERSONAL_CONTEXT_MODE,
+                                     ustate.getPersonalContextMode());
+                         }
++
++                        GosPackageStatePersistence.serialize(ustate, serializer);
++
+                         if (ustate.isSuspended()) {
+                             for (int i = 0; i < ustate.getSuspendParams().size(); i++) {
+                                 final UserPackage suspendingPackage =
+diff --git a/services/core/java/com/android/server/pm/SharedUserSetting.java b/services/core/java/com/android/server/pm/SharedUserSetting.java
+index 5c0a15a28285..abb0f39d967c 100644
+--- a/services/core/java/com/android/server/pm/SharedUserSetting.java
++++ b/services/core/java/com/android/server/pm/SharedUserSetting.java
+@@ -19,10 +19,12 @@ package com.android.server.pm;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.content.pm.ApplicationInfo;
++import android.content.pm.GosPackageState;
+ import android.content.pm.SigningDetails;
+ import android.service.pm.PackageServiceDumpProto;
+ import android.util.ArrayMap;
+ import android.util.ArraySet;
++import android.util.SparseArray;
+ import android.util.proto.ProtoOutputStream;
+ 
+ import com.android.internal.pm.pkg.component.ComponentMutateUtils;
+@@ -32,6 +34,7 @@ import com.android.internal.util.ArrayUtils;
+ import com.android.server.pm.permission.LegacyPermissionState;
+ import com.android.server.pm.pkg.AndroidPackage;
+ import com.android.server.pm.pkg.PackageStateInternal;
++import com.android.server.pm.pkg.PackageUserStateInternal;
+ import com.android.server.pm.pkg.SharedUserApi;
+ import com.android.server.utils.SnapshotCache;
+ import com.android.server.utils.Watchable;
+@@ -174,10 +177,57 @@ public final class SharedUserSetting extends SettingBase implements SharedUserAp
+         }
+     }
+ 
++    @Override
++    public void syncGosPackageState() {
++        syncGosPackageState(mPackages);
++    }
++
++    // Makes GosPackageState the same for all packages in this SharedUser in each userId.
++    // See GosPackageState class comment for more info.
++    private static void syncGosPackageState(WatchedArraySet<PackageSetting> packages) {
++        final int numPkgs = packages.size();
++        // userId -> GosPackageState
++        SparseArray<GosPackageState> userGosPs = null;
++
++        for (int pkgIdx = 0; pkgIdx < numPkgs; ++pkgIdx) {
++            PackageSetting s = packages.valueAt(pkgIdx);
++            SparseArray<? extends PackageUserStateInternal> userStates = s.getUserStates();
++            for (int userIndex = 0, numUsers = userStates.size(); userIndex < numUsers; ++userIndex) {
++                int userId = userStates.keyAt(userIndex);
++                for (int i = 0; i < numPkgs; ++i) {
++                    GosPackageState gosPs = packages.valueAt(i).getUserStateOrDefault(userId).getGosPackageState();
++                    if (!gosPs.equals(GosPackageState.DEFAULT)) {
++                        if (userGosPs == null) {
++                            userGosPs = new SparseArray<>();
++                        }
++                        userGosPs.set(userId, gosPs);
++                        break;
++                    }
++                }
++            }
++        }
++
++        if (userGosPs == null) {
++            return;
++        }
++
++        for (int idx = 0, numUsers = userGosPs.size(); idx < numUsers; ++idx) {
++            int userId = userGosPs.keyAt(idx);
++            GosPackageState ps = userGosPs.valueAt(idx);
++            for (int pkgIdx = 0; pkgIdx < numPkgs; ++pkgIdx) {
++                PackageSetting s = packages.valueAt(pkgIdx);
++                s.setGosPackageState(userId, ps);
++            }
++        }
++    }
++
+     boolean removePackage(PackageSetting packageSetting) {
+         if (!mPackages.remove(packageSetting)) {
+             return false;
+         }
++
++        clearGosPackageStateCachedDerivedFlags();
++
+         // recalculate the pkgFlags for this shared user if needed
+         if ((this.getFlags() & packageSetting.getFlags()) != 0) {
+             int aggregatedFlags = uidFlags;
+@@ -210,6 +260,10 @@ public final class SharedUserSetting extends SettingBase implements SharedUserAp
+         if (mPackages.add(packageSetting)) {
+             setFlags(this.getFlags() | packageSetting.getFlags());
+             setPrivateFlags(this.getPrivateFlags() | packageSetting.getPrivateFlags());
++
++            clearGosPackageStateCachedDerivedFlags();
++            syncGosPackageState();
++
+             onChanged();
+         }
+         if (packageSetting.getPkg() != null) {
+@@ -411,4 +465,15 @@ public final class SharedUserSetting extends SettingBase implements SharedUserAp
+     public LegacyPermissionState getSharedUserLegacyPermissionState() {
+         return super.getLegacyPermissionState();
+     }
++
++    // invalidate derived flags when sharedUid members are added/removed
++    private void clearGosPackageStateCachedDerivedFlags() {
++        for (int pkgIdx = 0; pkgIdx < mPackages.size(); pkgIdx++) {
++            PackageSetting ps = mPackages.valueAt(pkgIdx);
++            SparseArray<? extends PackageUserStateInternal> userStates = ps.getUserStates();
++            for (int userStateIdx = 0; userStateIdx < userStates.size(); ++userStateIdx) {
++                userStates.valueAt(userStateIdx).getGosPackageState().derivedFlags = 0;
++            }
++        }
++    }
+ }
+diff --git a/services/core/java/com/android/server/pm/local/PackageManagerLocalImpl.java b/services/core/java/com/android/server/pm/local/PackageManagerLocalImpl.java
+index 975107e7efd2..44c3ddc0628e 100644
+--- a/services/core/java/com/android/server/pm/local/PackageManagerLocalImpl.java
++++ b/services/core/java/com/android/server/pm/local/PackageManagerLocalImpl.java
+@@ -50,6 +50,16 @@ public class PackageManagerLocalImpl implements PackageManagerLocal {
+         mService = service;
+     }
+ 
++    @Override
++    public void addGosPackageStateChangeCallback(GosPackageStateChangeCallback callback) {
++        mService.gosPackageStatePmHooks.addChangeCallback(callback);
++    }
++
++    @Override
++    public boolean removeGosPackageStateChangeCallback(GosPackageStateChangeCallback callback) {
++        return mService.gosPackageStatePmHooks.removeChangeCallback(callback);
++    }
++
+     @Override
+     public void reconcileSdkData(@Nullable String volumeUuid, @NonNull String packageName,
+             @NonNull List<String> subDirNames, int userId, int appId, int previousAppId,
+diff --git a/services/core/java/com/android/server/pm/pkg/PackageUserState.java b/services/core/java/com/android/server/pm/pkg/PackageUserState.java
+index d90f89ca1418..f53b36e5edff 100644
+--- a/services/core/java/com/android/server/pm/pkg/PackageUserState.java
++++ b/services/core/java/com/android/server/pm/pkg/PackageUserState.java
+@@ -20,6 +20,7 @@ import android.annotation.CurrentTimeMillisLong;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.annotation.SystemApi;
++import android.content.pm.GosPackageState;
+ import android.content.pm.PackageManager;
+ import android.content.pm.overlay.OverlayPaths;
+ import android.os.UserHandle;
+@@ -136,6 +137,11 @@ public interface PackageUserState {
+     @PackageManager.EnabledState
+     int getEnabledState();
+ 
++    /** @hide */
++    @Immutable.Ignore
++    @NonNull
++    GosPackageState getGosPackageState();
++
+     /**
+      * @hide
+      * @see PackageManager#setHarmfulAppWarning(String, CharSequence)
+diff --git a/services/core/java/com/android/server/pm/pkg/PackageUserStateDefault.java b/services/core/java/com/android/server/pm/pkg/PackageUserStateDefault.java
+index 70cb0e533f7d..c867bd27f0c5 100644
+--- a/services/core/java/com/android/server/pm/pkg/PackageUserStateDefault.java
++++ b/services/core/java/com/android/server/pm/pkg/PackageUserStateDefault.java
+@@ -19,6 +19,7 @@ package com.android.server.pm.pkg;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.content.ComponentName;
++import android.content.pm.GosPackageState;
+ import android.content.pm.PackageManager;
+ import android.content.pm.UserPackage;
+ import android.content.pm.overlay.OverlayPaths;
+@@ -181,6 +182,12 @@ class PackageUserStateDefault implements PackageUserStateInternal {
+         return 0;
+     }
+ 
++    @NonNull
++    @Override
++    public GosPackageState getGosPackageState() {
++        return GosPackageState.DEFAULT;
++    }
++
+     @Override
+     public boolean isComponentEnabled(String componentName) {
+         return false;
+diff --git a/services/core/java/com/android/server/pm/pkg/PackageUserStateImpl.java b/services/core/java/com/android/server/pm/pkg/PackageUserStateImpl.java
+index f2b5243e4c88..9987a3e6ac80 100644
+--- a/services/core/java/com/android/server/pm/pkg/PackageUserStateImpl.java
++++ b/services/core/java/com/android/server/pm/pkg/PackageUserStateImpl.java
+@@ -21,6 +21,7 @@ import android.annotation.IntDef;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.content.ComponentName;
++import android.content.pm.GosPackageState;
+ import android.content.pm.PackageManager;
+ import android.content.pm.UserPackage;
+ import android.content.pm.overlay.OverlayPaths;
+@@ -139,6 +140,9 @@ public class PackageUserStateImpl extends WatchableImpl implements PackageUserSt
+ 
+     private @CurrentTimeMillisLong long mFirstInstallTimeMillis;
+ 
++    @NonNull
++    private GosPackageState mGosPackageState = GosPackageState.DEFAULT;
++
+     // TODO(b/239050028): Remove, enforce notifying parent through PMS commit method
+     @Nullable
+     private Watchable mWatchable;
+@@ -174,6 +178,7 @@ public class PackageUserStateImpl extends WatchableImpl implements PackageUserSt
+     }
+ 
+     public PackageUserStateImpl(@NonNull Watchable watchable, PackageUserStateImpl other) {
++        mGosPackageState = other.mGosPackageState;
+         mWatchable = watchable;
+         mBooleans = other.mBooleans;
+         mDisabledComponentsWatched = other.mDisabledComponentsWatched == null
+@@ -683,6 +688,12 @@ public class PackageUserStateImpl extends WatchableImpl implements PackageUserSt
+         return this;
+     }
+ 
++    public @NonNull PackageUserStateImpl setGosPackageState(@NonNull GosPackageState gosPackageState) {
++        mGosPackageState = gosPackageState;
++        onChanged();
++        return this;
++    }
++
+     /**
+      * Sets the value for {@link #getArchiveState()}.
+      */
+@@ -901,6 +912,11 @@ public class PackageUserStateImpl extends WatchableImpl implements PackageUserSt
+         return mArchiveState;
+     }
+ 
++    @DataClass.Generated.Member
++    public @NonNull GosPackageState getGosPackageState() {
++        return mGosPackageState;
++    }
++
+     @DataClass.Generated.Member
+     public @NonNull SnapshotCache<PackageUserStateImpl> getSnapshot() {
+         return mSnapshot;
+diff --git a/services/core/java/com/android/server/pm/pkg/PackageUserStateInternal.java b/services/core/java/com/android/server/pm/pkg/PackageUserStateInternal.java
+index f8d745cb7fbf..7ae5748eae3e 100644
+--- a/services/core/java/com/android/server/pm/pkg/PackageUserStateInternal.java
++++ b/services/core/java/com/android/server/pm/pkg/PackageUserStateInternal.java
+@@ -19,6 +19,7 @@ package com.android.server.pm.pkg;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.content.ComponentName;
++import android.content.pm.GosPackageState;
+ import android.content.pm.UserPackage;
+ import android.content.pm.pkg.FrameworkPackageUserState;
+ import android.util.Pair;
+@@ -49,4 +50,7 @@ public interface PackageUserStateInternal extends PackageUserState, FrameworkPac
+ 
+     @Nullable
+     Pair<String, Integer> getOverrideLabelIconForComponent(@NonNull ComponentName componentName);
++
++    @NonNull
++    GosPackageState getGosPackageState();
+ }
+diff --git a/services/core/java/com/android/server/pm/pkg/SharedUserApi.java b/services/core/java/com/android/server/pm/pkg/SharedUserApi.java
+index 411bdede315f..37d8c5970a63 100644
+--- a/services/core/java/com/android/server/pm/pkg/SharedUserApi.java
++++ b/services/core/java/com/android/server/pm/pkg/SharedUserApi.java
+@@ -69,4 +69,6 @@ public interface SharedUserApi {
+ 
+     @NonNull
+     LegacyPermissionState getSharedUserLegacyPermissionState();
++
++    void syncGosPackageState();
+ }
+diff --git a/services/tests/PackageManagerServiceTests/server/src/com/android/server/pm/PackageManagerSettingsTests.java b/services/tests/PackageManagerServiceTests/server/src/com/android/server/pm/PackageManagerSettingsTests.java
+index 88004c241eef..bd8b21c624c3 100644
+--- a/services/tests/PackageManagerServiceTests/server/src/com/android/server/pm/PackageManagerSettingsTests.java
++++ b/services/tests/PackageManagerServiceTests/server/src/com/android/server/pm/PackageManagerSettingsTests.java
+@@ -50,6 +50,7 @@ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.Flags;
++import android.content.pm.GosPackageState;
+ import android.content.pm.PackageManager;
+ import android.content.pm.SharedLibraryInfo;
+ import android.content.pm.SuspendDialogInfo;
+@@ -123,7 +124,9 @@ import java.security.PublicKey;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collections;
++import java.util.HexFormat;
+ import java.util.List;
++import java.util.Objects;
+ import java.util.PriorityQueue;
+ import java.util.Set;
+ import java.util.UUID;
+@@ -1664,7 +1667,7 @@ public class PackageManagerSettingsTests {
+                 .setSecondaryCpuAbi("x86")
+                 .setLongVersionCode(INITIAL_VERSION_CODE);
+         origPkgSetting01.setUserState(0, 100, 100, 101,
+-                102, 1, true, false, false, false, 0, null, false,
++                102, 1, true, false, false, false, createTestGosPackageState(), 0, null, false,
+                 false, "lastDisabledCaller", new ArraySet<>(new String[]{"enabledComponent1"}),
+                 new ArraySet<>(new String[]{"disabledComponent1"}), 0, 0, "harmfulAppWarning",
+                 "splashScreenTheme", 1000L, PackageManager.USER_MIN_ASPECT_RATIO_UNSET, null,
+@@ -1701,6 +1704,15 @@ public class PackageManagerSettingsTests {
+                 testPkgSetting01.readUserState(0));
+     }
+ 
++    private static GosPackageState createTestGosPackageState() {
++        var hf = HexFormat.ofDelimiter(" ");
++        // argument values are random
++        return new GosPackageState(0xf0_bc_06_f1_f1_67_2e_b8L, 0xf4_93_53_00_98_c8_f0_0cL,
++                hf.parseHex("2d f6 37 f2 90 39 da ef"),
++                hf.parseHex("8b 9d 61 a3 3e 45 12")
++        );
++    }
++
+     /** Update package */
+     @Test
+     public void testUpdatePackageSetting01() throws PackageManagerException {
+@@ -2497,6 +2509,8 @@ public class PackageManagerSettingsTests {
+         SuspendParams testSuspendParams = testPus.getSuspendParams().valueAt(0);
+         assertThat(origSuspendParams.getDialogInfo().equals(testSuspendParams.getDialogInfo()),
+                 is(true));
++        assertEquals(origPus.getGosPackageState(), createTestGosPackageState());
++        assertEquals(testPus.getGosPackageState(), createTestGosPackageState());
+         assertThat(BaseBundle.kindofEquals(
+                 origSuspendParams.getAppExtras(), testSuspendParams.getAppExtras()), is(true));
+         assertThat(BaseBundle.kindofEquals(origSuspendParams.getLauncherExtras(),
+@@ -2533,6 +2547,7 @@ public class PackageManagerSettingsTests {
+                 && userState.getPccDeDataInode() == oldUserState.getPccDeDataInode()
+                 && userState.getDistractionFlags() == oldUserState.getDistractionFlags()
+                 && userState.getFirstInstallTimeMillis() == oldUserState.getFirstInstallTimeMillis()
++                && Objects.equals(userState.getGosPackageState(), oldUserState.getGosPackageState())
+                 && userState.getEnabledState() == oldUserState.getEnabledState()
+                  && userState.getHarmfulAppWarning().equals(oldUserState.getHarmfulAppWarning())
+                 && userState.getInstallReason() == oldUserState.getInstallReason()
+-- 
+2.43.0
+

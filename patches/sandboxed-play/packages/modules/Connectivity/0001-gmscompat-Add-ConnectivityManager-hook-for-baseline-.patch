@@ -1,0 +1,40 @@
+From a6e79285857458f35391b823f26875d24649a2ff Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Tue, 5 Oct 2021 18:42:40 -0700
+Subject: [PATCH] gmscompat: Add ConnectivityManager hook for baseline
+ compatibility
+
+This is part of GmsCompat's baseline compatibility for unprivileged
+Google Play Services.
+
+Change-Id: I3e87706f1f3b87c0af9d00f6ce92144469596f8c
+---
+ framework/src/android/net/ConnectivityManager.java | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/framework/src/android/net/ConnectivityManager.java b/framework/src/android/net/ConnectivityManager.java
+index 900d6079b..50346ca61 100644
+--- a/framework/src/android/net/ConnectivityManager.java
++++ b/framework/src/android/net/ConnectivityManager.java
+@@ -43,6 +43,7 @@ import android.annotation.SystemApi;
+ import android.annotation.SystemService;
+ import android.app.PendingIntent;
+ import android.app.admin.DevicePolicyManager;
++import android.app.compat.gms.GmsCompat;
+ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.ComponentName;
+ import android.content.Context;
+@@ -3157,6 +3158,10 @@ public class ConnectivityManager {
+     @RequiresPermission(anyOf = {android.Manifest.permission.TETHER_PRIVILEGED,
+             android.Manifest.permission.WRITE_SETTINGS})
+     public boolean isTetheringSupported() {
++        if (GmsCompat.isEnabled()) {
++            return false;
++        }
++
+         return getTetheringManager().isTetheringSupported();
+     }
+ 
+-- 
+2.43.0
+

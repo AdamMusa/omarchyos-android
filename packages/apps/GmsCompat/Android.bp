@@ -1,0 +1,60 @@
+android_app {
+    name: "GmsCompat",
+    platform_apis: true,
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+        "src/**/*.aidl",
+        ":framework-appsearch-safeparcel-sources",
+    ],
+    aidl: {
+        local_include_dirs: ["src"],
+    },
+    plugins: [
+        "safeparcel-annotation-processor",
+    ],
+    kotlin_plugins: [
+        "kotlin-serialize-compiler-plugin",
+    ],
+    resource_dirs: [
+        "res",
+    ],
+    static_libs: [
+        // needed by androidx.navigation
+        "kotlinx_serialization_core",
+        "androidx.navigation_navigation-common-ktx",
+        "androidx.navigation_navigation-fragment-ktx",
+        "androidx.navigation_navigation-runtime-ktx",
+        "androidx.navigation_navigation-ui-ktx",
+        "androidx.preference_preference",
+        // needed by framework-appsearch-safeparcel-sources
+        "appsearch_flags_java_exported_lib",
+        "SettingsLibCategory",
+        "SettingsLibCollapsingToolbarBaseActivity",
+        "SettingsLibFooterPreference",
+    ],
+    jarjar_rules: "jarjar-rules.txt",
+
+    manifest: "AndroidManifest.xml",
+
+    required: [
+        "GmsCompatConfig",
+        "GmsCompatLib",
+        "etc_default-permissions_app.grapheneos.gmscompat.xml",
+        "etc_sysconfig_app.grapheneos.gmscompat.xml",
+    ],
+}
+
+prebuilt_etc {
+    name: "etc_default-permissions_app.grapheneos.gmscompat.xml",
+    src: "etc/default-permissions/app.grapheneos.gmscompat.xml",
+    sub_dir: "default-permissions",
+    filename_from_src: true,
+}
+
+prebuilt_etc {
+    name: "etc_sysconfig_app.grapheneos.gmscompat.xml",
+    src: "etc/sysconfig/app.grapheneos.gmscompat.xml",
+    sub_dir: "sysconfig",
+    filename_from_src: true,
+}

@@ -1,0 +1,27 @@
+From af010abe0622ee9fa7d6b61434525e4d6f2af585 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Tue, 4 Aug 2026 08:22:20 +0000
+Subject: [PATCH 27/28] gmscompat: notify about missing POST_NOTIFICATIONS only
+ for GmsCore
+
+Other GMS components (e.g. Play Store) handle lack of POST_NOTIFICATIONS themselves.
+---
+ core/java/android/app/NotificationManager.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/java/android/app/NotificationManager.java b/core/java/android/app/NotificationManager.java
+index 30e6cf239d0b..2556da6f6486 100644
+--- a/core/java/android/app/NotificationManager.java
++++ b/core/java/android/app/NotificationManager.java
+@@ -923,7 +923,7 @@ public class NotificationManager {
+             @CanBeALL @CanBeCURRENT UserHandle user)
+     {
+         if (GmsCompat.isEnabled()) {
+-            if (!GmsCompat.hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
++            if (GmsCompat.isGmsCore() && !GmsCompat.hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+                 String pkg = GmsCompat.appContext().getPackageName();
+                 try {
+                     GmsCompatApp.iGms2Gca().showMissingPostNotifsPermissionNotification(pkg);
+-- 
+2.43.0
+

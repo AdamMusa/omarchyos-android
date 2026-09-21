@@ -1,0 +1,95 @@
+From ceb1606280ae056168c46094734eb0bc5a8ae4a1 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Wed, 29 Jul 2026 13:09:05 +0000
+Subject: [PATCH 26/28] gmscompat: switch privSettingsPutStrings() to
+ StringParceledListSlice
+
+The keys and values arrays are getting too large to be transferred directly.
+---
+ .../internal/gmscompat/GmsCompatApp.java      | 30 ++++++++++++++-----
+ .../android/internal/gmscompat/IGms2Gca.aidl  |  3 +-
+ 2 files changed, 25 insertions(+), 8 deletions(-)
+
+diff --git a/core/java/com/android/internal/gmscompat/GmsCompatApp.java b/core/java/com/android/internal/gmscompat/GmsCompatApp.java
+index b9e6528b1c7e..34079224502f 100644
+--- a/core/java/com/android/internal/gmscompat/GmsCompatApp.java
++++ b/core/java/com/android/internal/gmscompat/GmsCompatApp.java
+@@ -22,6 +22,7 @@ import android.annotation.Nullable;
+ import android.app.compat.gms.GmsCompat;
+ import android.content.ContentProviderClient;
+ import android.content.Context;
++import android.content.pm.StringParceledListSlice;
+ import android.database.ContentObserver;
+ import android.net.ConnectivityManager;
+ import android.net.Uri;
+@@ -36,6 +37,9 @@ import android.util.Log;
+ 
+ import com.android.internal.gmscompat.fileservice.FileProxyService;
+ 
++import java.util.ArrayList;
++import java.util.Set;
++
+ import static com.android.internal.gmscompat.GmsHooks.inPersistentGmsCoreProcess;
+ 
+ public final class GmsCompatApp {
+@@ -208,17 +212,29 @@ public final class GmsCompatApp {
+     }
+ 
+     public static boolean setProperties(DeviceConfig.Properties props) {
+-        String[] keys = props.getKeyset().toArray(new String[0]);
+-        String[] values = new String[keys.length];
++        Set<String> keyset = props.getKeyset();
++        int numKeys = keyset.size();
++        var keys = new ArrayList<String>(numKeys);
++        var values = new ArrayList<String>(numKeys);
++        String ns = deviceConfigNamespace(props.getNamespace());
+ 
+-        for (int i = 0; i < keys.length; ++i) {
+-            values[i] = props.getString(keys[i], null);
++        for (String key : keyset) {
++            if (key == null) {
++                throw new IllegalStateException("null DeviceConfig.Properties key");
++            }
++            String value = props.getString(key, null);
++            if (value == null) {
++                // null is the default value
++                continue;
++            }
++            keys.add(key);
++            values.add(value);
+         }
+ 
+-        String ns = deviceConfigNamespace(props.getNamespace());
+-
+         try {
+-            return iGms2Gca().privSettingsPutStrings(ns, keys, values);
++            return iGms2Gca().privSettingsPutStrings(ns,
++                    new StringParceledListSlice(keys),
++                    new StringParceledListSlice(values));
+         } catch (RemoteException e) {
+             throw callFailed(e);
+         }
+diff --git a/core/java/com/android/internal/gmscompat/IGms2Gca.aidl b/core/java/com/android/internal/gmscompat/IGms2Gca.aidl
+index 8f3e4b93241d..f44173479d5e 100644
+--- a/core/java/com/android/internal/gmscompat/IGms2Gca.aidl
++++ b/core/java/com/android/internal/gmscompat/IGms2Gca.aidl
+@@ -4,6 +4,7 @@ import android.app.ApplicationErrorReport;
+ import android.app.Notification;
+ import android.app.PendingIntent;
+ import android.content.Intent;
++import android.content.pm.StringParceledListSlice;
+ import android.database.IContentObserver;
+ import android.os.BinderDef;
+ 
+@@ -40,7 +41,7 @@ interface IGms2Gca {
+ 
+     @nullable String privSettingsGetString(String ns, String key);
+     boolean privSettingsPutString(String ns, String key, @nullable String value);
+-    boolean privSettingsPutStrings(String ns, in String[] keys, in String[] values);
++    boolean privSettingsPutStrings(String ns, in StringParceledListSlice keys, in StringParceledListSlice values);
+     void privSettingsRegisterObserver(String ns, String key, IContentObserver observer);
+     void privSettingsUnregisterObserver(IContentObserver observer);
+ 
+-- 
+2.43.0
+

@@ -1,0 +1,28 @@
+From 6fcd7683847609e14d46094c2ddd06df795ffabb Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Mon, 3 Aug 2026 14:14:30 +0000
+Subject: [PATCH 24/28] gmscompat: mark all FIDO activities as opaque
+
+---
+ core/java/com/android/internal/gmscompat/GmsHooks.java | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/com/android/internal/gmscompat/GmsHooks.java b/core/java/com/android/internal/gmscompat/GmsHooks.java
+index 3fce37b1116c..e268a3f6bcfc 100644
+--- a/core/java/com/android/internal/gmscompat/GmsHooks.java
++++ b/core/java/com/android/internal/gmscompat/GmsHooks.java
+@@ -469,7 +469,10 @@ public final class GmsHooks {
+ 
+     // Activity#onCreate(Bundle)
+     public static void activityOnCreate(Activity activity) {
+-
++        if (GmsCompat.isGmsCore() && activity.getClass().getName().contains(".fido.")) {
++            Log.i(TAG, "calling setTranslucent(false) for " + activity.getClass().getName());
++            activity.setTranslucent(false);
++        }
+     }
+ 
+     // ContentResolver#insert(Uri, ContentValues, Bundle)
+-- 
+2.43.0
+

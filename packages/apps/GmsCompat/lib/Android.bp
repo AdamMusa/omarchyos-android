@@ -1,0 +1,26 @@
+android_app {
+    name: "GmsCompatLib",
+    platform_apis: true,
+    certificate: "gmscompat_lib",
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.aidl",
+        ":framework-appsearch-safeparcel-sources",
+    ],
+    resource_dirs: [
+        "res",
+    ],
+    plugins: [
+        "safeparcel-annotation-processor",
+    ],
+    static_libs: [
+        // needed by framework-appsearch-safeparcel-sources
+        "appsearch_flags_java_exported_lib",
+    ],
+    jarjar_rules: "jarjar-rules.txt",
+    manifest: "AndroidManifest.xml",
+
+    optimize: {
+        enabled: false,
+    }
+}

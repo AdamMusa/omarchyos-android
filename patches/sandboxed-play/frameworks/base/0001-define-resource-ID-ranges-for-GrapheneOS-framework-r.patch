@@ -1,0 +1,38 @@
+From b302501b80cd24d84900ca285e09856adcdf2d6a Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Fri, 19 Jun 2026 20:30:35 +0000
+Subject: [PATCH 01/28] define resource ID ranges for GrapheneOS framework
+ resources
+
+AOSP resource IDs must not be changed since packages that are extracted from stock OS rely on them.
+---
+ core/res/res/values/public-ext.xml | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100644 core/res/res/values/public-ext.xml
+
+diff --git a/core/res/res/values/public-ext.xml b/core/res/res/values/public-ext.xml
+new file mode 100644
+index 000000000000..06f313da7d6f
+--- /dev/null
++++ b/core/res/res/values/public-ext.xml
+@@ -0,0 +1,17 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <staging-public-group type="array" first-id="0x0195f000">
++    </staging-public-group>
++
++    <staging-public-group type="bool" first-id="0x018bf000">
++    </staging-public-group>
++
++    <staging-public-group type="drawable" first-id="0x0194f000">
++    </staging-public-group>
++
++    <staging-public-group type="integer" first-id="0x018ef000">
++    </staging-public-group>
++
++    <staging-public-group type="string" first-id="0x0198f000">
++    </staging-public-group>
++</resources>
+-- 
+2.43.0
+

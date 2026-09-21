@@ -1,0 +1,58 @@
+From 4a8ffaab447b4917a935765725b41fb0ef16b409 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Thu, 13 Mar 2025 18:51:40 +0200
+Subject: [PATCH] allow GmsCompat app to use SafeParcel code
+
+Change-Id: Ia43b0dde07cb2decd89cb0f098562ac481dcd291
+---
+ flags/Android.bp                | 1 +
+ framework/Android.bp            | 8 ++++++++
+ safeparcel-processor/Android.bp | 1 +
+ 3 files changed, 10 insertions(+)
+
+diff --git a/flags/Android.bp b/flags/Android.bp
+index ef4b7e6..8825ded 100644
+--- a/flags/Android.bp
++++ b/flags/Android.bp
+@@ -19,6 +19,7 @@ java_aconfig_library {
+         "//cts/tests/appfunctions:__subpackages__",
+         "//cts/tests/appsearch:__subpackages__",
+         "//frameworks/base",
++        "//packages/apps/GmsCompat:__subpackages__",
+         "//packages/modules/AppSearch/testing:__subpackages__",
+         "//packages/modules/Permission/tests/cts/permissionpolicy",
+     ],
+diff --git a/framework/Android.bp b/framework/Android.bp
+index f8da63f..e0e10b7 100644
+--- a/framework/Android.bp
++++ b/framework/Android.bp
+@@ -52,6 +52,14 @@ filegroup {
+     path: "java/external",
+ }
+ 
++filegroup {
++    name: "framework-appsearch-safeparcel-sources",
++    srcs: [
++        "java/android/app/appsearch/safeparcel/*.java",
++    ],
++    path: "java",
++}
++
+ java_sdk_library {
+     name: "framework-appsearch",
+     srcs: [":framework-appsearch-sources"],
+diff --git a/safeparcel-processor/Android.bp b/safeparcel-processor/Android.bp
+index c5fcd6b..a7f84f1 100644
+--- a/safeparcel-processor/Android.bp
++++ b/safeparcel-processor/Android.bp
+@@ -47,6 +47,7 @@ java_plugin {
+     // the turbine output that can be produced much faster.
+     generates_api: true,
+     visibility: [
++        "//packages/apps/GmsCompat:__subpackages__",
+         "//packages/apps/PersonalContext:__subpackages__",
+         "//packages/modules/AppSearch:__subpackages__",
+         "//vendor:__subpackages__",
+-- 
+2.43.0
+

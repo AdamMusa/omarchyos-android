@@ -1,0 +1,32 @@
+From 55cb77f0998d2b29fc23c160317070e07d3764b2 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Wed, 30 Jul 2025 21:11:00 +0300
+Subject: [PATCH] gmscompat: add stub for BluetoothDevice.getBondState()
+
+---
+ framework/java/android/bluetooth/BluetoothDevice.java | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/framework/java/android/bluetooth/BluetoothDevice.java b/framework/java/android/bluetooth/BluetoothDevice.java
+index 987d1764c..2b1554827 100644
+--- a/framework/java/android/bluetooth/BluetoothDevice.java
++++ b/framework/java/android/bluetooth/BluetoothDevice.java
+@@ -2141,8 +2141,13 @@ public final class BluetoothDevice implements Parcelable, Attributable {
+                 return sBluetoothBondCache.query(
+                         new Pair<>(service, new Pair<>(mAttributionSource, BluetoothDevice.this)));
+             } catch (RuntimeException e) {
+-                if (!(e.getCause() instanceof RemoteException)) {
+-                    throw e;
++                Throwable cause = e.getCause();
++                if (!(cause instanceof RemoteException)) {
++                    if (cause instanceof SecurityException se) {
++                        GmsCompat.catchOrRethrow(se);
++                    } else {
++                        throw e;
++                    }
+                 }
+                 Log.e(TAG, e.toString() + "\n" + Log.getStackTraceString(new Throwable()));
+             }
+-- 
+2.43.0
+

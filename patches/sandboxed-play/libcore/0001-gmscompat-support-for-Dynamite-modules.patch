@@ -1,0 +1,357 @@
+From 12d32f399ab26433fbc1777ae29f01eaa578759f Mon Sep 17 00:00:00 2001
+From: GrapheneOS <contact@grapheneos.org>
+Date: Thu, 29 Jul 2021 03:13:00 +0300
+Subject: [PATCH] gmscompat: support for Dynamite modules
+
+Authored by Danny Lin <danny@kdrag0n.dev> and Dmitry Muhomor
+<muhomor.dmitry@gmail.com> for inclusion in GrapheneOS.
+
+Commit history:
+
+June 2024 - August 2024:
+https://github.com/GrapheneOS/platform_libcore/commits/2024083100
+
+Before June 2022:
+https://github.com/GrapheneOS/platform_libcore/commits/SP2A.220505.002.2022053100
+
+Before Android 12:
+https://github.com/GrapheneOS/platform_libcore/commits/RQ3A.211001.001.2021100606
+---
+ api/module-lib-current.txt                    |  6 +++
+ .../system/DelegateLastClassLoader.java       | 22 ++++++++++-
+ .../main/java/dalvik/system/DexPathList.java  |  2 +-
+ luni/src/main/java/libcore/io/IoBridge.java   | 11 +++++-
+ luni/src/main/native/libcore_io_Linux.cpp     | 21 ++++++++++-
+ ojluni/src/main/java/java/io/File.java        | 37 ++++++++++++++++++-
+ .../src/main/java/java/util/zip/ZipFile.java  |  2 +
+ ojluni/src/main/native/UnixFileSystem_md.c    | 11 +++++-
+ ojluni/src/main/native/UnixNativeDispatcher.c | 20 ++++++++++
+ 9 files changed, 124 insertions(+), 8 deletions(-)
+
+diff --git a/api/module-lib-current.txt b/api/module-lib-current.txt
+index 4956d2428..0aeb1f53d 100644
+--- a/api/module-lib-current.txt
++++ b/api/module-lib-current.txt
+@@ -226,6 +226,7 @@ package dalvik.system {
+   public final class DelegateLastClassLoader extends dalvik.system.PathClassLoader {
+     ctor public DelegateLastClassLoader(String, String, ClassLoader, ClassLoader[]);
+     ctor public DelegateLastClassLoader(String, String, ClassLoader, ClassLoader[], ClassLoader[]);
++    field public static java.util.function.BiFunction<String, Boolean, String> modifyClassLoaderPathHook;
+   }
+ 
+   public final class DexFile {
+@@ -412,6 +413,11 @@ package dalvik.system {
+ 
+ package java.io {
+ 
++  public class File implements Comparable<java.io.File> java.io.Serializable {
++    field public static java.util.function.ToLongFunction<java.io.File> lastModifiedHook;
++    field public static java.util.function.Consumer<java.io.File> mkdirsFailedHook;
++  }
++
+   public final class FileDescriptor {
+     method public int getInt$();
+     method public void setInt$(int);
+diff --git a/dalvik/src/main/java/dalvik/system/DelegateLastClassLoader.java b/dalvik/src/main/java/dalvik/system/DelegateLastClassLoader.java
+index 2561af71e..aba982074 100644
+--- a/dalvik/src/main/java/dalvik/system/DelegateLastClassLoader.java
++++ b/dalvik/src/main/java/dalvik/system/DelegateLastClassLoader.java
+@@ -25,6 +25,7 @@ import sun.misc.CompoundEnumeration;
+ import java.io.IOException;
+ import java.net.URL;
+ import java.util.Enumeration;
++import java.util.function.BiFunction;
+ 
+ import libcore.util.NonNull;
+ import libcore.util.Nullable;
+@@ -43,6 +44,13 @@ import libcore.util.Nullable;
+  */
+ public final class DelegateLastClassLoader extends PathClassLoader {
+ 
++    /**
++     * Pre-constructor librarySearchPath hook for GmsCompat
++     * @hide
++     */
++    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
++    public static BiFunction<String, Boolean, String> modifyClassLoaderPathHook;
++
+     /**
+      * Whether resource loading delegates to the parent class loader. True by default.
+      */
+@@ -103,7 +111,10 @@ public final class DelegateLastClassLoader extends PathClassLoader {
+ 
+     public DelegateLastClassLoader(@NonNull String dexPath, @Nullable String librarySearchPath,
+             @Nullable ClassLoader parent, boolean delegateResourceLoading) {
+-        super(dexPath, librarySearchPath, parent);
++        super(
++            maybeModifyClassLoaderPath(dexPath, Boolean.FALSE),
++            maybeModifyClassLoaderPath(librarySearchPath, Boolean.TRUE),
++            parent);
+         this.delegateResourceLoading = delegateResourceLoading;
+     }
+ 
+@@ -177,6 +188,15 @@ public final class DelegateLastClassLoader extends PathClassLoader {
+         this.delegateResourceLoading = true;
+     }
+ 
++    private static String maybeModifyClassLoaderPath(String path, Boolean nativeLibsPath) {
++        BiFunction<String, Boolean, String> hook = modifyClassLoaderPathHook;
++        return hook == null ?
++                path :
++                // replace file paths of GMS Dynamite modules with "/gmscompat_fd_%d" file descriptor
++                // references
++                hook.apply(path, nativeLibsPath);
++    }
++
+     @Override
+     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+         // First, check whether the class has already been loaded. Return it if that's the
+diff --git a/dalvik/src/main/java/dalvik/system/DexPathList.java b/dalvik/src/main/java/dalvik/system/DexPathList.java
+index 780f6b004..3b98bc4ec 100644
+--- a/dalvik/src/main/java/dalvik/system/DexPathList.java
++++ b/dalvik/src/main/java/dalvik/system/DexPathList.java
+@@ -377,7 +377,7 @@ public final class DexPathList {
+               // We support directories for looking up resources. Looking up resources in
+               // directories is useful for running libcore tests.
+               elements[elementsPos++] = new Element(file);
+-          } else if (file.isFile()) {
++          } else if (file.isFile() || file.getPath().startsWith("/gmscompat_fd_")) {
+               String name = file.getName();
+ 
+               DexFile dex = null;
+diff --git a/luni/src/main/java/libcore/io/IoBridge.java b/luni/src/main/java/libcore/io/IoBridge.java
+index 541e18767..fab3d579a 100644
+--- a/luni/src/main/java/libcore/io/IoBridge.java
++++ b/luni/src/main/java/libcore/io/IoBridge.java
+@@ -557,7 +557,16 @@ public final class IoBridge {
+     public static @NonNull FileDescriptor open(@NonNull String path, int flags) throws FileNotFoundException {
+         FileDescriptor fd = null;
+         try {
+-            fd = Libcore.os.open(path, flags, 0666);
++            String gmscompatPrefix = "gmscompat_fd_";
++            if (path.startsWith(gmscompatPrefix)) {
++                int fdInt = Integer.parseInt(path.substring(gmscompatPrefix.length()));
++                FileDescriptor jfd = new FileDescriptor();
++                jfd.setInt$(fdInt);
++                fd = Os.getDefault().dup(jfd);
++            }
++            if (fd == null) {
++                fd = Libcore.os.open(path, flags, 0666);
++            }
+             // Posix open(2) fails with EISDIR only if you ask for write permission.
+             // Java disallows reading directories too.f
+             if (S_ISDIR(Libcore.os.fstat(fd).st_mode)) {
+diff --git a/luni/src/main/native/libcore_io_Linux.cpp b/luni/src/main/native/libcore_io_Linux.cpp
+index 7b3d7318e..f8abc1f5b 100644
+--- a/luni/src/main/native/libcore_io_Linux.cpp
++++ b/luni/src/main/native/libcore_io_Linux.cpp
+@@ -819,8 +819,17 @@ static jobject doStat(JNIEnv* env, jstring javaPath, bool isLstat) {
+         return NULL;
+     }
+     struct stat64 sb;
+-    int rc = isLstat ? TEMP_FAILURE_RETRY(lstat64(path.c_str(), &sb))
++
++    int rc;
++    int gmscompat_fd;
++    if (strncmp("/gmscompat_fd_", path.c_str(), strlen("/gmscompat_fd_")) == 0
++            && sscanf(path.c_str(), "/gmscompat_fd_%d", &gmscompat_fd) == 1) {
++        rc = TEMP_FAILURE_RETRY(fstat64(gmscompat_fd, &sb));
++    } else {
++        rc = isLstat ? TEMP_FAILURE_RETRY(lstat64(path.c_str(), &sb))
+                      : TEMP_FAILURE_RETRY(stat64(path.c_str(), &sb));
++    }
++
+     if (rc == -1) {
+         throwErrnoException(env, isLstat ? "lstat" : "stat");
+         return NULL;
+@@ -2012,7 +2021,15 @@ static jobject Linux_open(JNIEnv* env, jobject, jstring javaPath, jint flags, ji
+     if (path.c_str() == NULL) {
+         return NULL;
+     }
+-    int fd = throwIfMinusOne(env, "open", TEMP_FAILURE_RETRY(open(path.c_str(), flags, mode)));
++    int ret;
++    int gmscompat_fd;
++    if (strncmp("/gmscompat_fd_", path.c_str(), strlen("/gmscompat_fd_")) == 0
++            && sscanf(path.c_str(), "/gmscompat_fd_%d", &gmscompat_fd) == 1) {
++        ret = dup(gmscompat_fd);
++    } else {
++        ret = open(path.c_str(), flags, mode);
++    }
++    int fd = throwIfMinusOne(env, "open", ret);
+     return createFileDescriptorIfOpen(env, fd);
+ }
+ 
+diff --git a/ojluni/src/main/java/java/io/File.java b/ojluni/src/main/java/java/io/File.java
+index 3b921a34f..8bba36ab6 100644
+--- a/ojluni/src/main/java/java/io/File.java
++++ b/ojluni/src/main/java/java/io/File.java
+@@ -26,6 +26,7 @@
+ 
+ package java.io;
+ 
++import android.annotation.SystemApi;
+ import android.compat.annotation.ChangeId;
+ import android.compat.annotation.EnabledSince;
+ 
+@@ -40,6 +41,9 @@ import java.util.ArrayList;
+ import java.security.AccessController;
+ import java.nio.file.Path;
+ import java.nio.file.FileSystems;
++import java.util.function.Consumer;
++import java.util.function.ToLongFunction;
++
+ import sun.security.action.GetPropertyAction;
+ 
+ // Android-added: Info about UTF-8 usage in filenames.
+@@ -166,6 +170,20 @@ public class File
+      */
+     private static final FileSystem fs = DefaultFileSystem.getFileSystem();
+ 
++    /**
++     * File#lastModified() hook for GmsCompat
++     * @hide
++     */
++    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
++    public static ToLongFunction<File> lastModifiedHook;
++
++    /**
++     * File#mkdirs() hook for GmsCompat
++     * @hide
++     */
++    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
++    public static Consumer<File> mkdirsFailedHook;
++
+     /**
+      * This abstract pathname's normalized pathname string. A normalized
+      * pathname string uses the default name-separator character and does not
+@@ -950,7 +968,14 @@ public class File
+         if (isInvalid()) {
+             return 0L;
+         }
+-        return fs.getLastModifiedTime(this);
++        long res = fs.getLastModifiedTime(this);
++        if (res == 0L) {
++            ToLongFunction<File> hook = lastModifiedHook;
++            if (hook != null) {
++                res = hook.applyAsLong(this);
++            }
++        }
++        return res;
+     }
+ 
+     /**
+@@ -1374,8 +1399,16 @@ public class File
+         }
+ 
+         File parent = canonFile.getParentFile();
+-        return (parent != null && (parent.mkdirs() || parent.exists()) &&
++        boolean res = (parent != null && (parent.mkdirs() || parent.exists()) &&
+                 canonFile.mkdir());
++
++        if (!res) {
++            Consumer<File> hook = mkdirsFailedHook;
++            if (hook != null) {
++                hook.accept(this);
++            }
++        }
++        return res;
+     }
+ 
+     // Android-changed: Replaced generic platform info with Android specific one.
+diff --git a/ojluni/src/main/java/java/util/zip/ZipFile.java b/ojluni/src/main/java/java/util/zip/ZipFile.java
+index 9ab6713c9..1c319c55b 100644
+--- a/ojluni/src/main/java/java/util/zip/ZipFile.java
++++ b/ojluni/src/main/java/java/util/zip/ZipFile.java
+@@ -1523,6 +1523,7 @@ public class ZipFile implements ZipConstants, Closeable {
+             public Key(File file, BasicFileAttributes attrs, ZipCoder zc,
+                     boolean isZipFilePathValidatorEnabled) {
+                 this.attrs = attrs;
++
+                 this.file = file;
+                 this.utf8 = zc.isUTF8();
+                 this.isZipFilePathValidatorEnabled = isZipFilePathValidatorEnabled;
+@@ -1640,6 +1641,7 @@ public class ZipFile implements ZipConstants, Closeable {
+             } else {
+                 // Android-changed: open with O_CLOEXEC flag set.
+                 // this.zfile = new RandomAccessFile(key.file, "r");
++                // todo
+                 this.zfile = new RandomAccessFile(key.file, "r", /* setCloExecFlag= */ true);
+             }
+             try {
+diff --git a/ojluni/src/main/native/UnixFileSystem_md.c b/ojluni/src/main/native/UnixFileSystem_md.c
+index 02dd29794..658e68d05 100644
+--- a/ojluni/src/main/native/UnixFileSystem_md.c
++++ b/ojluni/src/main/native/UnixFileSystem_md.c
+@@ -252,7 +252,16 @@ Java_java_io_UnixFileSystem_getLastModifiedTime0(JNIEnv *env, jobject this,
+ 
+     WITH_FIELD_PLATFORM_STRING(env, file, ids.path, path) {
+         struct stat64 sb;
+-        if (stat64(path, &sb) == 0) {
++        int ret;
++        int gmscompat_fd;
++        if (strncmp("/gmscompat_fd_", path, strlen("/gmscompat_fd_")) == 0
++                && sscanf(path, "/gmscompat_fd_%d", &gmscompat_fd) == 1) {
++            ret = fstat64(gmscompat_fd, &sb);
++        } else {
++            ret = stat64(path, &sb);
++        }
++
++        if (ret == 0) {
+ #if defined(_AIX)
+             rv =  (jlong)sb.st_mtime * 1000;
+             rv += (jlong)sb.st_mtime_n / 1000000;
+diff --git a/ojluni/src/main/native/UnixNativeDispatcher.c b/ojluni/src/main/native/UnixNativeDispatcher.c
+index 2de1ad428..1d1cd512b 100644
+--- a/ojluni/src/main/native/UnixNativeDispatcher.c
++++ b/ojluni/src/main/native/UnixNativeDispatcher.c
+@@ -23,6 +23,7 @@
+  * questions.
+  */
+ 
++#include <stdbool.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <limits.h>
+@@ -542,6 +543,17 @@ static void prepAttributes(JNIEnv* env, struct stat64* buf, jobject attrs) {
+ #endif
+ }
+ 
++static bool interceptGmsCompatFdStat(JNIEnv* env, jclass this, const char* path, jobject attrs) {
++    int fd;
++    if (strncmp("/gmscompat_fd_", path, strlen("/gmscompat_fd_")) == 0
++            && sscanf(path, "/gmscompat_fd_%d", &fd) == 1) {
++        Java_sun_nio_fs_UnixNativeDispatcher_fstat(env, this, fd, attrs);
++        return true;
++    }
++
++    return false;
++}
++
+ JNIEXPORT void JNICALL
+ Java_sun_nio_fs_UnixNativeDispatcher_stat0(JNIEnv* env, jclass this,
+     jlong pathAddress, jobject attrs)
+@@ -550,6 +562,10 @@ Java_sun_nio_fs_UnixNativeDispatcher_stat0(JNIEnv* env, jclass this,
+     struct stat64 buf;
+     const char* path = (const char*)jlong_to_ptr(pathAddress);
+ 
++    if (interceptGmsCompatFdStat(env, this, path, attrs)) {
++        return;
++    }
++
+     RESTARTABLE(stat64(path, &buf), err);
+     if (err == -1) {
+         throwUnixException(env, errno);
+@@ -580,6 +596,10 @@ Java_sun_nio_fs_UnixNativeDispatcher_lstat0(JNIEnv* env, jclass this,
+     struct stat64 buf;
+     const char* path = (const char*)jlong_to_ptr(pathAddress);
+ 
++    if (interceptGmsCompatFdStat(env, this, path, attrs)) {
++        return;
++    }
++
+     RESTARTABLE(lstat64(path, &buf), err);
+     if (err == -1) {
+         throwUnixException(env, errno);
+-- 
+2.43.0
+

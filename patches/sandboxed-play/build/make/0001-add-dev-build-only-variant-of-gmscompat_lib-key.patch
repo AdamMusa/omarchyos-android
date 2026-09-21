@@ -1,0 +1,111 @@
+From 726e8b2575989d32aa1bb9c9f07a1f8b80f365d6 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Mon, 20 Oct 2025 22:44:44 +0300
+Subject: [PATCH] add dev-build-only variant of gmscompat_lib key
+
+---
+ target/product/security/gmscompat_lib.pk8     | Bin 0 -> 2373 bytes
+ .../product/security/gmscompat_lib.x509.pem   |  35 ++++++++++++++++++
+ 2 files changed, 35 insertions(+)
+ create mode 100644 target/product/security/gmscompat_lib.pk8
+ create mode 100644 target/product/security/gmscompat_lib.x509.pem
+
+diff --git a/target/product/security/gmscompat_lib.pk8 b/target/product/security/gmscompat_lib.pk8
+new file mode 100644
+index 0000000000000000000000000000000000000000..f7eb94a8c3f78330cc861aae5d7bb1712476980d
+GIT binary patch
+literal 2373
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/target/product/security/gmscompat_lib.x509.pem b/target/product/security/gmscompat_lib.x509.pem
+new file mode 100644
+index 000000000..7b3fd9f09
+--- /dev/null
++++ b/target/product/security/gmscompat_lib.x509.pem
+@@ -0,0 +1,35 @@
++-----BEGIN CERTIFICATE-----
++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
++4Zu2DO2SkuXrnHtyWpEt03g=
++-----END CERTIFICATE-----
+-- 
+2.43.0
+

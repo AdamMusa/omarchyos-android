@@ -1,0 +1,352 @@
+From 0af0e5005e1722dca01655219156e5868799bbc8 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Sun, 31 Jul 2022 19:13:27 +0300
+Subject: [PATCH] gmscompat: add shims and stubs
+
+See frameworks_base commit for tags that can be used to see the full commit history.
+---
+ .../android/bluetooth/BluetoothAdapter.java   | 46 +++++++++++++++++++
+ .../android/bluetooth/BluetoothDevice.java    | 42 +++++++++++++----
+ .../bluetooth/BluetoothGattServer.java        |  4 ++
+ .../le/AdvertisingSetParameters.java          |  9 ++++
+ .../bluetooth/le/BluetoothLeAdvertiser.java   | 10 +++-
+ .../bluetooth/le/BluetoothLeScanner.java      |  8 +++-
+ .../android/bluetooth/le/ScanSettings.java    |  9 ++++
+ 7 files changed, 118 insertions(+), 10 deletions(-)
+
+diff --git a/framework/java/android/bluetooth/BluetoothAdapter.java b/framework/java/android/bluetooth/BluetoothAdapter.java
+index b9b91d3fd..144fe481a 100644
+--- a/framework/java/android/bluetooth/BluetoothAdapter.java
++++ b/framework/java/android/bluetooth/BluetoothAdapter.java
+@@ -51,6 +51,8 @@ import android.annotation.SdkConstant.SdkConstantType;
+ import android.annotation.SuppressLint;
+ import android.annotation.SystemApi;
+ import android.app.PendingIntent;
++import android.app.compat.gms.GmsCompat;
++import android.app.compat.gms.GmsModuleHooks;
+ import android.bluetooth.BluetoothDevice.AddressType;
+ import android.bluetooth.BluetoothDevice.Transport;
+ import android.bluetooth.annotations.RequiresBluetoothAdvertisePermission;
+@@ -1312,6 +1314,13 @@ public final class BluetoothAdapter {
+     @RequiresBluetoothConnectPermission
+     @RequiresPermission(BLUETOOTH_CONNECT)
+     public boolean enableBLE() {
++        if (GmsCompat.isEnabled()) {
++            Boolean res = GmsModuleHooks.enableBluetoothAdapter();
++            if (res != null) {
++                return res.booleanValue();
++            }
++        }
++
+         try {
+             return mManagerService.enableBle(mAttributionSource, mToken);
+         } catch (RemoteException e) {
+@@ -1383,6 +1392,12 @@ public final class BluetoothAdapter {
+     @RequiresLegacyBluetoothPermission
+     @RequiresNoPermission
+     public @AdapterState int getState() {
++        if (GmsCompat.isEnabled()) {
++            if (!GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)) {
++                return BluetoothAdapter.STATE_OFF;
++            }
++        }
++
+         int state = sBluetoothGetSystemStateCache.query(null);
+ 
+         // Consider all internal states as OFF
+@@ -1416,6 +1431,12 @@ public final class BluetoothAdapter {
+                     "Use {@link #getState()} instead to determine "
+                             + "whether you can use BLE & BT classic.")
+     public @InternalAdapterState int getLeState() {
++        if (GmsCompat.isEnabled()) {
++            if (!GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)) {
++                return BluetoothAdapter.STATE_OFF;
++            }
++        }
++
+         int state = sBluetoothGetSystemStateCache.query(null);
+         return state;
+     }
+@@ -1473,6 +1494,14 @@ public final class BluetoothAdapter {
+             Log.d(TAG, "enable(): BT already enabled!");
+             return true;
+         }
++
++        if (GmsCompat.isEnabled()) {
++            Boolean res = GmsModuleHooks.enableBluetoothAdapter();
++            if (res != null) {
++                return res.booleanValue();
++            }
++        }
++
+         try {
+             return mManagerService.enable(mAttributionSource);
+         } catch (RemoteException e) {
+@@ -1733,6 +1762,19 @@ public final class BluetoothAdapter {
+                 && mode != SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+             throw new IllegalArgumentException("Invalid scan mode param value");
+         }
++
++        if (GmsCompat.isEnabled()) {
++            boolean proceed = GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)
++                    && GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED);
++
++            if (!proceed) {
++                if (mode != SCAN_MODE_NONE) {
++                    GmsModuleHooks.makeBluetoothAdapterDiscoverable();
++                }
++                return BluetoothStatusCodes.SUCCESS;
++            }
++        }
++
+         return callServiceIfEnabled(
+                 s -> s.setScanMode(mode, mAttributionSource), BluetoothStatusCodes.ERROR_UNKNOWN);
+     }
+@@ -4293,6 +4335,8 @@ public final class BluetoothAdapter {
+         mServiceLock.readLock().lock();
+         try {
+             mBluetoothConnectionCallbackWrapper.registerCallback(mService, callback, executor);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
+         } finally {
+             mServiceLock.readLock().unlock();
+         }
+@@ -4318,6 +4362,8 @@ public final class BluetoothAdapter {
+         mServiceLock.readLock().lock();
+         try {
+             mBluetoothConnectionCallbackWrapper.unregisterCallback(mService, callback);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
+         } finally {
+             mServiceLock.readLock().unlock();
+         }
+diff --git a/framework/java/android/bluetooth/BluetoothDevice.java b/framework/java/android/bluetooth/BluetoothDevice.java
+index 5e90bbd08..987d1764c 100644
+--- a/framework/java/android/bluetooth/BluetoothDevice.java
++++ b/framework/java/android/bluetooth/BluetoothDevice.java
+@@ -38,6 +38,7 @@ import android.annotation.SdkConstant.SdkConstantType;
+ import android.annotation.SuppressLint;
+ import android.annotation.SystemApi;
+ import android.app.compat.CompatChanges;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.annotations.RequiresBluetoothConnectPermission;
+ import android.bluetooth.annotations.RequiresBluetoothLocationPermission;
+ import android.bluetooth.annotations.RequiresBluetoothScanPermission;
+@@ -1758,7 +1759,12 @@ public final class BluetoothDevice implements Parcelable, Attributable {
+     @RequiresBluetoothConnectPermission
+     @RequiresPermission(allOf = {BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED})
+     public @Nullable String getIdentityAddress() {
+-        return callServiceIfEnabled(s -> s.getIdentityAddress(mAddress, mAttributionSource), null);
++        try {
++            return callServiceIfEnabled(s -> s.getIdentityAddress(mAddress, mAttributionSource), null);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return null;
++        }
+     }
+ 
+     /**
+@@ -2532,8 +2538,13 @@ public final class BluetoothDevice implements Parcelable, Attributable {
+     @RequiresPermission(allOf = {BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED})
+     public boolean setPairingConfirmation(boolean confirm) {
+         if (DBG) log("setPairingConfirmation()");
+-        return callServiceIfEnabled(
+-                s -> s.setPairingConfirmation(this, confirm, mAttributionSource), false);
++        try {
++            return callServiceIfEnabled(
++                    s -> s.setPairingConfirmation(this, confirm, mAttributionSource), false);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return false;
++        }
+     }
+ 
+     boolean isBluetoothEnabled() {
+@@ -2584,8 +2595,13 @@ public final class BluetoothDevice implements Parcelable, Attributable {
+     @RequiresPermission(allOf = {BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED})
+     public boolean setSilenceMode(boolean silence) {
+         if (DBG) log("setSilenceMode()");
+-        return callServiceIfEnabled(
+-                s -> s.setSilenceMode(this, silence, mAttributionSource), false);
++        try {
++            return callServiceIfEnabled(
++                    s -> s.setSilenceMode(this, silence, mAttributionSource), false);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return false;
++        }
+     }
+ 
+     /**
+@@ -3334,8 +3350,13 @@ public final class BluetoothDevice implements Parcelable, Attributable {
+             throw new IllegalArgumentException(
+                     "value length is " + value.length + ", should not over " + METADATA_MAX_LENGTH);
+         }
+-        return callServiceIfEnabled(
+-                s -> s.setMetadata(this, key, value, mAttributionSource), false);
++        try {
++            return callServiceIfEnabled(
++                    s -> s.setMetadata(this, key, value, mAttributionSource), false);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return false;
++        }
+     }
+ 
+     /**
+@@ -3349,7 +3370,12 @@ public final class BluetoothDevice implements Parcelable, Attributable {
+     @RequiresBluetoothConnectPermission
+     @RequiresPermission(allOf = {BLUETOOTH_CONNECT, BLUETOOTH_PRIVILEGED})
+     public @Nullable byte[] getMetadata(@MetadataKey int key) {
+-        return callServiceIfEnabled(s -> s.getMetadata(this, key, mAttributionSource), null);
++        try {
++            return callServiceIfEnabled(s -> s.getMetadata(this, key, mAttributionSource), null);
++        } catch (SecurityException se) {
++            GmsCompat.catchOrRethrow(se);
++            return null;
++        }
+     }
+ 
+     /**
+diff --git a/framework/java/android/bluetooth/BluetoothGattServer.java b/framework/java/android/bluetooth/BluetoothGattServer.java
+index d38e949c1..0ed56ea83 100644
+--- a/framework/java/android/bluetooth/BluetoothGattServer.java
++++ b/framework/java/android/bluetooth/BluetoothGattServer.java
+@@ -31,6 +31,7 @@ import android.annotation.Nullable;
+ import android.annotation.RequiresNoPermission;
+ import android.annotation.RequiresPermission;
+ import android.annotation.SystemApi;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.annotations.RequiresBluetoothConnectPermission;
+ import android.bluetooth.annotations.RequiresLegacyBluetoothPermission;
+ import android.content.AttributionSource;
+@@ -565,6 +566,9 @@ public final class BluetoothGattServer implements BluetoothProfile {
+                 Log.e(TAG, "", e);
+                 mCallback = null;
+                 return false;
++            } catch (SecurityException se) {
++                GmsCompat.catchOrRethrow(se);
++                return false;
+             }
+ 
+             try {
+diff --git a/framework/java/android/bluetooth/le/AdvertisingSetParameters.java b/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
+index 1817cf2f3..60c17522d 100644
+--- a/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
++++ b/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
+@@ -25,6 +25,7 @@ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.annotation.RequiresNoPermission;
+ import android.annotation.SystemApi;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.BluetoothAdapter;
+ import android.bluetooth.BluetoothDevice;
+ import android.bluetooth.BluetoothDevice.AddressType;
+@@ -570,6 +571,14 @@ public final class AdvertisingSetParameters implements Parcelable {
+                             > AdvertisingSetParameters.ADDRESS_TYPE_RANDOM_NON_RESOLVABLE) {
+                 throw new IllegalArgumentException("unknown address type " + ownAddressType);
+             }
++
++            if (GmsCompat.isEnabled()) {
++                if (!GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED)) {
++                    android.util.Log.d("GmsCompat", "skipped setOwnAddressType(" + ownAddressType + ")", new Throwable());
++                    return this;
++                }
++            }
++
+             mOwnAddressType = ownAddressType;
+             return this;
+         }
+diff --git a/framework/java/android/bluetooth/le/BluetoothLeAdvertiser.java b/framework/java/android/bluetooth/le/BluetoothLeAdvertiser.java
+index d4fb8594e..ab36cb82f 100644
+--- a/framework/java/android/bluetooth/le/BluetoothLeAdvertiser.java
++++ b/framework/java/android/bluetooth/le/BluetoothLeAdvertiser.java
+@@ -29,6 +29,7 @@ import android.annotation.RequiresNoPermission;
+ import android.annotation.RequiresPermission;
+ import android.annotation.SuppressLint;
+ import android.annotation.SystemApi;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.BluetoothAdapter;
+ import android.bluetooth.BluetoothDevice;
+ import android.bluetooth.BluetoothGattServer;
+@@ -562,6 +563,13 @@ public final class BluetoothLeAdvertiser {
+             return;
+         }
+ 
++        if (GmsCompat.isEnabled()) {
++            if (gattServer != null && !GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED)) {
++                Log.d("GmsCompat", "ignored BluetoothGattServer", new Throwable());
++                gattServer = null;
++            }
++        }
++
+         boolean isConnectable = parameters.isConnectable();
+         boolean isDiscoverable = parameters.isDiscoverable();
+         boolean hasFlags = isConnectable && isDiscoverable;
+@@ -655,7 +663,7 @@ public final class BluetoothLeAdvertiser {
+             return;
+         } catch (SecurityException e) {
+             mCallbackWrappers.remove(callback);
+-            throw e;
++            GmsCompat.catchOrRethrow(e);
+         }
+     }
+ 
+diff --git a/framework/java/android/bluetooth/le/BluetoothLeScanner.java b/framework/java/android/bluetooth/le/BluetoothLeScanner.java
+index 3d331a33f..bb8f3369d 100644
+--- a/framework/java/android/bluetooth/le/BluetoothLeScanner.java
++++ b/framework/java/android/bluetooth/le/BluetoothLeScanner.java
+@@ -30,6 +30,7 @@ import android.annotation.RequiresPermission;
+ import android.annotation.SuppressLint;
+ import android.annotation.SystemApi;
+ import android.app.PendingIntent;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.Attributable;
+ import android.bluetooth.BluetoothAdapter;
+ import android.bluetooth.BluetoothDevice;
+@@ -303,9 +304,14 @@ public final class BluetoothLeScanner {
+     private int doStartScan(
+             @Nullable List<ScanFilter> filters,
+             ScanSettings settings,
+-            @Nullable final WorkSource workSource,
++            @Nullable WorkSource workSource,
+             @Nullable final ScanCallback callback,
+             @Nullable final PendingIntent callbackIntent) {
++        if (GmsCompat.isEnabled()) {
++            if (workSource != null && !GmsCompat.hasPermission(android.Manifest.permission.UPDATE_DEVICE_STATS)) {
++                workSource = null;
++            }
++        }
+         if (callback == null && callbackIntent == null) {
+             throw new IllegalArgumentException("callback is null");
+         }
+diff --git a/framework/java/android/bluetooth/le/ScanSettings.java b/framework/java/android/bluetooth/le/ScanSettings.java
+index 099ae9fc5..0f2ee0147 100644
+--- a/framework/java/android/bluetooth/le/ScanSettings.java
++++ b/framework/java/android/bluetooth/le/ScanSettings.java
+@@ -22,6 +22,7 @@ import android.annotation.NonNull;
+ import android.annotation.RequiresNoPermission;
+ import android.annotation.SystemApi;
+ import android.app.compat.CompatChanges;
++import android.app.compat.gms.GmsCompat;
+ import android.bluetooth.BluetoothDevice;
+ import android.compat.annotation.ChangeId;
+ import android.compat.annotation.EnabledSince;
+@@ -373,6 +374,14 @@ public final class ScanSettings implements Parcelable {
+          */
+         @RequiresNoPermission
+         public Builder setScanMode(int scanMode) {
++            if (GmsCompat.isEnabled()) {
++                if (scanMode == SCAN_MODE_AMBIENT_DISCOVERY) {
++                    if (!GmsCompat.hasPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED)) {
++                        scanMode = SCAN_MODE_BALANCED;
++                    }
++                }
++            }
++
+             if (!List.of(
+                             SCAN_MODE_OPPORTUNISTIC,
+                             SCAN_MODE_LOW_POWER,
+-- 
+2.43.0
+

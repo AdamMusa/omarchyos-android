@@ -1,0 +1,375 @@
+[[flags]]
+
+[com.google.android.apps.wearables.maestro.companion#com.google.android.apps.wearables.maestro.companion]
+# Force Maestro's standalone UI path. On Pixel devices, Maestro normally
+# redirects Pixel Buds controls to Android's Bluetooth device details page when this
+# flag is false. That Settings path depends on Play services having completed the
+# Fast Pair flow, stored Fast Pair account-key state for the Buds, and written
+# Bluetooth metadata key 25 (METADATA_FAST_PAIR_CUSTOMIZED_FIELDS) so Settings can
+# bind GmsCore's DeviceSettings config provider and then the returned per-setting
+# provider endpoints. Bluetooth metadata + pairing management is currently privileged
+MaestroApp__standalone_mode true
+
+[com.google.android.gms]
+# disable AnomalyConfigIntentOperation, which crashes due to unavailable StatsManager
+45681197 false
+# DeviceDoctor kills GmsCore process from an UncaughtExceptionHandler, which hides the crash from
+# the GmsCompat crash reporting system
+DeviceDoctor__devicedoctor_enabled false
+
+[com.google.android.gms.enpromo]
+# enpromo is a GmsCore module that shows a notification that prompts the user to enable
+# Exposure Notifications (en). It needs location access to determine which location-specific app
+# needs to be installed for Exposure Notifications to function.
+# Location permission can't be revoked for privileged GmsCore, it being revoked leads to a crash
+# (location access being disabled is handled correctly, but spoofing it would break other functionality)
+PromoFeature__enabled perms-none-of android.permission.ACCESS_COARSE_LOCATION false
+
+[com.google.android.gms.fido]
+# Note that the rest of dynamic FIDO flags are forced to their default values by force_default_flags
+# below for increased stability
+Passkeys__client_data_hash_override_for_security_keys true
+
+[com.google.android.gms.gestureexchange#com.google.android.gms]
+# Gesture Exchange requires privileged NFC, secure settings and process state
+# integration. Disable its master flag to make GmsCore disable every component
+# in the module.
+45751209 false
+
+[com.google.android.gms.personalsafety]
+# requires privileged LOCK_DEVICE permission, though other Phenotype flags can also make it fallback
+# to DevicePolicyManager lockNow
+AutoLockSettings__enable_theft_protection_default_on_notification false
+
+[com.google.android.metrics]
+# controls access to privileged StatsManager#getRegisteredExperimentIds()
+add_external_experiment_ids false
+
+[com.google.android.gms.advancedprotection#com.google.android.gms]
+# disable Advanced Protection, as privileged permissions are needed to enable advanced protection
+# via the AdvancedProtectionService. Many of the device protection features are already implemented
+# in GrapheneOS.
+45673629 false
+AdvancedProtection__enable_titanium_enrollment_notification false
+
+[com.google.android.gms.nearby]
+# disable WearableDataListenerService, it needs privileged permissions
+FastPairFeature__enable_wearable_service false
+# use PackageManager#getNameForUid() instead of PackageManager#getPackagesForUid(), the latter needs
+# a shim that is currently absent
+FastPairConfig__sass_get_package_name_from_playback_configuration false
+
+[com.google.android.gms.cast]
+# Prevent crashes in GmsCore caused by calling ConnectivityManager#registerNetworkCallback too many
+# times when it has no INTERNET permission (there's a OS-enforced limit on the number of these callbacks).
+# Likely a regression, newer and older versions of GmsCore don't have this issue.
+# This flag makes it use a deprecated BroadcastReceiver instead.
+MdnsConfigs__use_connectivity_manager_for_wifi_monitor_if_possible false
+# CAST_CONNECTION_NOTIFY dialogs are incompatible with gmscompat code that shows a notification
+# prompt on background activity starts, because startActivity() calls are used for both showing and
+# auto-dismissing them. These dialogs are disabled by default, but were enabled with a PhenotypeFlag
+# update.
+# See https://discuss.grapheneos.org/d/1263-notification-says-google-play-services-needs-to-show-a-screen
+ReceiverControlChannelFeatures__enable_user_accept_dialogs false
+
+[com.google.android.gms.people]
+# controls access to ContactsContract$SimContacts#getSimAccounts()
+AccountCategoriesFeature__use_cp2_sim_account_settings perms-none-of android.permission.READ_CONTACTS false
+FsaDeviceContactsMoveFeature__large_contact_list_device_opt_in_disallowed perms-none-of android.permission.READ_CONTACTS false
+
+[com.google.android.gms.security]
+# disable TelecomTaskService, it needs privileged MODIFY_PHONE_STATE permission
+enable_telecom_feature false
+
+[com.google.android.gms.update]
+# OS update service
+# This flag is replaced with the gservices update_service_enabled flag since GmsCore 24.31
+service_enabled false
+update_install_enable_resume_on_reboot false
+
+[com.google.android.gms.wallet]
+# hiding overlay windows requires a privileged permission
+BenderLaunchFeatures__enable_set_hide_overlay_windows false
+
+[com.google.android.westworld]
+# seems to be an OS stats/analytics service, requires privileged permissions to function
+enabled false
+is_enabled false
+metrics_enabled false
+metadata_enabled false
+
+[com.google.android.gms.auth_account]
+# needed to prevent GmsCore from blocking Google account removal due to lacking a privileged integration into OS
+BugFixFeatures__fix_frp_in_r false
+# GmsCore 262434035 enables WebAuthn in its account sign-in WebView by default, which routes security key
+# authentication through Credential Manager.
+Webauthn__use_webauthn_in_webview false
+
+[com.google.android.location]
+# these flags are needed to prevent GmsCore from ignoring results of the legacy WifiManager#startScan()
+# method, which doesn't have an unprivileged modern version. It's used for location estimation based
+# on nearby Wi-Fi access points
+d_psl false
+fwm true
+
+[com.google.android.gms.kidssettings#com.google.android.gms]
+SeparateApkFeature__disable_separate_apk_if_not_used false
+
+[com.google.android.projection.gearhead]
+# prevent Android Auto from trying to query a nonexistent Assistant service in the Google app
+Assistant__dodgeboost_initial_handshake_enabled true
+
+[gservices]
+# make sure PhenotypeFlags are overridable by Gservices flags. Overriding Play Store (finsky) PhenotypeFlags
+# directly is much more complex than overriding Gservices flags.
+finsky.kill_switch_phenotype_gservices_check set-string 0
+# disable GmsCore OS update service
+update_service_enabled set-string 0
+
+[[stubs]]
+
+[android.app.ActivityManager]
+addOnUidImportanceListener void
+# 2 is ProcessState.IMPORTANCE_TOP
+getPackageImportance int 2
+
+[android.app.admin.DevicePolicyManager]
+isDeviceProvisioned true
+isDeviceProvisioningConfigApplied true
+getDeviceOwnerComponentOnAnyUser null
+getDeviceOwnerNameOnAnyUser nullString
+getProfileOwnerNameAsUser nullString
+notifyPendingSystemUpdate void
+
+[android.app.backup.BackupManager]
+isBackupEnabled false
+isBackupServiceActive false
+
+[android.app.supervision.SupervisionManager]
+isSupervisionEnabled false
+
+[android.app.usage.UsageStatsManager]
+# 10 is STANDBY_BUCKET_ACTIVE
+getAppStandbyBucket int 10
+queryEvents null
+
+[android.bluetooth.BluetoothA2dp]
+setConnectionPolicy false
+# -1 is CONNECTION_POLICY_UNKNOWN
+getConnectionPolicy int -1
+
+[android.bluetooth.BluetoothAdapter]
+disable false
+enable false
+# 20 is SCAN_MODE_NONE
+getScanMode int 20
+getName nullString
+# 02:00:00:00:00:00 is DEFAULT_MAC_ADDRESS
+getAddress String 02:00:00:00:00:00
+listenUsingInsecureL2capChannel throw java.io.IOException
+getProfileProxy false
+registerBluetoothConnectionCallback default
+unregisterBluetoothConnectionCallback default
+
+[android.bluetooth.BluetoothDevice]
+getIdentityAddress default
+getMetadata default
+setMetadata default
+setPairingConfirmation default
+setSilenceMode default
+
+[android.bluetooth.BluetoothHapClient]
+registerCallback void
+unregisterCallback void
+
+[android.bluetooth.BluetoothLeAudio]
+registerCallback void
+unregisterCallback void
+
+[android.bluetooth.BluetoothLeBroadcast]
+registerCallback void
+unregisterCallback void
+
+[android.bluetooth.BluetoothLeBroadcastAssistant]
+getConnectedDevices emptyList
+registerCallback void
+unregisterCallback void
+
+[android.bluetooth.BluetoothManager]
+openGattServer default
+
+[android.bluetooth.le.BluetoothLeAdvertiser]
+startAdvertisingSet default
+
+[android.content.ContentResolver]
+registerContentObserver void
+
+[android.content.pm.verify.domain.DomainVerificationManager]
+queryValidVerificationPackageNames emptyList
+
+[android.hardware.usb.UsbManager]
+getPorts emptyList
+grantPermission void
+setCurrentFunctions void
+
+[android.location.LocationManager]
+getLastKnownLocation null
+registerGnssMeasurementsCallback false
+registerGnssStatusCallback false
+setExtraLocationControllerPackage void
+setExtraLocationControllerPackageEnabled void
+
+[android.media.AudioManager]
+muteAwaitConnection void
+getMutingExpectedDevice null
+registerMuteAwaitConnectionCallback void
+unregisterMuteAwaitConnectionCallback void
+
+[android.media.MediaRouter2]
+getInstance null
+
+[android.media.session.MediaSessionManager]
+getActiveSessions emptyList
+addOnActiveSessionsChangedListener void
+
+[android.net.wifi.WifiManager]
+getPrivilegedConfiguredNetworks emptyList
+getAllMatchingWifiConfigs emptyList
+getMatchingOsuProviders emptyMap
+getMatchingPasspointConfigsForOsuProviders emptyMap
+getSoftApConfiguration null
+getCurrentNetwork null
+reconnect false
+
+[android.nfc.NfcAdapter]
+disable false
+
+[android.os.DropBoxManager]
+getNextEntry null
+
+[android.os.SystemVibratorManager$SingleVibrator]
+addVibratorStateListener void
+
+[android.os.UserManager]
+getSeedAccountOptions null
+getUserName String Owner
+getUserRestrictionSources emptyList
+isMainUser true
+
+[android.safetycenter.SafetyCenterManager]
+isSafetyCenterEnabled false
+
+[android.security.advancedprotection.AdvancedProtectionManager]
+getAdvancedProtectionFeatures emptyList
+setAdvancedProtectionEnabled void
+logDialogShown void
+
+[android.security.intrusiondetection.IntrusionDetectionManager]
+disable void
+
+[android.security.keystore.recovery.RecoveryController]
+initRecoveryService void
+setServerParams void
+
+[android.telecom.TelecomManager]
+getAllPhoneAccountHandles emptyList
+getCallCapablePhoneAccounts emptyList
+getPhoneAccount null
+getSelfManagedPhoneAccounts emptyList
+getUserSelectedOutgoingPhoneAccount null
+placeCall void
+
+[android.telephony.SmsManager]
+injectSmsPdu void
+
+[android.telephony.SubscriptionManager]
+getActiveSubscriptionIdList emptyIntArray
+getPhoneNumber emptyString
+
+[android.telephony.TelephonyManager]
+getDeviceId nullString
+getImei nullString
+getMeid nullString
+# 0 is NETWORK_TYPE_UNKNOWN
+getDataNetworkType int 0
+getNetworkType int 0
+getVoiceNetworkType int 0
+# 0 is CALL_STATE_IDLE
+getCallState int 0
+getCallStateForSubscription int 0
+getSimSerialNumber nullString
+getUiccSlotsInfo nullArray
+getSubscriberId nullString
+getLine1Number nullString
+getAllCellInfo emptyList
+isIccLockEnabled false
+getGroupIdLevel1 nullString
+unregisterTelephonyCallback void
+getServiceState null
+getVoiceMailNumber nullString
+getIccAuthentication nullString
+
+[com.android.internal.gmscompat.sysservice.GmcPackageManager]
+getPackagesForUid nullArray
+
+[[versionMap]]
+# section name is gmscompat version, section contents are max supported versions of GmsCore and Play Store
+[1000]
+# GmsCore 24.22 requires GmsCompat 1008
+242199999 84459999
+
+[1008]
+245099999 84459999
+
+[[stubs_12.1]]
+
+[android.bluetooth.BluetoothDevice]
+getMetadata null
+setMetadata false
+setSilenceMode false
+
+[android.bluetooth.BluetoothAdapter]
+registerBluetoothConnectionCallback false
+unregisterBluetoothConnectionCallback false
+
+[android.content.ContextWrapper]
+sendBroadcastAsUser int 0
+
+[android.os.UserManager]
+isUserOfType false
+
+[[GmsServiceBroker_self_permission_bypass]]
+[1003]
+# DROID_GUARD (25) service can work without the Phone permission, despite requiring it to be granted.
+# This service is used for the Play Integrity API.
+25 android.permission.READ_PHONE_STATE
+
+[[force_default_flags]]
+[com.google.android.gms.fido]
+.+
+
+[[force_ComponentEnabledSettings]]
+[com.google.android.gms]
+# GestureExchangeService crashes the persistent GmsCore process when it queries its UID importance
+# without PACKAGE_USAGE_STATS, plus it requires more privileges to even work
+disable com.google.android.gms.gestureexchange.service.GestureExchangeService
+# causes chain crashes on Pixel Tablet due to the missing Dock Manager app
+disable com.google.android.gms.homegraph.PersistentListenerService
+disable com.google.android.gms.update.SystemUpdateGcmTaskService
+disable com.google.android.gms.update.SystemUpdatePersistentListenerService
+disable com.google.android.gms.update.SystemUpdateService
+disable com.google.android.gms.update.UpdateJobService
+
+[[spoof_self_permission_checks_v2]]
+
+[com.google.android.projection.gearhead]
+android.permission.ACCESS_COARSE_LOCATION
+android.permission.ACCESS_FINE_LOCATION
+android.permission.ASSOCIATE_COMPANION_DEVICES
+android.permission.BLUETOOTH_CONNECT
+android.permission.BLUETOOTH_SCAN
+android.permission.CALL_PHONE
+android.permission.MANAGE_USB
+android.permission.READ_PHONE_STATE
+android.permission.READ_PRIVILEGED_PHONE_STATE
+android.permission.RECORD_AUDIO

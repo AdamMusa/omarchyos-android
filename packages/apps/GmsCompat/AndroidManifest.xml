@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="app.grapheneos.gmscompat"
+    android:versionCode="1009"
+    android:versionName="1"
+>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- needed to be able to create TempServiceBinding to any package-->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="app.grapheneos.logviewer.SHOW_ERROR_REPORT" />
+    <!-- needed for config fragments for updating permissions for Android Auto, etc. -->
+    <uses-permission android:name="android.permission.UPDATE_AND_INVALIDATE_PERMISSION_STATE" />
+
+    <permission
+        android:name="app.grapheneos.gmscompat.SHOW_UI"
+        android:protectionLevel="signature|privileged" />
+
+    <permission
+        android:name="app.grapheneos.gmscompat.SIGNATURE_PROTECTED_PERMISSION"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="app.grapheneos.gmscompat.SIGNATURE_PROTECTED_PERMISSION" />
+
+    <!-- These permissions are normally declared in GSF and GmsCore. They were moved here because
+    of an issue with permissions that have "normal" protectionLevel. If the app that declares a
+    "normal" permission is installed after an app that requests that permission, the permission will
+    not be granted. GmsCompat app is a preinstalled app, it's always present. -->
+    <permission
+        android:name="com.google.android.providers.gsf.permission.READ_GSERVICES"
+        android:protectionLevel="normal" />
+    <permission
+        android:name="com.google.android.c2dm.permission.RECEIVE"
+        android:protectionLevel="normal" />
+
+    <!-- This permission is declared in GSF on regular Android. It was moved to GmsCompat app to
+    avoid the need to install GSF, which misbehaves on SDK 35+ due to signature mismatch between
+    itself and GmsCore (GSF and GmsCore use a sharedUid on regular Android) -->
+    <permission
+        android:name="com.google.android.c2dm.permission.SEND"
+        android:knownCerts="@array/gmscore_known_signers"
+        android:protectionLevel="internal|knownSigner" />
+
+    <application
+        android:name=".App"
+        android:label="@string/app_name"
+        android:forceQueryable="true"
+        tools:ignore="AllowBackup,MissingApplicationIcon"
+    >
+        <service
+            android:name=".PersistentFgService"
+            android:exported="false"
+            android:directBootAware="true"
+            android:foregroundServiceType="specialUse"
+        />
+
+        <provider
+            android:name=".RpcProvider"
+            android:authorities="app.grapheneos.gmscompat.RpcProvider"
+            android:exported="true"
+            android:directBootAware="true"
+            tools:ignore="ExportedContentProvider"
+        />
+
+        <provider
+            android:name=".GservicesProvider"
+            android:authorities="app.grapheneos.gmscompat.gservices"
+            android:exported="true"
+            android:directBootAware="true"
+            android:permission="com.google.android.providers.gsf.permission.READ_GSERVICES"
+            tools:ignore="ExportedContentProvider"
+        />
+
+        <receiver
+            android:name=".PendingActionReceiver"
+            android:exported="false"
+            android:directBootAware="true" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:permission="app.grapheneos.gmscompat.SHOW_UI"
+            android:theme="@style/Theme.GmsCompat.Settings.FilterTouches"
+            android:label="@string/activity_name"
+        >
+            <intent-filter>
+                <action android:name="app.grapheneos.gmscompat.SETTINGS_LINK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".location.StubResolutionActivity"
+            android:exported="true" />
+
+    </application>
+
+    <queries>
+        <package android:name="com.google.android.play.games" />
+        <package android:name="app.grapheneos.gmscompat.config" />
+        <package android:name="app.grapheneos.gmscompat.config.dev" />
+        <package android:name="app.grapheneos.apps" />
+        <package android:name="com.google.android.tts" />
+        <intent>
+            <action android:name="android.provider.Telephony.SMS_DELIVER"/>
+        </intent>
+    </queries>
+</manifest>

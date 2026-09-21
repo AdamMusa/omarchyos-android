@@ -28,6 +28,7 @@ Commands:
   fork               Create the local Omarchy branch in fork-owned projects
   build emulator     Build the native Android Emulator phone image (Linux)
   build cuttlefish   Build the Cuttlefish phone image (Linux/KVM)
+                     (OMARCHY_BUILD_VARIANT=user builds a release variant)
   run emulator       Open the built image in the native Android Emulator
   run cuttlefish     Start the built image with Cuttlefish WebRTC
   test               Run fast repository and architecture checks
@@ -58,17 +59,22 @@ filesystem_personality() {
 
 lunch_product() {
   local product="$1"
-  if lunch "${product}-trunk_staging-userdebug"; then
+  # userdebug for development; OMARCHY_BUILD_VARIANT=user for release images
+  # (no root, no adb root, debuggable=0).
+  local variant="${OMARCHY_BUILD_VARIANT:-userdebug}"
+  [[ "$variant" == user || "$variant" == userdebug || "$variant" == eng ]] \
+    || die "OMARCHY_BUILD_VARIANT must be user, userdebug or eng"
+  if lunch "${product}-trunk_staging-${variant}"; then
     return
   fi
 
   printf 'Current release config was unavailable; trying aosp_current.\n' >&2
-  if lunch "${product}-aosp_current-userdebug"; then
+  if lunch "${product}-aosp_current-${variant}"; then
     return
   fi
 
   printf 'Release-config target was unavailable; trying legacy lunch syntax.\n' >&2
-  lunch "${product}-userdebug"
+  lunch "${product}-${variant}"
 }
 
 doctor() {

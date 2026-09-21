@@ -1,0 +1,129 @@
+From 30d24e9f853aeb4e705910565369ab3a08dcbbb8 Mon Sep 17 00:00:00 2001
+From: Dmitry Muhomor <muhomor.dmitry@gmail.com>
+Date: Tue, 27 Jan 2026 11:47:49 +0000
+Subject: [PATCH] gmscompat: send client SMS OTP receival broadcasts to GmsCore
+
+Since 16 QPR2, unprivileged apps that have the SMS permission aren't allowed to read OTP SMS that
+aren't addressed to them.
+
+This commit allows GmsCore to receive OTP SMS receival broadcasts of SMS that are addressed to its
+clients. GmsCore is trusted by its clients and they run the GmsCore client library inside their
+own processes.
+---
+ .../internal/telephony/InboundSmsHandler.java | 23 ++++++----
+ .../telephony/InboundSmsHandlerExt.java       | 42 +++++++++++++++++++
+ 2 files changed, 56 insertions(+), 9 deletions(-)
+ create mode 100644 src/java/com/android/internal/telephony/InboundSmsHandlerExt.java
+
+diff --git a/src/java/com/android/internal/telephony/InboundSmsHandler.java b/src/java/com/android/internal/telephony/InboundSmsHandler.java
+index 1bd47376..fd5f599b 100644
+--- a/src/java/com/android/internal/telephony/InboundSmsHandler.java
++++ b/src/java/com/android/internal/telephony/InboundSmsHandler.java
+@@ -1568,7 +1568,7 @@ public abstract class InboundSmsHandler extends StateMachine {
+                             user);
+                 } else {
+                     sendBroadcastToTrustedPackages(intent, permission, appOp, opts,
+-                            resultReceiver, user, getOtpTrustedPackagesFromTextLinks(textLinks));
++                            resultReceiver, user, getOtpTrustedPackagesFromTextLinks(textLinks, user));
+                 }
+             } else {
+                 sendBroadcastWithStandardPermissions(intent, permission, appOp, opts,
+@@ -1689,13 +1689,17 @@ public abstract class InboundSmsHandler extends StateMachine {
+     // was matched to a specific app. This method extracts and returns the package name for that
+     // intended app from the TextClassifier response.
+     @Nullable
+-    private static String getSmsRetrieverTargetPackageNameFromTextLinks(
+-            @NonNull Collection<TextLinks.TextLink> links) {
++    private List<String> getSmsRetrieverTargetPackageNamesFromTextLinks(
++            @NonNull Collection<TextLinks.TextLink> links, @NonNull UserHandle user) {
+         for (TextLinks.TextLink link : links) {
+             for (int i = 0; i < link.getEntityCount(); i++) {
+                 if (link.getEntity(i).equals(TextClassifier.TYPE_SMS_RETRIEVER_OTP)) {
+-                    return link.getExtras().getString(
++                    String pkgName = link.getExtras().getString(
+                             TextClassifier.EXTRA_SMS_RETRIEVER_HASH_MATCHED_PACKAGE);
++                    if (pkgName == null) {
++                        return null;
++                    }
++                    return InboundSmsHandlerExt.processSmsRetrieverMatchedPackage(mContext, user, pkgName);
+                 }
+             }
+         }
+@@ -1731,13 +1735,13 @@ public abstract class InboundSmsHandler extends StateMachine {
+     // Returns an empty list if there are no additional trusted packages.
+     // NOTE: The returned list may contain duplicated packages.
+     @VisibleForTesting
+-    public static List<String> getOtpTrustedPackagesFromTextLinks(
+-            @NonNull Collection<TextLinks.TextLink> links) {
++    public List<String> getOtpTrustedPackagesFromTextLinks(
++            @NonNull Collection<TextLinks.TextLink> links, @NonNull UserHandle user) {
+         List<String> additionalTrustedPackageNames = new ArrayList<>();
+         // We allow the SMS Retriever Hash owner to receive the SMS broadcast.
+-        String smsRetrieverTargetPackageName = getSmsRetrieverTargetPackageNameFromTextLinks(links);
+-        if (smsRetrieverTargetPackageName != null) {
+-            additionalTrustedPackageNames.add(smsRetrieverTargetPackageName);
++        List<String> smsRetrieverTargetPackageNames = getSmsRetrieverTargetPackageNamesFromTextLinks(links, user);
++        if (smsRetrieverTargetPackageNames != null) {
++            additionalTrustedPackageNames.addAll(smsRetrieverTargetPackageNames);
+         }
+         // We allow domain owners of the corresponding Web OTPs to receive the SMS broadcast.
+         List<String> webOtpOwnerPackages = getWebOtpOwnerPackagesFromTextLinks(links);
+@@ -1764,6 +1768,7 @@ public abstract class InboundSmsHandler extends StateMachine {
+             @Nullable List<String> additionalTrustedPackages) {
+         Set<String> trustedPackages = SmsManager.getSmsOtpTrustedPackages(mContext, user);
+         if (additionalTrustedPackages != null) {
++            logd("sendBroadcastToTrustedPackages: additionalTrustedPackages: " + Arrays.toString(additionalTrustedPackages.toArray()));
+             trustedPackages.addAll(additionalTrustedPackages);
+         }
+         final String[] trustedPackagesArray = new String[trustedPackages.size()];
+diff --git a/src/java/com/android/internal/telephony/InboundSmsHandlerExt.java b/src/java/com/android/internal/telephony/InboundSmsHandlerExt.java
+new file mode 100644
+index 00000000..436869ed
+--- /dev/null
++++ b/src/java/com/android/internal/telephony/InboundSmsHandlerExt.java
+@@ -0,0 +1,42 @@
++package com.android.internal.telephony;
++
++import android.annotation.Nullable;
++import android.content.Context;
++import android.content.pm.ApplicationInfo;
++import android.content.pm.PackageManager;
++import android.ext.AppInfoExtFlag;
++import android.ext.PackageId;
++import android.os.UserHandle;
++
++import java.util.List;
++
++class InboundSmsHandlerExt {
++
++    @Nullable
++    static List<String> processSmsRetrieverMatchedPackage(Context ctx, UserHandle user, String pkgName) {
++        PackageManager pm = ctx.getPackageManager();
++        ApplicationInfo appInfo;
++        try {
++            appInfo = pm.getApplicationInfoAsUser(pkgName, 0, user);
++        } catch (PackageManager.NameNotFoundException e) {
++            return null;
++        }
++
++        if (appInfo.ext().hasFlag(AppInfoExtFlag.HAS_GMSCORE_CLIENT_LIBRARY)) {
++            try {
++                if (pm.getApplicationInfoAsUser(PackageId.GMS_CORE_NAME, 0, user)
++                        .ext().getPackageId() == PackageId.GMS_CORE) {
++
++                    if (pm.checkPermission(android.Manifest.permission.RECEIVE_SMS,
++                            PackageId.GMS_CORE_NAME) == PackageManager.PERMISSION_GRANTED) {
++                        // GmsCompat: allow GmsCore to read SMS OTP of its clients if GmsCore has
++                        // the SMS permission
++                        return List.of(pkgName, PackageId.GMS_CORE_NAME);
++                    }
++                }
++            } catch (PackageManager.NameNotFoundException ignored) {}
++        }
++
++        return List.of(pkgName);
++    }
++}
+-- 
+2.43.0
+
