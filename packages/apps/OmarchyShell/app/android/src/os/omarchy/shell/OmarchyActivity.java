@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.WindowManager;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,6 +43,7 @@ public class OmarchyActivity extends QtActivity {
     private String mZMode = "";
     private int mSweeps = 0;
     private BootCurtain mBootCurtain;
+    private android.app.Dialog mBootWindow;
     private static volatile String sSystemInsets = "{}";
 
     public static String systemInsetsJson() { return sSystemInsets; }
@@ -110,14 +112,20 @@ public class OmarchyActivity extends QtActivity {
         sInstance = this;
         super.onCreate(savedInstanceState);
         acceptSystemBarAction(getIntent());
-        // Qt's SurfaceView needs a transparent activity background. The opaque
-        // curtain is a child above that surface, so rendering can start below it.
+        // Qt needs a transparent activity window. Keep startup artwork in an
+        // activity-owned window above its SurfaceView while Qt starts drawing.
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         mBootCurtain = new BootCurtain(this);
-        // Qt replaces the activity content while loading its native libraries.
-        // Attach to the decor instead so that replacement cannot cover/remove it.
-        ((ViewGroup) getWindow().getDecorView()).addView(mBootCurtain, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        mBootWindow = new android.app.Dialog(this, R.style.OmarchyShellTheme);
+        mBootWindow.setOwnerActivity(this);
+        mBootWindow.setCancelable(false);
+        mBootWindow.setContentView(mBootCurtain);
+        android.view.Window bootWindow = mBootWindow.getWindow();
+        bootWindow.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        // Back/Home stay with Android; the curtain cannot trap system navigation.
+        bootWindow.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+        mBootWindow.show();
+        bootWindow.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         getSplashScreen().setOnExitAnimationListener(splash -> {
             mSplash = splash;
             // Qt can report a window before its scene has a complete frame.
@@ -147,9 +155,11 @@ public class OmarchyActivity extends QtActivity {
         activity.mHandler.post(() -> {
             if (sInstance != activity || activity.mHomeReady) return;
             activity.mHomeReady = true;
+            if (activity.mBootWindow != null) {
+                activity.mBootWindow.dismiss();
+                activity.mBootWindow = null;
+            }
             if (activity.mBootCurtain != null) {
-                ViewGroup parent = (ViewGroup) activity.mBootCurtain.getParent();
-                if (parent != null) parent.removeView(activity.mBootCurtain);
                 activity.mBootCurtain = null;
             }
             if (activity.mSplash != null) {
@@ -166,6 +176,10 @@ public class OmarchyActivity extends QtActivity {
     public void onDestroy() {
         if (sInstance == this) sInstance = null;
         mHandler.removeCallbacksAndMessages(null);
+        if (mBootWindow != null) {
+            mBootWindow.dismiss();
+            mBootWindow = null;
+        }
         if (mSplash != null) mSplash.remove();
         super.onDestroy();
     }
@@ -219,7 +233,6 @@ public class OmarchyActivity extends QtActivity {
             @Override public void run() {
                 try {
                     sweep(getWindow().getDecorView());
-                    if (mBootCurtain != null) mBootCurtain.bringToFront();
                 } catch (Exception e) {
                     Log.w(TAG, "activity: surface sweep failed", e);
                 }

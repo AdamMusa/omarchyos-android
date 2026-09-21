@@ -27,3 +27,10 @@ A cold-boot recording showed Omarchy artwork followed by the Omarchy Home, with
 no stock launcher. It also exposed a brief black interval between the direct-boot
 Home and the shell curtain. That handoff still needs work before claiming a fully
 continuous boot animation; successful Home startup alone does not verify it.
+
+The v5 incremental image moves the startup curtain into an activity-owned window
+above Qt's SurfaceView. Its first draw is logged, and a warm Home process restart
+reaches the completed frame and removes that window. FallbackHome now launches
+the resolved Home before finishing. The cold-boot recording still contains a
+black interval before the shell activity's curtain appears; these changes improve
+the curtain's visibility but do not yet eliminate the earlier handoff gap.

@@ -6,8 +6,10 @@
      private boolean mProvisioned;
 +    private final boolean mOmarchy = "Omarchy".equalsIgnoreCase(android.os.Build.BRAND);
      private WallpaperManager mWallManager;
++    private boolean mHomeLaunchPending;
  
      private final Runnable mProgressTimeoutRunnable = () -> {
+         View v = getLayoutInflater().inflate(
 @@
                      | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
          }
@@ -36,4 +38,51 @@
              mHandler.postDelayed(mProgressTimeoutRunnable, mProgressTimeout);
          }
      }
+@@
+     protected void onPause() {
+         super.onPause();
+         mHandler.removeCallbacks(mProgressTimeoutRunnable);
++    }
++
++    @Override
++    protected void onStop() {
++        super.onStop();
++        // Keep the branded surface until WindowManager stops us behind Home.
++        if (mHomeLaunchPending) finish();
+     }
+ 
+     protected void onDestroy() {
+@@
+     }
+ 
+     private void maybeFinish() {
++        if (mHomeLaunchPending) return;
+         if (getSystemService(UserManager.class).isUserUnlocked()) {
+             final Intent homeIntent = new Intent(Intent.ACTION_MAIN)
+                     .addCategory(Intent.CATEGORY_HOME);
+@@
+                 Log.d(TAG, "User unlocked and real home found; let's go!");
+                 getSystemService(PowerManager.class).userActivity(
+                         SystemClock.uptimeMillis(), false);
+-                finish();
++                if (mOmarchy) {
++                    // Closing the temporary Home first leaves an empty display
++                    // while the real Home process starts. Launch the selected
++                    // Home before retiring this window; onStop finishes it.
++                    // User unlock above and Android's Home resolution stay intact.
++                    mHomeLaunchPending = true;
++                    try {
++                        startActivity(homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
++                                | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
++                    } catch (android.content.ActivityNotFoundException error) {
++                        mHomeLaunchPending = false;
++                        Log.w(TAG, "Home changed during startup; retrying", error);
++                        mHandler.sendEmptyMessageDelayed(0, 500);
++                    }
++                } else {
++                    finish();
++                }
+             }
+         } else {
+             Log.d(TAG, "User not yet unlocked");
 *** End Patch

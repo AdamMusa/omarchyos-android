@@ -13,6 +13,7 @@ final class BootCurtain extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final String[] logo;
     private boolean delayed;
+    private boolean firstDraw = true;
 
     BootCurtain(Context context) {
         super(context);
@@ -36,6 +37,10 @@ final class BootCurtain extends View {
 
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        if (firstDraw) {
+            firstDraw = false;
+            android.util.Log.i("omarchy-shell", "Startup curtain drawn: " + getWidth() + "x" + getHeight());
+        }
         paint.setTextSize(20);
         float widest = 1;
         for (String line : logo) widest = Math.max(widest, paint.measureText(line));
