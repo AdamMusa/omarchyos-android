@@ -1,0 +1,18 @@
+[package]
+name = "omarchy-dream"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ttfx = { path = "../third_party/ttfx" }
+clap = { version = "4", features = ["derive"] }
+jni = "0.21.1"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1

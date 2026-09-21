@@ -214,6 +214,16 @@ target_compile_definitions(omarchyshell PRIVATE
     OMARCHY_DEFAULT_THEME="${OMARCHY_DEFAULT_THEME}")
 
 if(ANDROID)
+    set(OMARCHY_DREAM_BINARY "" CACHE FILEPATH "Android ttfx JNI library built by tools/build-screensaver.sh")
+    if(NOT EXISTS "${OMARCHY_DREAM_BINARY}")
+        message(FATAL_ERROR "Build the screensaver library with tools/build-apk.sh first")
+    endif()
+    add_custom_target(omarchy_dream ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/app/android/libs/arm64-v8a
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OMARCHY_DREAM_BINARY}
+                ${CMAKE_CURRENT_SOURCE_DIR}/app/android/libs/arm64-v8a/libomarchy_dream.so
+        COMMENT "Staging Omarchy's native screensaver engine")
+    add_dependencies(omarchyshell omarchy_dream)
     # Ship Omarchy itself inside the package: shell QML, config defaults and
     # all bundled themes, so theming on the phone is literally Omarchy's. They go in
     # as Android assets rather than Qt resources — it keeps the binary small and
