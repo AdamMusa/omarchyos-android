@@ -15,9 +15,7 @@ android_app_import {
     certificate: "platform",
     privileged: true,
     system_ext_specific: true,
-    required: [
-        "privapp-permissions-omarchy",
-    ],
+    // The product copies the shared privilege allowlist and preferred Home XML.
     dex_preopt: {
         enabled: false,
     },

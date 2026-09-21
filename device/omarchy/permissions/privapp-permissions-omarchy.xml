@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <permissions>
+    <privapp-permissions package="os.omarchy.shell">
+        <permission name="android.permission.STATUS_BAR" />
+        <permission name="android.permission.REAL_GET_TASKS" />
+        <permission name="android.permission.MANAGE_ACTIVITY_TASKS" />
+    </privapp-permissions>
     <privapp-permissions package="os.omarchy.core">
+        <permission name="android.permission.MANAGE_ROLE_HOLDERS" />
+        <permission name="android.permission.OBSERVE_ROLE_HOLDERS" />
         <permission name="android.permission.CHANGE_OVERLAY_PACKAGES" />
         <permission name="android.permission.UPDATE_THEME_SETTINGS" />
         <permission name="android.permission.MODIFY_DAY_NIGHT_MODE" />

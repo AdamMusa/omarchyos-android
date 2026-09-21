@@ -28,6 +28,7 @@ PRODUCT_PACKAGES += \
     OmarchyThemeCatppuccinLatteCore
 
 PRODUCT_COPY_FILES += \
+    device/omarchy/permissions/omarchy-home.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/preferred-apps/omarchy-home.xml \
     device/omarchy/permissions/omarchy_features.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/omarchy_features.xml \
     device/omarchy/permissions/privapp-permissions-omarchy.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/permissions/privapp-permissions-omarchy.xml \
     packages/apps/OmarchyCode/scripts/codex:$(TARGET_COPY_OUT_SYSTEM_EXT)/bin/codex \
@@ -45,7 +46,7 @@ PRODUCT_MANUFACTURER := OmarchyOS
 #
 # Launcher3QuickStep must remain installed and enabled for the platform's
 # TouchInteractionService and RecentsActivity. Select Omarchy as the HOME
-# activity during device provisioning; never disable the Quickstep package.
+# activity through the preferred-apps configuration; never disable Quickstep.
 # SystemUI supplies keyguard, system dialogs and navigation chrome.
 #
 # Everything else Android ships stays installed and is reached through

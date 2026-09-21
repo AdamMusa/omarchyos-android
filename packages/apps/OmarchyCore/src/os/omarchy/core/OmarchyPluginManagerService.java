@@ -1,6 +1,8 @@
 package os.omarchy.core;
 
 import android.app.Service;
+import android.app.role.RoleManager;
+import android.app.role.OnRoleHoldersChangedListener;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Bundle;
@@ -18,6 +20,16 @@ public final class OmarchyPluginManagerService extends Service {
     private PluginStateStore mState;
     private PluginEventDispatcher mEvents;
     private ThemeController mThemes;
+    private RoleManager mRoles;
+    private final android.database.ContentObserver mSetupObserver =
+            new android.database.ContentObserver(new android.os.Handler(android.os.Looper.getMainLooper())) {
+                @Override public void onChange(boolean selfChange) { DefaultHome.ensure(OmarchyPluginManagerService.this); }
+            };
+    private final OnRoleHoldersChangedListener mHomeRoleListener = (role, user) -> {
+        if (RoleManager.ROLE_HOME.equals(role) && user.equals(android.os.Process.myUserHandle())) {
+            DefaultHome.ensure(this);
+        }
+    };
     private final java.util.concurrent.ExecutorService mThemeWorker = java.util.concurrent.Executors.newSingleThreadExecutor();
 
     private final IOmarchyPluginManager.Stub mBinder = new IOmarchyPluginManager.Stub() {
@@ -143,6 +155,18 @@ public final class OmarchyPluginManagerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        getContentResolver().registerContentObserver(android.provider.Settings.Secure.getUriFor(
+                android.provider.Settings.Secure.USER_SETUP_COMPLETE), false, mSetupObserver);
+        mRoles = getSystemService(RoleManager.class);
+        if (mRoles != null && checkSelfPermission("android.permission.OBSERVE_ROLE_HOLDERS")
+                == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            mRoles.addOnRoleHoldersChangedListenerAsUser(getMainExecutor(), mHomeRoleListener,
+                    android.os.Process.myUserHandle());
+            DefaultHome.ensure(this);
+        } else {
+            mRoles = null;
+            android.util.Log.w("OmarchyDefaultHome", "Home role observer permission unavailable");
+        }
         ContextFactory contexts = new ContextFactory(createDeviceProtectedStorageContext());
         mRegistry = new PluginRegistry(contexts.deviceProtected);
         mState = new PluginStateStore(contexts.deviceProtected);
@@ -180,6 +204,9 @@ public final class OmarchyPluginManagerService extends Service {
 
     @Override
     public void onDestroy() {
+        getContentResolver().unregisterContentObserver(mSetupObserver);
+        if (mRoles != null) mRoles.removeOnRoleHoldersChangedListenerAsUser(mHomeRoleListener,
+                android.os.Process.myUserHandle());
         mThemeWorker.shutdown();
         super.onDestroy();
     }

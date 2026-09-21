@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="os.omarchy.core">
+    package="os.omarchy.core"
+    android:versionCode="38"
+    android:versionName="0.2">
     <permission
         android:name="os.omarchy.permission.MANAGE_PLUGINS"
         android:protectionLevel="signature" />
@@ -12,6 +14,8 @@
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.MANAGE_ROLE_HOLDERS" />
+    <uses-permission android:name="android.permission.OBSERVE_ROLE_HOLDERS" />
 
     <application
         android:allowBackup="false"

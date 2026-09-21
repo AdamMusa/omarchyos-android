@@ -121,6 +121,8 @@ See [theme validation](docs/THEME_VALIDATION.md) and
 [Home navigation validation](docs/HOME_RESUME_VALIDATION.md) for the results and
 reproduction steps.
 
+See [built-in system Home and image validation](docs/SYSTEM_INTEGRATION.md).
+
 See [startup performance and remaining work](docs/PERFORMANCE.md) for initialization
 measurements, improvements, and unresolved stability observations.
 

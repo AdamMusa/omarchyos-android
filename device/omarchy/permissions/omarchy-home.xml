@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<preferred-activities>
+    <item name="os.omarchy.shell/.OmarchyActivity" match="100000" always="true">
+        <filter>
+            <action name="android.intent.action.MAIN" />
+            <cat name="android.intent.category.HOME" />
+            <cat name="android.intent.category.DEFAULT" />
+        </filter>
+    </item>
+</preferred-activities>

@@ -9,6 +9,7 @@ import os.omarchy.plugin.PluginContract;
 public final class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
+        DefaultHome.ensure(context);
         Intent service = new Intent(PluginContract.ACTION_MANAGER)
                 .setPackage(context.getPackageName());
         context.startService(service);
