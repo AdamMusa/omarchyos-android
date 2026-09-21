@@ -40,6 +40,33 @@ Runtime logs identify `assets reused`, `assets deployed`, `paths ready`, and
 `QML loaded`. Compare equivalent cold/warm runs and record device, build, and
 thermal conditions before drawing performance conclusions.
 
+### Native service samples on September 21
+
+Two exploratory runs opened five native Settings services after stopping the
+Settings process, then brought each existing task back from Home. Both runs
+kept the same `system_server` and SystemUI processes throughout. Android's
+reported cold-start `TotalTime` values were:
+
+| Service | v14, system build active (ms) | v15, system build idle (ms) |
+| --- | ---: | ---: |
+| Wi-Fi | 3350 | 1933 |
+| Bluetooth | 3496 | 1753 |
+| Battery saver | 2790 | 984 |
+| Display | 932 | 1335 |
+| Sound | 785 | 1423 |
+
+Bringing the existing tasks back reported `WaitTime` values of 195–476 ms in
+the first run and 249–399 ms in the second. These are different metrics from
+cold-start `TotalTime`; neither measures frame smoothness. The image version,
+cache state and host workload also differed, and two cold services were slower
+in the idle run. These samples therefore do not establish host load as the cause
+of the earlier ANR or prove a performance improvement. The phone bridge uses
+ordinary `startActivity` calls; it does not force-stop Settings between services.
+
+Local evidence: `out/mobile-check/native-v14-service-launch-timings.json` and
+`native-v15-service-launch-timings.json` in the same directory. The remaining
+work below, including traces and longer stability checks, is still required.
+
 ## Still needed before a smooth, production-ready phone release
 
 - Restore the missing AOSP files and fork branches: `./omarchy test` still reports
