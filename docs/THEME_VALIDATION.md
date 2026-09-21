@@ -41,3 +41,11 @@ upstream filename order, uses the actual first artwork for every theme, and
 renders with aspect-fill cropping. The Installed picker shows portrait wallpaper
 previews. All 22 JPEG assets are decoded by the data tests, and source URLs remain
 pinned in `mobile/wallpapers/sources.json`.
+
+## Native navbar insets
+
+On the v5 incremental emulator image, the Themes heading and Close button stay
+below the native Omarchy navbar. Opening the picker leaves the keyboard closed,
+and Close returns to Home. Interactive shell panels reserve only the system-bar
+and cutout area that overlaps Qt's surface; wallpaper remains edge to edge.
+This check covers the portrait Home activity, not landscape shell support.

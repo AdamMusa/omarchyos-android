@@ -47,8 +47,15 @@ QtObject {
     // A panel that does not span an axis is sized by its content, which
     // upstream lays out for a desktop; on a phone that regularly exceeds the
     // display, so the content size is capped to what is actually available.
-    readonly property real availableWidth: root.spanWidth - root.margins.left - root.margins.right
-    readonly property real availableHeight: root.spanHeight - root.margins.top - root.margins.bottom
+    // Wallpaper stays edge to edge; interactive panels respect the OS bar,
+    // gesture area and cutouts without adding the same margin twice.
+    readonly property bool safeContent: !root.replacedBySystemBar && root.WlrLayershell.layer !== WlrLayer.Background
+    readonly property real leftMargin: Math.max(root.margins.left, safeContent ? ShellSurfaceRoot.safeLeft : 0)
+    readonly property real rightMargin: Math.max(root.margins.right, safeContent ? ShellSurfaceRoot.safeRight : 0)
+    readonly property real topMargin: Math.max(root.margins.top, safeContent ? ShellSurfaceRoot.safeTop : 0)
+    readonly property real bottomMargin: Math.max(root.margins.bottom, safeContent ? ShellSurfaceRoot.safeBottom : 0)
+    readonly property real availableWidth: root.spanWidth - leftMargin - rightMargin
+    readonly property real availableHeight: root.spanHeight - topMargin - bottomMargin
 
     width: root.spansX ? availableWidth
                        : Math.min(Math.max(1, root.implicitWidth), availableWidth)
@@ -56,16 +63,16 @@ QtObject {
                         : Math.min(Math.max(1, root.implicitHeight), availableHeight)
     // Kept on screen on both axes: a surface placed off the display is simply
     // invisible, and there is no second monitor to slide onto.
-    x: Math.max(root.margins.left,
+    x: Math.max(leftMargin,
                 Math.min(root.anchors.right && !root.spansX
-                           ? root.spanWidth - width - root.margins.right
-                           : root.margins.left,
-                         root.spanWidth - width - root.margins.right))
-    y: Math.max(root.margins.top,
+                           ? root.spanWidth - width - rightMargin
+                           : leftMargin,
+                         root.spanWidth - width - rightMargin))
+    y: Math.max(topMargin,
                 Math.min(root.anchors.bottom && !root.spansY
-                           ? root.spanHeight - height - root.margins.bottom
-                           : root.margins.top,
-                         root.spanHeight - height - root.margins.bottom))
+                           ? root.spanHeight - height - bottomMargin
+                           : topMargin,
+                         root.spanHeight - height - bottomMargin))
 
     Rectangle { anchors.fill: parent; color: root.color; z: -1 }
   }

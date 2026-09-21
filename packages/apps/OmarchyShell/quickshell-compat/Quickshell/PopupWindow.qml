@@ -22,8 +22,8 @@ Item {
   // Upstream sizes popups for a desktop, where a 700px calendar is small. A
   // phone surface cannot be wider than the screen it is composited into, so
   // the requested size is capped rather than allowed to overflow off-screen.
-  width: Math.min(Math.max(1, implicitWidth), ShellSurfaceRoot.screenWidth)
-  height: Math.min(Math.max(1, implicitHeight), ShellSurfaceRoot.screenHeight)
+  width: Math.min(Math.max(1, implicitWidth), Math.max(0, ShellSurfaceRoot.screenWidth - ShellSurfaceRoot.safeLeft - ShellSurfaceRoot.safeRight))
+  height: Math.min(Math.max(1, implicitHeight), Math.max(0, ShellSurfaceRoot.screenHeight - ShellSurfaceRoot.safeTop - ShellSurfaceRoot.safeBottom))
   visible: visibleRequested
 
   Rectangle { anchors.fill: parent; color: root.color; z: -1 }
@@ -38,6 +38,14 @@ Item {
   onVisibleRequestedChanged: if (visibleRequested) reanchor()
   onAnchorChanged: reanchor()
 
+  Connections {
+    target: ShellSurfaceRoot
+    function onSafeTopChanged() { if (root.visible) root.reanchor() }
+    function onSafeBottomChanged() { if (root.visible) root.reanchor() }
+    function onScreenWidthChanged() { if (root.visible) root.reanchor() }
+    function onScreenHeightChanged() { if (root.visible) root.reanchor() }
+  }
+
   function reanchor() {
     if (!anchor) return
     anchor.updateAnchor()
@@ -51,10 +59,10 @@ Item {
     // adjustment flags describe which way a compositor may slide a popup on a
     // large screen, but on a phone there is nowhere else for it to go, and an
     // unclamped popup simply leaves the display.
-    var maxX = Math.max(0, ShellSurfaceRoot.screenWidth - width)
-    var maxY = Math.max(0, ShellSurfaceRoot.screenHeight - height)
-    px = Math.max(0, Math.min(px, maxX))
-    py = Math.max(0, Math.min(py, maxY))
+    var maxX = Math.max(0, ShellSurfaceRoot.screenWidth - ShellSurfaceRoot.safeRight - width)
+    var maxY = Math.max(0, ShellSurfaceRoot.screenHeight - ShellSurfaceRoot.safeBottom - height)
+    px = Math.max(ShellSurfaceRoot.safeLeft, Math.min(px, maxX))
+    py = Math.max(ShellSurfaceRoot.safeTop, Math.min(py, maxY))
 
     root.x = px
     root.y = py

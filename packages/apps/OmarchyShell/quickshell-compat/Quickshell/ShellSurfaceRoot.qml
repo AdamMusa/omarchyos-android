@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import QtQuick.Window
 
 // On the desktop every Quickshell surface is its own Wayland window. An
 // Android app owns exactly one window, so the shell composites its surfaces
@@ -11,6 +12,11 @@ QtObject {
   // Set once by the host's Main.qml.
   property Item container: null
   property bool backgroundReady: false
+  readonly property real pixelRatio: container ? container.Screen.devicePixelRatio : 1
+  readonly property real safeTop: AndroidBridge.nativeSystemBar ? (AndroidBridge.systemInsets.top || 0) / pixelRatio : 0
+  readonly property real safeBottom: AndroidBridge.nativeSystemBar ? (AndroidBridge.systemInsets.bottom || 0) / pixelRatio : 0
+  readonly property real safeLeft: AndroidBridge.nativeSystemBar ? (AndroidBridge.systemInsets.left || 0) / pixelRatio : 0
+  readonly property real safeRight: AndroidBridge.nativeSystemBar ? (AndroidBridge.systemInsets.right || 0) / pixelRatio : 0
 
   readonly property var layerItems: ({})
 

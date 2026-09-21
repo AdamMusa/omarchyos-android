@@ -44,6 +44,7 @@ import java.io.FileOutputStream;
 public class ShellBridge {
 
     private static ShellBridge sInstance;
+    private static volatile boolean sNativeAttached;
 
     public static synchronized ShellBridge get() {
         if (sInstance == null) sInstance = new ShellBridge();
@@ -52,11 +53,15 @@ public class ShellBridge {
 
     /** Called once from C++; wires up the broadcast receivers. */
     public static void attach() {
+        sNativeAttached = true;
         get().registerReceivers();
         ThemeRepository.get(get().context());
     }
 
     public static void systemBarActionChanged() { nativeStateChanged("system-bar-action"); }
+    public static void systemInsetsChanged() {
+        if (sNativeAttached) nativeStateChanged("system-insets");
+    }
     public static void themesChanged() { nativeStateChanged("themes"); }
     public String themeStateJson() { return ThemeRepository.get(context()).state(); }
     public void refreshThemeMarketplace() { ThemeRepository.get(context()).refreshMarket(); }

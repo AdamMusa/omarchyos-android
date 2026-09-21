@@ -80,6 +80,17 @@ bool AndroidBridge::nativeSystemBar() const
 #endif
 }
 
+QVariantMap AndroidBridge::systemInsets() const
+{
+#ifdef Q_OS_ANDROID
+    const auto json = QJniObject::callStaticObjectMethod(
+        "os/omarchy/shell/OmarchyActivity", "systemInsetsJson", "()Ljava/lang/String;").toString();
+    return QJsonDocument::fromJson(json.toUtf8()).object().toVariantMap();
+#else
+    return {};
+#endif
+}
+
 QString AndroidBridge::takeSystemBarAction() const
 {
 #ifdef Q_OS_ANDROID
@@ -135,6 +146,7 @@ void AndroidBridge::setIdleInhibited(bool inhibited)
 void AndroidBridge::notifyStateChanged(const QString &what)
 {
     if (what == QLatin1String("system-bar-action")) emit systemBarActionRequested();
+    else if (what == QLatin1String("system-insets")) emit systemInsetsChanged();
     else if (what == QLatin1String("themes")) emit themeStateChanged();
     else if (what == QLatin1String("battery")) emit batteryChanged();
     else if (what == QLatin1String("audio")) emit audioChanged();

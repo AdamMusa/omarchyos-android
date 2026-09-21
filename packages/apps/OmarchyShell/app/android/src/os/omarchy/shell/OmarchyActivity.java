@@ -42,6 +42,42 @@ public class OmarchyActivity extends QtActivity {
     private String mZMode = "";
     private int mSweeps = 0;
     private BootCurtain mBootCurtain;
+    private static volatile String sSystemInsets = "{}";
+
+    public static String systemInsetsJson() { return sSystemInsets; }
+
+    private View findSurface(View view) {
+        if (view instanceof SurfaceView) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = findSurface(group.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private void updateSystemInsets() {
+        View decor = getWindow().getDecorView();
+        WindowInsets windowInsets = decor.getRootWindowInsets();
+        View surface = findSurface(decor);
+        if (windowInsets == null || surface == null || surface.getHeight() == 0) return;
+        android.graphics.Insets insets = windowInsets.getInsetsIgnoringVisibility(
+                WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+        int[] location = new int[2];
+        surface.getLocationInWindow(location);
+        // Only reserve the part of each system inset overlapping Qt's surface.
+        // This also works when Android already positions the surface below a bar.
+        String value = "{\"left\":" + Math.max(0, insets.left - location[0])
+                + ",\"top\":" + Math.max(0, insets.top - location[1])
+                + ",\"right\":" + Math.max(0, location[0] + surface.getWidth() - decor.getWidth() + insets.right)
+                + ",\"bottom\":" + Math.max(0, location[1] + surface.getHeight() - decor.getHeight() + insets.bottom) + "}";
+        if (!value.equals(sSystemInsets)) {
+            sSystemInsets = value;
+            ShellBridge.systemInsetsChanged();
+        }
+    }
     private android.window.SplashScreenView mSplash;
     private boolean mHomeReady;
     private static final java.util.concurrent.atomic.AtomicReference<String> sBarAction =
@@ -98,6 +134,7 @@ public class OmarchyActivity extends QtActivity {
             }
         }, 15000);
         takeOverTheScreen();
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(this::updateSystemInsets);
         mZMode = readMarker();
         Log.i(TAG, "activity: surface z mode = '" + mZMode + "'");
         scheduleSweep();
