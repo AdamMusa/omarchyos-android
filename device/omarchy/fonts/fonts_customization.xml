@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Omarchy UI families; Android retains its multilingual and emoji fallback fonts. -->
+<fonts-modification>
+    <family customizationType="new-named-family" name="omarchy-icons">
+        <font weight="400" style="normal">omarchy.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="omarchy-ui">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="monospace">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-display-large">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-display-large-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-display-medium">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-display-medium-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-display-small">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-display-small-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-headline-large">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-headline-large-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-headline-medium">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-headline-medium-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-headline-small">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-headline-small-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-title-large">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-title-large-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-title-medium">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-title-medium-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-title-small">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-title-small-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-body-large">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-body-large-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-body-medium">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-body-medium-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-body-small">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-body-small-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-label-large">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-label-large-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-label-medium">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-label-medium-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-label-small">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+    <family customizationType="new-named-family" name="variable-label-small-emphasized">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
+</fonts-modification>

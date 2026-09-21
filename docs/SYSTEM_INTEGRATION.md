@@ -33,14 +33,17 @@ the product installs that shared XML through `PRODUCT_COPY_FILES`.
 
 For incremental **development emulator** work with a matching existing Linux
 AOSP build, `packages/apps/OmarchyShell/tools/rebuild-emulator-image.sh` takes
-`AOSP_ROOT PRODUCT_OUT PLATFORM_SIGNED_SHELL_APK PLATFORM_SIGNED_CORE_APK OUTPUT_DIR`.
+`AOSP_ROOT PRODUCT_OUT PLATFORM_SIGNED_SHELL_APK PLATFORM_SIGNED_CORE_APK OUTPUT_DIR [BUILT_OVERLAY_DIR]`.
 The Core APK can be built incrementally with
 `packages/apps/OmarchyCore/tools/build-dev-apk.sh` and the same platform tree.
-The image tool reconstructs `system_ext`,
+The image tool reconstructs `system_ext` and `product` (OEM fonts and boot artwork),
 the dynamic-partition container, signed verified-boot metadata, and the combined
 emulator image. It retains verified-boot hashtrees and uses the emulator test keys;
 it is not a production signing pipeline. Existing input images and userdata remain
 unchanged. Native ARM64 libraries are installed beside the system APK.
+The bundled Bash executable is also installed as `/system_ext/bin/bash`; leaving
+it only in the system app's non-executable library directory prevents plugin
+discovery and keeps the Home startup curtain visible.
 
 Deploy the generated `system-qemu.img` and matching `VerifiedBootParams.textproto`
 together with the emulator stopped. Keep the old pair for rollback and retain the
@@ -64,3 +67,12 @@ hook waits for setup completion and excludes a temporary setup-wizard Home role.
 `./omarchy test` still reports 17 existing incomplete-source/fork-branch checks;
 these are not a successful full AOSP rebuild. See the performance document for
 those build limitations.
+
+The later native-design image was tested with Shell v2 running directly from its
+base system APK. Five static design overlays are active after reboot. This older
+development userdata contained stale `updated-package` records left by previously
+sideloaded versions of those overlays; they prevented PackageManager from loading
+the built-in copies. Their five stale update records were removed while Android
+services were stopped, after backing up the package database. Other package
+records and user data were retained. This was a development-data recovery, not a
+shipping boot hook or a reason to edit package databases on normal devices.

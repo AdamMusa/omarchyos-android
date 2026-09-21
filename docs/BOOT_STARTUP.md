@@ -20,3 +20,10 @@ boot. A sideloaded development overlay is not an equivalent test.
 Validate a cold boot and a Home process restart, inspect the first-frame log,
 and record the transition from boot animation through Home. Keep testing secure
 lock/unlock separately; boot branding must not bypass authentication.
+
+On the September 20 native-design image, Home reached its first complete frame
+from the base system APK after installing the missing system Bash executable.
+A cold-boot recording showed Omarchy artwork followed by the Omarchy Home, with
+no stock launcher. It also exposed a brief black interval between the direct-boot
+Home and the shell curtain. That handoff still needs work before claiming a fully
+continuous boot animation; successful Home startup alone does not verify it.

@@ -1,0 +1,18 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsTheme.kt
+@@
+     MaterialTheme(
+         colorScheme = materialColorScheme(isDarkTheme),
+         typography = rememberSettingsTypography(),
++        shapes = if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true))
++            androidx.compose.material3.Shapes(
++                extraSmall = SettingsShape.CornerExtraSmall2,
++                small = SettingsShape.CornerExtraSmall2,
++                medium = SettingsShape.CornerExtraSmall2,
++                large = SettingsShape.CornerExtraSmall2,
++                extraLarge = SettingsShape.CornerExtraSmall2,
++            ) else androidx.compose.material3.Shapes(),
+     ) {
+         CompositionLocalProvider(
+             LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+*** End Patch

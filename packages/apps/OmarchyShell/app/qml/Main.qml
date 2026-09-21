@@ -20,6 +20,21 @@ Window {
   color: "#101010"
   title: "Omarchy"
 
+  // SystemUI owns the one bar across Home and services. Its controls route
+  // back to the existing Omarchy panels after Home's first complete frame.
+  function dispatchSystemBarAction() {
+    if (!shellContentReady || !shellLoader.item) return
+    var action = AndroidBridge.takeSystemBarAction()
+    if (action === "calendar") shellLoader.item.toggle("omarchy.clock", "{}")
+    else if (action === "menu" || action === "settings")
+      shellLoader.item.toggle("omarchy.menu", JSON.stringify({menu: action === "menu" ? "root" : "settings"}))
+  }
+  Connections {
+    target: AndroidBridge
+    function onSystemBarActionRequested() { window.dispatchSystemBarAction() }
+  }
+  onShellContentReadyChanged: if (shellContentReady) Qt.callLater(dispatchSystemBarAction)
+
   // Only release Android's boot curtain after the shell's own surfaces exist.
   property bool shellContentReady: false
   Timer {

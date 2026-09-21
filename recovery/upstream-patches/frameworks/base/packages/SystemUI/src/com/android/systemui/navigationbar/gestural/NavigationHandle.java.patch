@@ -1,0 +1,21 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/src/com/android/systemui/navigationbar/gestural/NavigationHandle.java
+@@
+         float x = -additionalWidth;
+         float y = navHeight - mBottom - height + (additionalHeight / 2);
+         float adjustedRadius = height / 2;
+-        canvas.drawRoundRect(x, y, width, y + height, adjustedRadius, adjustedRadius, mPaint);
++        if (!android.os.SystemProperties.get("ro.omarchy.shell", "").isEmpty()) {
++            // Keep Android's gesture hit region and animation, with an Omarchy accent line.
++            int previousColor = mPaint.getColor();
++            mPaint.setColor(getResources().getColor(
++                    com.android.internal.R.color.system_primary_dark, getContext().getTheme()));
++            canvas.drawRect(x, y, width, y + height, mPaint);
++            mPaint.setColor(previousColor);
++        } else {
++            canvas.drawRoundRect(x, y, width, y + height, adjustedRadius, adjustedRadius, mPaint);
++        }
+     }
+ 
+     @Override
+*** End Patch

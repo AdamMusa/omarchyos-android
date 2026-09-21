@@ -32,6 +32,9 @@ QtObject {
   property real implicitWidth: 0
   property real implicitHeight: 0
 
+  readonly property bool replacedBySystemBar: AndroidBridge.nativeSystemBar
+      && root.WlrLayershell.namespace === "omarchy-bar"
+
   readonly property real spanWidth: ShellSurfaceRoot.screenWidth
   readonly property real spanHeight: ShellSurfaceRoot.screenHeight
   readonly property bool spansX: anchors.left && anchors.right
@@ -40,7 +43,7 @@ QtObject {
   readonly property real height: surface ? surface.height : 0
 
   readonly property Item surface: Item {
-    visible: root.visible && root.updatesEnabled
+    visible: root.visible && root.updatesEnabled && !root.replacedBySystemBar
     // A panel that does not span an axis is sized by its content, which
     // upstream lays out for a desktop; on a phone that regularly exceeds the
     // display, so the content size is capped to what is actually available.
@@ -49,7 +52,7 @@ QtObject {
 
     width: root.spansX ? availableWidth
                        : Math.min(Math.max(1, root.implicitWidth), availableWidth)
-    height: root.spansY ? availableHeight
+    height: root.replacedBySystemBar ? 0 : root.spansY ? availableHeight
                         : Math.min(Math.max(1, root.implicitHeight), availableHeight)
     // Kept on screen on both axes: a surface placed off the display is simply
     // invisible, and there is no second monitor to slide onto.
@@ -97,7 +100,7 @@ QtObject {
     var shellProps = root.WlrLayershell
     AndroidBridge.setShellInset((shellProps && shellProps.namespace) || namespaceName,
         anchors.top ? "top" : anchors.bottom ? "bottom" : "none",
-        (exclusionMode === 1 || !visible) ? 0 : exclusiveZone,
+        (replacedBySystemBar || exclusionMode === 1 || !visible) ? 0 : exclusiveZone,
         shellProps ? shellProps.layer : 2, shellProps ? shellProps.keyboardFocus : 0)
   }
 }

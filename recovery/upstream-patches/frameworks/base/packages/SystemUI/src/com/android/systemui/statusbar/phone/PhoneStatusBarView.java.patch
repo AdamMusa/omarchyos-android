@@ -1,0 +1,249 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java
+@@
+ 
+ public class PhoneStatusBarView extends FrameLayout {
+     private static final String TAG = "PhoneStatusBarView";
++    private OmarchyBar mOmarchyBar;
++    public boolean isOmarchyStyle() { return !android.os.SystemProperties.get("ro.omarchy.shell", "").isEmpty(); }
++
+ 
+     private int mRotationOrientation = -1;
+     @Nullable
+@@
+     /** Updates the status bar's touchable region. */
+     public void updateTouchableRegion(Region touchableRegion) {
+         mTouchableRegion.set(touchableRegion);
+-        getViewRootImpl().setTouchableRegion(touchableRegion);
++        if (isOmarchyStyle()) mTouchableRegion.op(0, 0, getWidth(), getHeight(), Region.Op.UNION);
++        getViewRootImpl().setTouchableRegion(mTouchableRegion);
+     }
+ 
+     @Override
+     public void onFinishInflate() {
+         super.onFinishInflate();
+         mCutoutSpace = findViewById(R.id.cutout_space_view);
++        if (isOmarchyStyle()) {
++            setClipToPadding(false);
++            findViewById(R.id.system_icons).setVisibility(View.GONE);
++            mOmarchyBar = new OmarchyBar(getContext());
++            addView(mOmarchyBar, 0, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
++            View clock = findViewById(R.id.clock);
++            clock.getLayoutParams().width = 0;
++            clock.getLayoutParams().height = 0;
++            clock.setClipBounds(new android.graphics.Rect());
++            clock.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
++            View notifications = findViewById(R.id.notification_icon_area);
++            notifications.getLayoutParams().width = 0;
++            notifications.getLayoutParams().height = 0;
++            // Android still updates these views. Clip their native rendering,
++            // including fixed-size children, while notification delivery continues.
++            notifications.setClipBounds(new android.graphics.Rect());
++            notifications.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
++            findViewById(R.id.status_bar_start_side_content).addOnLayoutChangeListener(
++                    (v, l, t, r, b, oldL, oldT, oldR, oldB) -> mOmarchyBar.requestLayout());
++        }
+ 
+         updateResources();
+     }
+@@
+                 : super.onInterceptTouchEvent(event);
+     }
+ 
++    @Override
++    protected void onMeasure(int widthSpec, int heightSpec) {
++        super.onMeasure(widthSpec, heightSpec);
++        if (mOmarchyBar != null) mOmarchyBar.measure(
++                MeasureSpec.makeMeasureSpec(getMeasuredWidth(), MeasureSpec.EXACTLY),
++                MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.EXACTLY));
++    }
++
++    @Override
++    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
++        super.onLayout(changed, left, top, right, bottom);
++        // Android's icon insets still protect its chips; our bar handles its
++        // own cutout insets and paints the entire status-bar surface.
++        if (mOmarchyBar != null) mOmarchyBar.layout(0, 0, getWidth(), getHeight());
++    }
++
+     public void updateResources() {
++        if (mOmarchyBar != null) mOmarchyBar.refreshColors();
+         mCutoutSideNudge = getResources().getDimensionPixelSize(
+                 R.dimen.display_cutout_margin_consumption);
+ 
+@@
+     interface InsetsFetcher {
+         Insets fetchInsets();
+     }
++    /** Omarchy's global bar lives in SystemUI, sharing Android's shade and keyguard. */
++    private final class OmarchyBar extends FrameLayout {
++        private final com.android.systemui.navigationbar.views.buttons.KeyButtonView back;
++        private final android.widget.TextView home;
++        private final android.widget.TextClock clock;
++        private final android.widget.TextView controls;
++        private boolean compactClock;
++        private boolean backMounted;
++        private final com.android.systemui.shared.system.TaskStackChangeListener taskListener =
++                new com.android.systemui.shared.system.TaskStackChangeListener() {
++            @Override public void onTaskStackChanged() { updateBackMount(); }
++        };
++
++        @Override protected void onAttachedToWindow() {
++            super.onAttachedToWindow();
++            com.android.systemui.shared.system.TaskStackChangeListeners.getInstance()
++                    .registerTaskStackListener(taskListener);
++            updateBackMount();
++        }
++
++        @Override protected void onDetachedFromWindow() {
++            com.android.systemui.shared.system.TaskStackChangeListeners.getInstance()
++                    .unregisterTaskStackListener(taskListener);
++            super.onDetachedFromWindow();
++        }
++
++        private void updateBackMount() {
++            java.util.List<android.app.ActivityManager.RunningTaskInfo> tasks =
++                    android.app.ActivityTaskManager.getInstance().getTasks(1);
++            boolean mounted = !tasks.isEmpty() && tasks.get(0).getActivityType()
++                    != android.app.WindowConfiguration.ACTIVITY_TYPE_HOME;
++            if (backMounted != mounted) {
++                backMounted = mounted;
++                requestLayout();
++            }
++        }
++
++        OmarchyBar(Context context) {
++            super(context);
++            setClipChildren(true);
++            back = new com.android.systemui.navigationbar.views.buttons.KeyButtonView(context, null);
++            back.setCode(android.view.KeyEvent.KEYCODE_BACK);
++            back.setContentDescription(context.getString(R.string.accessibility_back));
++            back.setFocusable(true);
++            back.setPadding(dp(14), dp(14), dp(14), dp(14));
++            home = button("\ue900", "Omarchy menu");
++            controls = button("\uf013", "Omarchy settings");
++            clock = new android.widget.TextClock(context);
++            clock.setShowCurrentUserTime(true);
++            clock.setGravity(android.view.Gravity.CENTER);
++            clock.setSingleLine(true);
++            clock.setEllipsize(android.text.TextUtils.TruncateAt.END);
++            addView(back);
++            addView(home);
++            addView(clock);
++            addView(controls);
++            home.setOnClickListener(view -> openOmarchyPanel("menu"));
++            clock.setClickable(true);
++            clock.setFocusable(true);
++            clock.setOnClickListener(view -> openOmarchyPanel("calendar"));
++            controls.setOnClickListener(view -> openOmarchyPanel("settings"));
++            controls.setOnLongClickListener(view -> {
++                getContext().getSystemService(android.app.StatusBarManager.class).expandSettingsPanel(null);
++                return true;
++            });
++            refreshColors();
++            setClockFormat(false);
++        }
++
++        private void openOmarchyPanel(String panel) {
++            // Resolve the selected Home normally, preserving a user's alternative
++            // launcher. Omarchy consumes the extra only for its built-in panels.
++            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_MAIN)
++                    .addCategory(android.content.Intent.CATEGORY_HOME)
++                    .putExtra("os.omarchy.SYSTEM_BAR_ACTION", panel)
++                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
++                            | android.content.Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
++            getContext().startActivityAsUser(intent, android.os.UserHandle.CURRENT);
++        }
++
++        private android.widget.TextView button(String text, String description) {
++            android.widget.TextView view = new android.widget.TextView(getContext());
++            view.setText(text);
++            view.setContentDescription(description);
++            view.setGravity(android.view.Gravity.CENTER);
++            view.setFocusable(true);
++            view.setClickable(true);
++            android.util.TypedValue background = new android.util.TypedValue();
++            getContext().getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true);
++            if (background.resourceId != 0) view.setBackgroundResource(background.resourceId);
++            return view;
++        }
++
++        void refreshColors() {
++            int foreground = getResources().getColor(com.android.internal.R.color.system_on_surface_dark, getContext().getTheme());
++            int background = getResources().getColor(com.android.internal.R.color.system_surface_dark, getContext().getTheme());
++            setBackgroundColor(background);
++            back.setImageDrawable(com.android.systemui.navigationbar.views.buttons.KeyButtonDrawable.create(
++                    new android.view.ContextThemeWrapper(getContext(),
++                            com.android.settingslib.Utils.getThemeAttr(getContext(), R.attr.lightIconTheme)),
++                    foreground, foreground, R.drawable.ic_sysbar_back, false, null));
++            for (android.widget.TextView text : new android.widget.TextView[]{home, clock, controls}) {
++                text.setTextColor(foreground);
++                text.setTypeface(android.graphics.Typeface.create("omarchy-ui", android.graphics.Typeface.NORMAL));
++                text.setTextSize(12);
++            }
++            home.setTypeface(android.graphics.Typeface.create("omarchy-icons", android.graphics.Typeface.NORMAL));
++            home.setTextSize(18);
++            controls.setTextSize(18);
++        }
++
++        private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
++        private void setClockFormat(boolean compact) {
++            compactClock = compact;
++            clock.setFormat24Hour(compact ? "HH:mm" : "EEEE HH:mm");
++            clock.setFormat12Hour(compact ? "HH:mm" : "EEEE HH:mm");
++        }
++
++        @Override protected void onMeasure(int widthSpec, int heightSpec) {
++            int width = MeasureSpec.getSize(widthSpec), height = MeasureSpec.getSize(heightSpec);
++            setMeasuredDimension(width, height);
++            int buttonSpec = MeasureSpec.makeMeasureSpec(Math.min(dp(48), width / 3), MeasureSpec.EXACTLY);
++            int barHeight = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
++            back.measure(buttonSpec, barHeight);
++            home.measure(buttonSpec, barHeight);
++            controls.measure(buttonSpec, barHeight);
++            clock.measure(MeasureSpec.makeMeasureSpec(Math.max(0, width - dp(160)), MeasureSpec.AT_MOST), barHeight);
++        }
++
++        @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
++            int width = r - l, height = b - t;
++            android.view.WindowInsets insets = getRootWindowInsets();
++            android.view.DisplayCutout cutout = insets == null ? null : insets.getDisplayCutout();
++            int left = Math.max(dp(8), cutout == null ? 0 : cutout.getSafeInsetLeft());
++            int right = width - Math.max(dp(8), cutout == null ? 0 : cutout.getSafeInsetRight());
++            int buttonWidth = dp(48);
++            home.layout(left, 0, left + buttonWidth, height);
++            back.layout(left + buttonWidth, 0, left + 2 * buttonWidth, height);
++            controls.layout(right - buttonWidth, 0, right, height);
++            int clockLeft = left + (backMounted ? 2 : 1) * buttonWidth, clockRight = right - buttonWidth;
++            if (cutout != null) {
++                android.graphics.Rect notch = cutout.getBoundingRectTop();
++                if (!notch.isEmpty() && notch.bottom > 0 && notch.left < clockRight && notch.right > clockLeft) {
++                    int before = notch.left - clockLeft, after = clockRight - notch.right;
++                    if (before >= after) clockRight = notch.left - dp(4);
++                    else clockLeft = notch.right + dp(4);
++                }
++            }
++            int available = Math.max(0, clockRight - clockLeft);
++            CharSequence fullTime = android.text.format.DateFormat.format(
++                    "EEEE HH:mm",
++                    java.util.Calendar.getInstance());
++            boolean compact = clock.getPaint().measureText(fullTime.toString()) + dp(8) > available;
++            if (compact != compactClock) setClockFormat(compact);
++            clock.measure(MeasureSpec.makeMeasureSpec(available, MeasureSpec.AT_MOST),
++                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
++            int cw = clock.getMeasuredWidth(), ch = clock.getMeasuredHeight();
++            int cx = Math.max(clockLeft, Math.min((width - cw) / 2, clockRight - cw));
++            clock.layout(cx, Math.max(0, (height - ch) / 2), cx + cw, Math.min(height, (height + ch) / 2));
++            // Keep Android's active-call/recording chips above this bar and give
++            // them space. Privacy dots remain owned by SystemUI's event pipeline.
++            View startContent = PhoneStatusBarView.this.findViewById(R.id.status_bar_start_side_content);
++            boolean chipVisible = startContent != null && startContent.getWidth() > buttonWidth;
++            back.setVisibility(chipVisible || !backMounted ? View.INVISIBLE : View.VISIBLE);
++            home.setVisibility(chipVisible ? View.INVISIBLE : View.VISIBLE);
++            clock.setVisibility(chipVisible ? View.INVISIBLE : View.VISIBLE);
++            if (PhoneStatusBarView.this.getViewRootImpl() != null)
++                PhoneStatusBarView.this.updateTouchableRegion(mTouchableRegion);
++        }
++    }
+ }
+*** End Patch

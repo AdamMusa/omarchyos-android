@@ -1,0 +1,32 @@
+<resources>
+    <color name="overview_scrim">@android:color/system_surface_light</color>
+    <color name="overview_scrim_dark">@android:color/system_surface_dark</color>
+    <color name="overview_scrim_foreground_primary">@android:color/system_on_surface_light</color>
+    <color name="overview_scrim_foreground_primary_dark">@android:color/system_on_surface_dark</color>
+    <color name="overview_scrim_foreground_secondary">@android:color/system_on_surface_variant_light</color>
+    <color name="overview_scrim_foreground_secondary_dark">@android:color/system_on_surface_variant_dark</color>
+    <dimen name="task_corner_radius_override">4dp</dimen>
+    <dimen name="task_menu_corner_radius">4dp</dimen>
+    <dimen name="app_chip_round_corner_radius">4dp</dimen>
+    <dimen name="task_thumbnail_header_round_corner_radius">4dp</dimen>
+    <dimen name="overview_actions_button_radius">4dp</dimen>
+    <style name="OverviewActionButton" parent="@android:style/Widget.DeviceDefault.Button.Borderless">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingHorizontal">16dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@android:color/system_on_surface_dark</item>
+        <item name="android:drawableTint">@android:color/system_on_surface_dark</item>
+        <item name="android:drawablePadding">8dp</item>
+        <item name="android:fontFamily">omarchy-ui</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:background">@drawable/overview_action_button_background</item>
+    </style>
+    <!-- Current phone builds draw the gesture handle through Launcher3's taskbar. -->
+    <color name="taskbar_stashed_handle_light_color">@android:color/system_primary_dark</color>
+    <color name="taskbar_stashed_handle_dark_color">@android:color/system_primary_dark</color>
+    <dimen name="taskbar_stashed_handle_height">2dp</dimen>
+</resources>

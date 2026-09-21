@@ -44,6 +44,28 @@ public class OmarchyActivity extends QtActivity {
     private BootCurtain mBootCurtain;
     private android.window.SplashScreenView mSplash;
     private boolean mHomeReady;
+    private static final java.util.concurrent.atomic.AtomicReference<String> sBarAction =
+            new java.util.concurrent.atomic.AtomicReference<>("");
+
+    public static boolean hasNativeSystemBar() {
+        return "Omarchy".equalsIgnoreCase(android.os.Build.BRAND);
+    }
+
+    public static String takeSystemBarAction() { return sBarAction.getAndSet(""); }
+
+    private void acceptSystemBarAction(android.content.Intent intent) {
+        String action = intent == null ? null : intent.getStringExtra("os.omarchy.SYSTEM_BAR_ACTION");
+        if (!"menu".equals(action) && !"calendar".equals(action) && !"settings".equals(action)) return;
+        sBarAction.set(action);
+        intent.removeExtra("os.omarchy.SYSTEM_BAR_ACTION");
+        if (mHomeReady) ShellBridge.systemBarActionChanged();
+    }
+
+    @Override public void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        acceptSystemBarAction(intent);
+    }
 
     public static OmarchyActivity get() { return sInstance; }
 
@@ -51,6 +73,7 @@ public class OmarchyActivity extends QtActivity {
     public void onCreate(Bundle savedInstanceState) {
         sInstance = this;
         super.onCreate(savedInstanceState);
+        acceptSystemBarAction(getIntent());
         // Qt's SurfaceView needs a transparent activity background. The opaque
         // curtain is a child above that surface, so rendering can start below it.
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -96,6 +119,7 @@ public class OmarchyActivity extends QtActivity {
                 activity.mSplash.remove();
                 activity.mSplash = null;
             }
+            ShellBridge.systemBarActionChanged();
             activity.reportFullyDrawn();
             Log.i(TAG, "Home frame ready; boot curtain removed");
         });
@@ -109,22 +133,9 @@ public class OmarchyActivity extends QtActivity {
         super.onDestroy();
     }
 
-    /**
-     * Omarchy's bar replaces Android's status bar, so that one is hidden and
-     * the window is laid out edge to edge behind the cutout.
-     *
-     * The navigation bar is deliberately left in place. Back, home and recents
-     * are Android services the shell inherits rather than reimplements, and in
-     * gesture mode they work over every app on the device, including ones the
-     * shell is not drawing. Hiding those insets would make the first swipe
-     * reveal the bar instead of navigating, which is exactly the feature this
-     * fork exists to keep. It is made transparent instead, so what shows is a
-     * handle over Omarchy's own background rather than a second system chrome.
-     *
-     * This uses the insets controller rather than setting the QML window's
-     * visibility to Window.FullScreen: asking Qt to change the platform
-     * window's visibility state left the QtSurface and the QQuickWindow out of
-     * step, and the scene stopped being rendered at all.
+    /** Keep the OS-owned Omarchy bar on Home, just as on native service pages.
+     * Stock-Android development hosts retain the local QML bar instead.
+     * Qt must keep its ordinary visible state to preserve SurfaceView rendering.
      */
     private void takeOverTheScreen() {
         getWindow().setDecorFitsSystemWindows(true);
@@ -135,7 +146,8 @@ public class OmarchyActivity extends QtActivity {
         getWindow().setStatusBarContrastEnforced(false);
         WindowInsetsController insets = getWindow().getInsetsController();
         if (insets == null) return;
-        insets.hide(WindowInsets.Type.statusBars());
+        if (hasNativeSystemBar()) insets.show(WindowInsets.Type.statusBars());
+        else insets.hide(WindowInsets.Type.statusBars());
         insets.show(WindowInsets.Type.navigationBars());
         insets.setSystemBarsBehavior(
                 WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);

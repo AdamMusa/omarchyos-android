@@ -10,6 +10,10 @@ PRODUCT_PACKAGE_OVERLAYS += device/omarchy/overlay
 
 PRODUCT_PACKAGES += \
     OmarchyBootOverlay \
+    OmarchyFrameworkOverlay \
+    OmarchySystemUIOverlay \
+    OmarchySettingsOverlay \
+    OmarchyOverviewOverlay \
     OmarchyCore \
     OmarchyCode \
     omarchy_codex_cli \
@@ -29,6 +33,14 @@ PRODUCT_PACKAGES += \
     OmarchyThemeCatppuccinLatteCore
 
 PRODUCT_COPY_FILES += \
+    packages/apps/OmarchyShell/third_party/omarchy/default/fonts/omarchy/omarchy.ttf:$(TARGET_COPY_OUT_PRODUCT)/fonts/omarchy.ttf \
+    packages/apps/OmarchyShell/third_party/omarchy/default/fonts/omarchy/README.md:$(TARGET_COPY_OUT_PRODUCT)/etc/omarchy/fonts/OMARCHY-ICONS-NOTICE.md \
+    packages/apps/OmarchyShell/third_party/omarchy/LICENSE:$(TARGET_COPY_OUT_PRODUCT)/etc/omarchy/fonts/OMARCHY-LICENSE \
+    device/omarchy/fonts/fonts_customization.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/fonts_customization.xml \
+    packages/apps/OmarchyShell/fonts/JetBrainsMonoNerdFont-Regular.ttf:$(TARGET_COPY_OUT_PRODUCT)/fonts/JetBrainsMonoNerdFont-Regular.ttf \
+    packages/apps/OmarchyShell/fonts/JetBrainsMonoNerdFont-Bold.ttf:$(TARGET_COPY_OUT_PRODUCT)/fonts/JetBrainsMonoNerdFont-Bold.ttf \
+    packages/apps/OmarchyShell/fonts/OFL.txt:$(TARGET_COPY_OUT_PRODUCT)/etc/omarchy/fonts/OFL.txt \
+    packages/apps/OmarchyShell/fonts/NERD-FONTS-LICENSE.txt:$(TARGET_COPY_OUT_PRODUCT)/etc/omarchy/fonts/NERD-FONTS-LICENSE.txt \
     device/omarchy/permissions/omarchy-home.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/preferred-apps/omarchy-home.xml \
     device/omarchy/permissions/omarchy_features.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/omarchy_features.xml \
     device/omarchy/permissions/privapp-permissions-omarchy.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/permissions/privapp-permissions-omarchy.xml \

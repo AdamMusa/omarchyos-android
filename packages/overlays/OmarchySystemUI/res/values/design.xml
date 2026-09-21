@@ -1,0 +1,24 @@
+<resources>
+    <dimen name="notification_corner_radius">4dp</dimen>
+    <dimen name="notification_corner_radius_small">4dp</dimen>
+    <dimen name="qs_corner_radius">4dp</dimen>
+    <dimen name="notification_scrim_corner_radius">4dp</dimen>
+    <dimen name="global_actions_corner_radius">4dp</dimen>
+    <dimen name="volume_dialog_background_corner_radius">4dp</dimen>
+    <dimen name="bottom_sheet_corner_radius">4dp</dimen>
+    <dimen name="biometric_prompt_content_corner_radius">4dp</dimen>
+    <dimen name="media_output_dialog_corner_radius">4dp</dimen>
+    <dimen name="controls_panel_corner_radius">4dp</dimen>
+    <style name="TextAppearance.StatusBar.Default" parent="@android:style/TextAppearance.Small">
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">@android:color/system_on_surface_dark</item>
+    </style>
+    <dimen name="common_tile_default_active_icon_corner_radius">4dp</dimen>
+    <dimen name="common_tile_default_active_tile_corner_radius">4dp</dimen>
+    <dimen name="common_tile_default_inactive_icon_corner_radius">4dp</dimen>
+    <dimen name="common_tile_default_inactive_tile_corner_radius">4dp</dimen>
+    <dimen name="focus_ring_wide_corner_radius">4dp</dimen>
+    <dimen name="focus_ring_tight_corner_radius">4dp</dimen>
+    <dimen name="overlay_qs_layout_brightness_rounded_corner">4dp</dimen>
+</resources>

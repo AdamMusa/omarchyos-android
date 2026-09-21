@@ -40,6 +40,17 @@ order=(
   packages/apps/Settings/res/values/strings.xml.patch
   packages/apps/Settings/src/com/android/settings/FallbackHome.java.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/qs/panels/ui/viewmodel/toolbar/EditModeButtonViewModel.kt.patch
+  frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsRadius.kt.patch
+  frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsShape.kt.patch
+  frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsTheme.kt.patch
+  frameworks/base/packages/SystemUI/src/com/android/systemui/navigationbar/gestural/NavigationHandle.java.patch
+  frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java.patch
+  frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/pipeline/shared/ui/composable/StatusBarRoot.kt.patch
+  frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/theme/PlatformTheme.kt.patch
+  frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt.patch
+  frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java.patch
+  frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/widget/scaffold/SettingsTopAppBar.kt.patch
+  packages/apps/Settings/src/com/android/settings/core/SettingsBaseActivity.java.patch
   device/generic/goldfish/build/tools/mk_combined_img.py.patch
   device/generic/goldfish/sepolicy/system_ext/private/platform_app.te.patch
 )

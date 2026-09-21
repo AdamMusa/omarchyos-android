@@ -70,6 +70,26 @@ AndroidBridge::AndroidBridge(QObject *parent) : QObject(parent)
 #endif
 }
 
+bool AndroidBridge::nativeSystemBar() const
+{
+#ifdef Q_OS_ANDROID
+    return QJniObject::callStaticMethod<jboolean>(
+        "os/omarchy/shell/OmarchyActivity", "hasNativeSystemBar", "()Z");
+#else
+    return false;
+#endif
+}
+
+QString AndroidBridge::takeSystemBarAction() const
+{
+#ifdef Q_OS_ANDROID
+    return QJniObject::callStaticObjectMethod(
+        "os/omarchy/shell/OmarchyActivity", "takeSystemBarAction", "()Ljava/lang/String;").toString();
+#else
+    return {};
+#endif
+}
+
 bool AndroidBridge::eventFilter(QObject *watched, QEvent *event)
 {
     switch (event->type()) {
@@ -114,7 +134,8 @@ void AndroidBridge::setIdleInhibited(bool inhibited)
 
 void AndroidBridge::notifyStateChanged(const QString &what)
 {
-    if (what == QLatin1String("themes")) emit themeStateChanged();
+    if (what == QLatin1String("system-bar-action")) emit systemBarActionRequested();
+    else if (what == QLatin1String("themes")) emit themeStateChanged();
     else if (what == QLatin1String("battery")) emit batteryChanged();
     else if (what == QLatin1String("audio")) emit audioChanged();
     else if (what == QLatin1String("network")) emit networkChanged();

@@ -1,0 +1,44 @@
+*** Begin Patch
+*** Update File: packages/apps/Settings/src/com/android/settings/core/SettingsBaseActivity.java
+@@
+                 com.android.settingslib.collapsingtoolbar.R.id.floating_toolbar);
+         getToolbarDelegate().initFloatingToolbar(getApplicationContext(), toolbarLayout);
+ 
++        if ("Omarchy".equalsIgnoreCase(android.os.Build.BRAND) && !isAnySetupWizard) {
++            final View content = findViewById(R.id.content_parent);
++            content.getViewTreeObserver().addOnGlobalLayoutListener(this::updateOmarchyServiceActions);
++            updateOmarchyServiceActions();
++        }
++
+         if (DEBUG_TIMING) {
+             Log.d(TAG, "onCreate took " + (System.currentTimeMillis() - startTime) + " ms");
+         }
++    }
++
++    private void updateOmarchyServiceActions() {
++        final Toolbar toolbar = findViewById(R.id.action_bar);
++        if (toolbar == null || mAppBarLayout == null) return;
++        final ActionBar bar = getActionBar();
++        if (bar != null) {
++            bar.setDisplayHomeAsUpEnabled(false);
++            bar.setDisplayShowTitleEnabled(false);
++        }
++        toolbar.setNavigationIcon(null);
++        if (mCollapsingToolbarLayout != null) {
++            mCollapsingToolbarLayout.setTitleEnabled(false);
++            ViewGroup.LayoutParams params = mCollapsingToolbarLayout.getLayoutParams();
++            if (params.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
++                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
++                mCollapsingToolbarLayout.setLayoutParams(params);
++            }
++        }
++        final View buttons = findViewById(
++                com.android.settingslib.collapsingtoolbar.R.id.toolbar_buttons_container);
++        boolean hasActions = toolbar.getMenu().hasVisibleItems()
++                || (buttons != null && buttons.getVisibility() == View.VISIBLE);
++        int visibility = hasActions ? View.VISIBLE : View.GONE;
++        if (mAppBarLayout.getVisibility() != visibility) mAppBarLayout.setVisibility(visibility);
+     }
+ 
+     @Override
+*** End Patch

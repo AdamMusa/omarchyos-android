@@ -1,0 +1,29 @@
+<resources>
+    <string name="config_headlineFontFamily" translatable="false">omarchy-ui</string>
+    <string name="config_headlineFontFamilyMedium" translatable="false">omarchy-ui</string>
+    <string name="config_bodyFontFamily" translatable="false">omarchy-ui</string>
+    <string name="config_bodyFontFamilyMedium" translatable="false">omarchy-ui</string>
+    <string name="config_clockFontFamily" translatable="false">omarchy-ui</string>
+    <string name="font_family_display_4_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_display_3_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_display_2_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_display_1_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_headline_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_title_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_subhead_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_menu_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_body_2_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_body_1_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_caption_material" translatable="false">omarchy-ui</string>
+    <string name="font_family_button_material" translatable="false">omarchy-ui</string>
+    <dimen name="config_dialogCornerRadius">4dp</dimen>
+    <dimen name="config_bottomDialogCornerRadius">4dp</dimen>
+    <dimen name="status_bar_height_default">48dp</dimen>
+    <dimen name="status_bar_height_portrait">48dp</dimen>
+    <dimen name="status_bar_height_landscape">48dp</dimen>
+    <color name="customColorSurfaceEffect0">@android:color/system_surface_dark</color>
+    <color name="customColorSurfaceEffect0Fallback">@android:color/system_surface_dark</color>
+    <color name="customColorSurfaceEffect1">@android:color/system_surface_container_dark</color>
+    <color name="customColorSurfaceEffect2">@android:color/system_surface_container_high_dark</color>
+    <color name="customColorSurfaceEffect3">@android:color/system_surface_container_highest_dark</color>
+</resources>

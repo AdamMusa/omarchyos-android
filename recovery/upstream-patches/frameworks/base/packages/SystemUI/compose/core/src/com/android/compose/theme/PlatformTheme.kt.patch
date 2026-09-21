@@ -1,0 +1,67 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/theme/PlatformTheme.kt
+@@
+         colorScheme = colorScheme,
+         typography = typography,
+         motionScheme = ExpressiveMotionScheme,
++        shapes = if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)) {
++            val corner = androidx.compose.foundation.shape.RoundedCornerShape(
++                androidx.compose.ui.unit.Dp(4f))
++            androidx.compose.material3.Shapes(
++                extraSmall = corner, small = corner, medium = corner,
++                large = corner, extraLarge = corner,
++            )
++        } else androidx.compose.material3.Shapes(),
+     ) {
+         CompositionLocalProvider(
+             LocalAndroidColorScheme provides androidColorScheme,
+@@
+ }
+ 
+ private fun platformColorScheme(isDarkTheme: Boolean, context: Context): ColorScheme {
++    // Omarchy supplies exact semantic roles; do not regenerate tonal palettes.
++    if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)) {
++        val omarchyBase = if (isDarkTheme) dynamicDarkColorScheme(context)
++            else dynamicLightColorScheme(context)
++        return omarchyBase.copy(
++            primary = color(context, R.color.system_primary_dark),
++            onPrimary = color(context, R.color.system_on_primary_dark),
++            primaryContainer = color(context, R.color.system_primary_container_dark),
++            onPrimaryContainer = color(context, R.color.system_on_primary_container_dark),
++            secondary = color(context, R.color.system_secondary_dark),
++            onSecondary = color(context, R.color.system_on_secondary_dark),
++            secondaryContainer = color(context, R.color.system_secondary_container_dark),
++            onSecondaryContainer = color(context, R.color.system_on_secondary_container_dark),
++            tertiary = color(context, R.color.system_tertiary_dark),
++            onTertiary = color(context, R.color.system_on_tertiary_dark),
++            tertiaryContainer = color(context, R.color.system_tertiary_container_dark),
++            onTertiaryContainer = color(context, R.color.system_on_tertiary_container_dark),
++            error = color(context, R.color.system_error_dark),
++            onError = color(context, R.color.system_on_error_dark),
++            errorContainer = color(context, R.color.system_error_container_dark),
++            onErrorContainer = color(context, R.color.system_on_error_container_dark),
++            background = color(context, R.color.system_background_dark),
++            onBackground = color(context, R.color.system_on_background_dark),
++            surface = color(context, R.color.system_surface_dark),
++            onSurface = color(context, R.color.system_on_surface_dark),
++            surfaceVariant = color(context, R.color.system_surface_variant_dark),
++            onSurfaceVariant = color(context, R.color.system_on_surface_variant_dark),
++            outline = color(context, R.color.system_outline_dark),
++            outlineVariant = color(context, R.color.system_outline_variant_dark),
++            inverseSurface = color(context, R.color.system_inverse_surface_dark),
++            inverseOnSurface = color(context, R.color.system_inverse_on_surface_dark),
++            inversePrimary = color(context, R.color.system_inverse_primary_dark),
++            surfaceTint = color(context, R.color.system_surface_tint_dark),
++            surfaceDim = color(context, R.color.system_surface_dim_dark),
++            surfaceBright = color(context, R.color.system_surface_bright_dark),
++            surfaceContainerLowest = color(context, R.color.system_surface_container_lowest_dark),
++            surfaceContainerLow = color(context, R.color.system_surface_container_low_dark),
++            surfaceContainer = color(context, R.color.system_surface_container_dark),
++            surfaceContainerHigh = color(context, R.color.system_surface_container_high_dark),
++            surfaceContainerHighest = color(context, R.color.system_surface_container_highest_dark),
++        )
++    }
+     return if (isDarkTheme) {
+         dynamicDarkColorScheme(context)
+             .copy(
+*** End Patch

@@ -56,6 +56,7 @@ public class ShellBridge {
         ThemeRepository.get(get().context());
     }
 
+    public static void systemBarActionChanged() { nativeStateChanged("system-bar-action"); }
     public static void themesChanged() { nativeStateChanged("themes"); }
     public String themeStateJson() { return ThemeRepository.get(context()).state(); }
     public void refreshThemeMarketplace() { ThemeRepository.get(context()).refreshMarket(); }

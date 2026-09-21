@@ -1,0 +1,47 @@
+<resources>
+    <color name="homepage_blue_variant_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_blue_variant_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_blue_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_blue_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_pink_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_pink_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_orange_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_orange_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_yellow_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_yellow_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_green_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_green_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_grey_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_grey_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_cyan_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_cyan_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_red_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_red_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_purple_fg">@android:color/system_primary_dark</color>
+    <color name="homepage_purple_bg">@android:color/system_surface_container_high_dark</color>
+    <color name="homepage_generic_icon_background">@android:color/system_surface_container_high_dark</color>
+    <dimen name="rect_button_radius">4dp</dimen>
+    <dimen name="search_bar_corner_radius">4dp</dimen>
+    <dimen name="keyboard_picker_radius">4dp</dimen>
+    <dimen name="settings_panel_corner_radius">4dp</dimen>
+    <dimen name="battery_tips_card_corner_radius_normal">4dp</dimen>
+    <dimen name="battery_hints_chip_corner_radius">4dp</dimen>
+    <dimen name="dream_item_corner_radius">4dp</dimen>
+    <dimen name="display_block_corner_radius">4dp</dimen>
+    <dimen name="sc_card_corner_radius_large">4dp</dimen>
+    <!-- Shared native Settings preferences and their main-switch cards. -->
+    <dimen name="settingslib_switch_bar_radius">4dp</dimen>
+    <dimen name="settingslib_entry_bg_radius">4dp</dimen>
+    <dimen name="settingslib_preference_corner_radius">4dp</dimen>
+    <dimen name="button_corner_radius">4dp</dimen>
+    <dimen name="hearing_devices_preset_spinner_background_radius">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_full">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_small">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_medium">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_large1">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_large2">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_large3">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_extralarge1">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_extralarge2">4dp</dimen>
+    <dimen name="settingslib_expressive_radius_extralarge3">4dp</dimen>
+</resources>

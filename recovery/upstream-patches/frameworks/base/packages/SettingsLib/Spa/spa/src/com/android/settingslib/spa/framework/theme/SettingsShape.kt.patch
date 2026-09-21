@@ -1,0 +1,13 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsShape.kt
+@@
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ 
+ object SettingsShape {
+-    val CornerFull = CircleShape
++    val CornerFull = if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true))
++        RoundedCornerShape(SettingsRadius.extraSmall2) else CircleShape
+     val CornerExtraSmall2 = RoundedCornerShape(SettingsRadius.extraSmall2)
+     val CornerMedium = RoundedCornerShape(SettingsRadius.medium)
+     val CornerLarge1 = RoundedCornerShape(SettingsRadius.large1)
+*** End Patch

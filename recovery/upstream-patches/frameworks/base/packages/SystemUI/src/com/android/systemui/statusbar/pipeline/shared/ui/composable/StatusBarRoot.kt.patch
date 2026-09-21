@@ -1,0 +1,32 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/pipeline/shared/ui/composable/StatusBarRoot.kt
+@@
+ 
+                 // If the flag is enabled, create and add a compose section to the end
+                 // of the system_icons container
+-                if (SystemStatusIconsInCompose.isEnabled) {
++                if (phoneStatusBarView.isOmarchyStyle) {
++                    phoneStatusBarView.requireViewById<View>(R.id.system_icons).visibility = View.GONE
++                } else if (SystemStatusIconsInCompose.isEnabled) {
+                     phoneStatusBarView.requireViewById<View>(R.id.system_icons).visibility =
+                         View.GONE
+                     addEndSideComposable(phoneStatusBarView, statusBarViewModel)
+@@
+ 
+     val composeView =
+         ComposeView(context).apply {
+-            val showDate = Flags.statusBarDate() && statusBarViewModel.useDesktopStatusBar
++            val showDate = !phoneStatusBarView.isOmarchyStyle && Flags.statusBarDate() && statusBarViewModel.useDesktopStatusBar
+ 
+             layoutParams =
+                 LinearLayout.LayoutParams(
+@@
+                         }
+                 }
+ 
+-                if (ClockModernization.isEnabled) {
++                if (ClockModernization.isEnabled && !phoneStatusBarView.isOmarchyStyle) {
+                     clockView.visibility = View.GONE
+                     WithAdaptiveTint(
+                         isDarkProvider = { bounds ->
+*** End Patch

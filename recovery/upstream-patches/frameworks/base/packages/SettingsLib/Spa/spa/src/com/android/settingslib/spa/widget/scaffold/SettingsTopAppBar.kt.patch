@@ -1,0 +1,30 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/widget/scaffold/SettingsTopAppBar.kt
+@@
+ 
+ package com.android.settingslib.spa.widget.scaffold
+ 
++import androidx.compose.foundation.layout.statusBarsPadding
++import androidx.compose.foundation.layout.fillMaxWidth
++
+ import android.os.Build
+ import androidx.compose.foundation.layout.RowScope
+ import androidx.compose.material3.ExperimentalMaterial3Api
+@@
+     isFirstLayerPageWhenEmbedded: Boolean,
+     actions: @Composable RowScope.() -> Unit,
+ ) {
++    if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)) {
++        // Navigation belongs to Omarchy's system bar. Keep page-specific
++        // actions in the content area; an empty action row occupies no height.
++        androidx.compose.foundation.layout.Row(
++            modifier = androidx.compose.ui.Modifier.fillMaxWidth().statusBarsPadding(),
++            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
++            content = actions,
++        )
++        return
++    }
+     CustomizedLargeTopAppBar(
+         title = title,
+         navigationIcon = { NavigationIcon(isFirstLayerPageWhenEmbedded) },
+*** End Patch

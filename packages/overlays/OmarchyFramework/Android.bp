@@ -1,0 +1,8 @@
+// Copyright 2026 OmarchyOS
+// SPDX-License-Identifier: Apache-2.0
+runtime_resource_overlay {
+    name: "OmarchyFrameworkOverlay",
+    certificate: "platform",
+    system_ext_specific: true,
+    sdk_version: "current",
+}

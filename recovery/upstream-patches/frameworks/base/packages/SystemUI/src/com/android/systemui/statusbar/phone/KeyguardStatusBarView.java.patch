@@ -1,0 +1,15 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java
+@@
+         super.onFinishInflate();
+         mSystemIconsContainer = findViewById(R.id.system_icons_container);
+         mSystemIcons = findViewById(R.id.system_icons);
++        if (!android.os.SystemProperties.get("ro.omarchy.shell", "").isEmpty()) {
++            // Keep user switching, carrier/emergency information and privacy
++            // indicators; omit the stock transport/battery strip on keyguard.
++            mSystemIcons.setVisibility(View.GONE);
++        }
+         mMultiUserAvatar = findViewById(R.id.multi_user_avatar);
+         mCarrierLabel = findViewById(R.id.keyguard_carrier_text);
+         mCutoutSpace = findViewById(R.id.cutout_space_view);
+*** End Patch

@@ -12,6 +12,7 @@
 class AndroidBridge : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool nativeSystemBar READ nativeSystemBar CONSTANT)
     // Idle state. Omarchy's screensaver and lock are driven by the Wayland
     // idle-notify protocol upstream; on Android idleness is the absence of
     // input to the shell window plus the display's own interactive state.
@@ -41,6 +42,8 @@ class AndroidBridge : public QObject
 public:
     explicit AndroidBridge(QObject *parent = nullptr);
 
+    bool nativeSystemBar() const;
+    Q_INVOKABLE QString takeSystemBarAction() const;
     QVariantMap themeState() const;
     Q_INVOKABLE void refreshThemeMarketplace() const;
     Q_INVOKABLE void installTheme(const QString &id) const;
@@ -118,6 +121,7 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 signals:
+    void systemBarActionRequested();
     void themeStateChanged();
     void themeBrowserRequested();
     void batteryChanged();

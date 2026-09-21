@@ -1,0 +1,1 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="os.omarchy.framework.overlay" android:versionCode="2" android:versionName="2"><overlay android:targetPackage="android" android:isStatic="true" android:priority="900" /><application android:hasCode="false" android:label="Omarchy system design" /></manifest>
