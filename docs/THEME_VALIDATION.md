@@ -49,3 +49,27 @@ below the native Omarchy navbar. Opening the picker leaves the keyboard closed,
 and Close returns to Home. Interactive shell panels reserve only the system-bar
 and cutout area that overlaps Qt's surface; wallpaper remains edge to edge.
 This check covers the portrait Home activity, not landscape shell support.
+
+## Native accent contrast correction
+
+Core 41 adjusts a low-contrast semantic color toward black or white only as far
+as needed to reach 4.5:1 against its assigned background. It retains the theme's
+hue instead of replacing the color with pure black or white. Already-readable
+colors and original Omarchy tokens remain unchanged. Palette tests cover all 22
+bundled themes and regressions for Latte blue, Tokyo Night and a dark imported
+accent.
+
+The v16 emulator image was installed over v15 with Catppuccin Latte already
+selected. Before any theme was reapplied, Core migrated the native primary from
+black to `#1d64ef`, giving 4.506:1 contrast against `#eff1f5`; the original token
+remained `#1e66f5`. Core and SystemUI retained their process IDs during the
+subsequent light-theme volume/navigation checks, and the crash buffer was empty.
+The compact and expanded controls visually retain their blue accent. Migration
+is revisioned in each user's theme preferences and only updates the existing
+enabled mobile palette.
+
+Local before/after evidence is in
+`out/mobile-check/native-v15-palette-before-upgrade.json` and
+`out/mobile-check/native-v16-palette-after-upgrade.json`. This validates one
+emulator user upgrade, not multi-user device qualification or every possible
+imported color pairing.

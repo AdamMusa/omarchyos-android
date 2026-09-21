@@ -31,6 +31,8 @@ final class ThemeController {
     private static final String PREFS = "theme";
     private static final String KEY_ACTIVE = "active_plugin";
     private static final String KEY_PENDING = "pending_plugin";
+    private static final String KEY_PALETTE_REVISION = "system_palette_revision";
+    private static final int PALETTE_REVISION = 2;
 
     private final Context mContext;
 
@@ -60,11 +62,29 @@ final class ThemeController {
                 if (overlay.isEnabled()) lastEnabled = overlay;
                 if (identifier.equals(overlay.getOverlayIdentifier())) selected = overlay;
             }
-            if (selected != null && selected.isEnabled() && selected != lastEnabled) {
+            if (selected == null || !selected.isEnabled()) return;
+            SharedPreferences preferences = preferences(userId);
+            boolean needsMigration = preferences.getInt(KEY_PALETTE_REVISION, 0) < PALETTE_REVISION;
+            OverlayManagerTransaction.Builder transaction = new OverlayManagerTransaction.Builder();
+            if (needsMigration) {
+                // The existing per-user token overlay retains the original
+                // accent, even if the previous semantic palette used black/white.
+                OverlayInfo tokens = manager.getOverlayInfo(new OverlayIdentifier(
+                        "os.omarchy.core", "mobile_palette_u" + userId), UserHandle.of(userId));
+                if (tokens == null || !tokens.isEnabled()) {
+                    needsMigration = false;
+                } else {
+                    Context context = mContext.createContextAsUser(UserHandle.of(userId), 0);
+                    transaction.registerFabricatedOverlay(systemPalette(context, userId,
+                            context.getColor(R.color.omarchy_surface), context.getColor(R.color.omarchy_text),
+                            context.getColor(R.color.omarchy_accent), context.getColor(R.color.omarchy_destructive)));
+                }
+            }
+            if (needsMigration || selected != lastEnabled) {
                 // Enabling through a transaction also promotes the overlay. Do this
-                // only when its order changed, so our own broadcast is a no-op.
-                manager.commit(new OverlayManagerTransaction.Builder()
-                        .setEnabled(identifier, true, userId).build());
+                // only for a new palette revision or order, so our broadcast is a no-op.
+                manager.commit(transaction.setEnabled(identifier, true, userId).build());
+                if (needsMigration) preferences.edit().putInt(KEY_PALETTE_REVISION, PALETTE_REVISION).commit();
             }
         } catch (RuntimeException failure) {
             Log.w(TAG, "Unable to retain the selected system palette", failure);
@@ -192,15 +212,8 @@ final class ThemeController {
             OverlayManagerTransaction.Builder transaction = new OverlayManagerTransaction.Builder()
                     .registerFabricatedOverlay(overlay.build())
                     .setEnabled(new OverlayIdentifier("os.omarchy.core", "mobile_palette_u" + userId), true, userId);
-            FabricatedOverlay.Builder framework = new FabricatedOverlay.Builder(
-                    "os.omarchy.core", "mobile_system_palette_u" + userId, "android");
-            for (java.util.Map.Entry<String, Integer> entry : SystemPalette.colors(bg, fg, accent,
-                    paletteColor(palette, "red", "accent")).entrySet()) {
-                if (context.getResources().getIdentifier(entry.getKey(), "color", "android") != 0)
-                    framework.setResourceValue("android:color/" + entry.getKey(),
-                            TypedValue.TYPE_INT_COLOR_ARGB8, entry.getValue());
-            }
-            transaction.registerFabricatedOverlay(framework.build()).setEnabled(
+            transaction.registerFabricatedOverlay(systemPalette(context, userId, bg, fg, accent,
+                    paletteColor(palette, "red", "accent"))).setEnabled(
                     new OverlayIdentifier("os.omarchy.core", "mobile_system_palette_u" + userId), true, userId);
             FabricatedOverlay.Builder systemUi = new FabricatedOverlay.Builder(
                     "os.omarchy.core", "mobile_status_palette_u" + userId, "com.android.systemui");
@@ -217,7 +230,8 @@ final class ThemeController {
             OverlayIdentifier legacy = new OverlayIdentifier("os.omarchy.core", "mobile_palette");
             if (overlays.getOverlayInfo(legacy, UserHandle.of(userId)) != null) transaction.setEnabled(legacy, false, userId);
             overlays.commit(transaction.build());
-            preferences(userId).edit().putString(KEY_ACTIVE, "omarchy.mobile." + id).remove(KEY_PENDING).commit();
+            preferences(userId).edit().putString(KEY_ACTIVE, "omarchy.mobile." + id)
+                    .putInt(KEY_PALETTE_REVISION, PALETTE_REVISION).remove(KEY_PENDING).commit();
             return true;
         } catch (RuntimeException e) {
             Log.e(TAG, "Unable to apply mobile theme " + id, e);
@@ -225,6 +239,19 @@ final class ThemeController {
             catch (RuntimeException rollback) { Log.e(TAG, "Unable to restore previous palette", rollback); }
             return false;
         }
+    }
+
+    private static FabricatedOverlay systemPalette(Context context, int userId,
+            int background, int foreground, int accent, int red) {
+        FabricatedOverlay.Builder overlay = new FabricatedOverlay.Builder(
+                "os.omarchy.core", "mobile_system_palette_u" + userId, "android");
+        for (java.util.Map.Entry<String, Integer> entry :
+                SystemPalette.colors(background, foreground, accent, red).entrySet()) {
+            if (context.getResources().getIdentifier(entry.getKey(), "color", "android") != 0)
+                overlay.setResourceValue("android:color/" + entry.getKey(),
+                        TypedValue.TYPE_INT_COLOR_ARGB8, entry.getValue());
+        }
+        return overlay.build();
     }
 
     private static int paletteColor(Bundle palette, String key, String fallback) {

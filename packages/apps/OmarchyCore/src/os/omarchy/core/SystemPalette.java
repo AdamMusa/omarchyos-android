@@ -3,7 +3,7 @@ package os.omarchy.core;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Map Omarchy's exact palette to Android semantic roles, preserving readable text. */
+/** Map Omarchy's palette to Android semantic roles, preserving hue and readable text. */
 final class SystemPalette {
     static Map<String, Integer> colors(int background, int foreground, int accent, int red) {
         int text = readable(foreground, background);
@@ -41,7 +41,17 @@ final class SystemPalette {
     }
     static int readable(int color, int background) {
         if (contrast(color, background) >= 4.5) return color;
-        return contrast(0xff000000, background) > contrast(0xffffffff, background) ? 0xff000000 : 0xffffffff;
+        int endpoint = contrast(0xff000000, background) > contrast(0xffffffff, background)
+                ? 0xff000000 : 0xffffffff;
+        // Keep the theme's hue, changing only the amount mixed toward black or
+        // white. Return the passing side of the search after RGB quantization.
+        double low = 0, high = 1;
+        for (int step = 0; step < 16; step++) {
+            double amount = (low + high) / 2;
+            if (contrast(blend(color, endpoint, amount), background) >= 4.5) high = amount;
+            else low = amount;
+        }
+        return blend(color, endpoint, high);
     }
     static double contrast(int a, int b) {
         double x = luminance(a), y = luminance(b);

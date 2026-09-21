@@ -28,6 +28,16 @@ public final class SystemPaletteTest {
         }
         if (SystemPalette.contrast(SystemPalette.readable(0xff777777, 0xff777777), 0xff777777) < 4.5)
             throw new AssertionError("Unusable marketplace contrast fallback");
+        int latteBlue = SystemPalette.readable(0xff1e66f5, 0xffeff1f5);
+        if ((latteBlue & 255) < 230 || (latteBlue >> 16 & 255) > 40
+                || SystemPalette.contrast(latteBlue, 0xffeff1f5) < 4.5)
+            throw new AssertionError("Latte accent lost its blue hue or readability");
+        if (SystemPalette.readable(0xff7aa2f7, 0xff1a1b26) != 0xff7aa2f7)
+            throw new AssertionError("Already-readable Tokyo Night accent changed");
+        int paleBlue = SystemPalette.readable(0xff152542, 0xff1a1b26);
+        if ((paleBlue & 255) <= (paleBlue >> 16 & 255)
+                || SystemPalette.contrast(paleBlue, 0xff1a1b26) < 4.5)
+            throw new AssertionError("Dark marketplace accent lost its hue or readability");
         System.out.println("PASS: " + count + " theme palettes retain backgrounds and readable Android text roles");
     }
 }
