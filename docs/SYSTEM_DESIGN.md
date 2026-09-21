@@ -6,6 +6,14 @@ lifecycle, input, accessibility and security infrastructure.
 
 ## Components
 
+The shared navbar follows the Home reference: Omarchy mark on the left,
+centered full weekday and 24-hour time, and the settings gear on the right.
+Service content starts below it. Back appears in a reserved slot beside the
+mark while navigating and disappears on Home; it does not replace the mark or
+create a second toolbar. At narrow widths or large text sizes the clock shortens
+to keep the controls reachable. Services must not substitute an `OM` label,
+hamburger button, or ordinary Android battery/icon row for this navbar.
+
 - SystemUI's phone status bar draws the Omarchy menu mark, a centered day/24-hour clock, and the
   settings gear, matching Home's original Omarchy layout. Back mounts beside the
   mark when the foreground task is not Home, without moving the mark or gear.

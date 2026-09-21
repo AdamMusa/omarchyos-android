@@ -2,8 +2,8 @@
 
 This development-device test opens five Settings services, reads the native
 SystemUI accessibility tree, and presses Back. It checks the fixed logo, clock,
-and gear positions, conditional Back, return to Home, and SystemUI process
-stability. It also opens Bluetooth pairing and checks that Back returns one level
+and gear positions and glyphs, non-overlapping controls, conditional Back, return
+to Home, and SystemUI process stability. It also opens Bluetooth pairing and checks that Back returns one level
 to Connected devices while remaining mounted, then disappears on Home. It does
 not pair a device, install an app or become part of the product.
 

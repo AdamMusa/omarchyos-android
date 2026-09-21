@@ -22,11 +22,19 @@ def bar(nodes):
   assert sum(n['description']==name for n in nodes)<=1,('Duplicate navbar control',name,nodes)
  controls={n['description']:n for n in nodes if n['description'] in ['Omarchy menu','Omarchy settings','Back']}
  assert 'Omarchy menu' in controls and 'Omarchy settings' in controls,nodes
+ # Service screens must retain the Home design, not an OM/hamburger substitute.
+ assert controls['Omarchy menu']['text']=='\ue900',controls
+ assert controls['Omarchy settings']['text']=='\uf013',controls
  for n in controls.values():
   x,y,r,b=map(int,n['bounds'].split());assert r>x and b>y and n['clickable'],n
  clocks=[n for n in nodes if re.fullmatch(r'(?:\w+ )?\d{2}:\d{2}',n['text'])]
  assert len(clocks)==1,clocks
  controls['clock']=clocks[0]
+ # Back mounts in its reserved slot without overlapping the other controls.
+ rectangles=[tuple(map(int,n['bounds'].split())) for n in controls.values()]
+ for index,(left,top,right,bottom) in enumerate(rectangles):
+  for other_left,other_top,other_right,other_bottom in rectangles[index+1:]:
+   assert (right<=other_left or other_right<=left or bottom<=other_top or other_bottom<=top),('Overlapping navbar controls',controls)
  return controls
 original_pid=shell('pidof','com.android.systemui').strip()
 shell('input','keyevent','HOME');time.sleep(.5)

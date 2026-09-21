@@ -21,6 +21,13 @@ overlay installation. Emulator validation does not qualify physical phone hardwa
 The local QA app in `packages/apps/OmarchyShell/tools/system-ui-tests` exercises
 native notification, permission and dialog paths. It is not included in the OS.
 
+The v17 navigation check was repeated against the Home navbar reference. It
+passes the original Omarchy mark and gear glyphs, non-overlapping controls,
+matching Home/service control bounds, nested Back navigation, Overview, the
+shade, Quick Settings and tile editing. Back disappears on returning Home and
+SystemUI retains its process. Local result:
+`out/mobile-check/native-v17-navbar-reference.log`.
+
 The v16 full-navbar regression and v17 modal regression cover the previously
 missing full-height modal bar and its navigation actions. These targeted checks
 do not establish that every native surface or every imported theme has been
