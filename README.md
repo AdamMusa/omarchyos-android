@@ -37,7 +37,7 @@ see [device support and validation](#verification-and-device-support).
 ## The OmarchyOS experience
 
 - **Phone home screen:** Omarchy typography, menu, day-and-time clock, calendar,
-  settings shortcut, and battery status, adapted to touch targets and phone widths.
+  and settings shortcut, adapted to touch targets and phone widths.
 - **Omarchy screensaver:** upstream Omarchy’s animated ttfx text effects and wordmark,
   with Android managing idle activation and the lock screen. Configure it under
   **Phone settings → Screensaver**; see [screensaver controls](docs/SCREENSAVER.md).

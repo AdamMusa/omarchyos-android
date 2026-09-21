@@ -19,12 +19,6 @@ BarWidget {
         if (root.bar) root.bar.run("omarchy-shell shell toggle omarchy.menu '{\"menu\":\"settings\"}'")
       }
     }
-    WidgetButton {
-      bar: root.bar
-      text: (AndroidBridge.charging ? "\uf0e7 " : "") + AndroidBridge.batteryPercent + "%"
-      fixedWidth: Math.max(48, labelWidth + 12)
-      tooltipText: "Battery"
-      onPressed: AndroidBridge.openSettings("battery")
-    }
+
   }
 }

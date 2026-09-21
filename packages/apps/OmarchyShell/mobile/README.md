@@ -4,14 +4,14 @@
 The vendored desktop sources remain unchanged. The profile uses Omarchy's
 colors, typography, menu and calendar, with Android owning apps and services.
 
-- The bar has a menu, Omarchy’s day-and-time clock and calendar, phone settings and battery status. Touch
+- The bar has a menu, Omarchy’s day-and-time clock and calendar, phone settings. Touch
   targets are at least 48 logical pixels. The clock is constrained to the
   space between the edge groups; it cannot paint over their controls.
 - The menu lists Android launcher activities. Launching calls PackageManager
   and Android intents directly. App management opens Android's app settings.
   No Linux package catalog, Windows installer or desktop workspace menu is
   exposed. APK installation remains Android Package Installer's responsibility.
-- Settings entries open Android Wi-Fi, Bluetooth, sound, display, screensaver, battery,
+- Settings entries open native Wi-Fi, Bluetooth, sound, display, screensaver, battery,
   storage, accessibility and security screens. Unsupported desktop polling
   services are disabled rather than loading Linux commands on every interval.
 - Native Android navigation stays visible. Keep Launcher3QuickStep installed
