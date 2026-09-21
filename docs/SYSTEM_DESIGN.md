@@ -47,7 +47,8 @@ it does not replace apps, disable their controls or remove security prompts.
 Restore the fork patches with `recovery/restore-into-aosp.sh` in the matching full
 AOSP checkout before building SystemUI and Settings. These patches are gated by
 Omarchy product identity. The product includes OmarchyFrameworkOverlay,
-OmarchySystemUIOverlay, OmarchySettingsOverlay and OmarchyOverviewOverlay alongside its boot overlay.
+OmarchySystemUIOverlay, OmarchySettingsOverlay, OmarchyOverviewOverlay and
+OmarchyPermissionsOverlay alongside its boot overlay.
 
 `packages/overlays/tools/build-dev-overlays.sh` builds resource overlays against
 an existing matching development image. It uses platform test keys, except the
@@ -56,7 +57,8 @@ Production signing must use the corresponding release certificates.
 
 For incremental emulator images, pass the built overlay directory as the sixth
 argument of `packages/apps/OmarchyShell/tools/rebuild-emulator-image.sh`. The
-script rebuilds system_ext and product, including OEM fonts and boot animation,
+script rebuilds system, system_ext and product, including framework services,
+OEM fonts and boot animation,
 and regenerates the verified-boot metadata. Source changes to SystemUI/Settings
 must first be compiled into the input product tree; overlays alone do not add the
 native Omarchy bar.

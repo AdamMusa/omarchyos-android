@@ -36,7 +36,8 @@ AOSP build, `packages/apps/OmarchyShell/tools/rebuild-emulator-image.sh` takes
 `AOSP_ROOT PRODUCT_OUT PLATFORM_SIGNED_SHELL_APK PLATFORM_SIGNED_CORE_APK OUTPUT_DIR [BUILT_OVERLAY_DIR]`.
 The Core APK can be built incrementally with
 `packages/apps/OmarchyCore/tools/build-dev-apk.sh` and the same platform tree.
-The image tool reconstructs `system_ext` and `product` (OEM fonts and boot artwork),
+The image tool reconstructs `system` (framework services), `system_ext`, and
+`product` (OEM fonts and boot artwork),
 the dynamic-partition container, signed verified-boot metadata, and the combined
 emulator image. It retains verified-boot hashtrees and uses the emulator test keys;
 it is not a production signing pipeline. Existing input images and userdata remain
@@ -51,8 +52,10 @@ persistent userdata. Do not replace this step with a bare `adb install`: that on
 tests the application, not its integration into the system image.
 
 Run `python3 packages/apps/OmarchyShell/tools/test-system-home.py --serial DEVICE`
-after booting. Also inspect Home's App info page, verify the disabled Disable
-control and absence of ordinary Uninstall, and test Home/Back/overview. A complete
+after booting. Add `--check-app-info` on an English test device to verify the
+disabled Disable action and absence of ordinary Uninstall in native Settings;
+this optional check opens App info and returns Home afterward. Also test
+Home/Back/overview. A complete
 source rebuild and broader device validation remain tracked in [PERFORMANCE.md](PERFORMANCE.md).
 
 ## Development image validation
