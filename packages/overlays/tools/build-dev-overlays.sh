@@ -9,12 +9,13 @@ output=$(realpath "$3")
 source_dir=$(cd "$(dirname "$0")/.." && pwd)
 : "${ANDROID_SDK_ROOT:?Source the Android toolchain environment first}"
 build_tools="$ANDROID_SDK_ROOT/build-tools/35.0.0"
-for module in OmarchyBoot OmarchyFramework OmarchySystemUI OmarchySettings OmarchyOverview; do
+for module in OmarchyBoot OmarchyFramework OmarchySystemUI OmarchySettings OmarchyOverview OmarchyPermissions; do
   work="$output/$module"
   mkdir -p "$work"
   "$build_tools/aapt2" compile --dir "$source_dir/$module/res" -o "$work/resources.zip"
   "$build_tools/aapt2" link -o "$work/unsigned.apk" --manifest "$source_dir/$module/AndroidManifest.xml" \
     -I "$product/system/framework/framework-res.apk" --auto-add-overlay \
+    --no-resource-deduping --no-resource-removal \
     --min-sdk-version 35 --target-sdk-version 35 "$work/resources.zip"
   "$build_tools/zipalign" -f -p 4 "$work/unsigned.apk" "$work/aligned.apk"
   certificate=platform

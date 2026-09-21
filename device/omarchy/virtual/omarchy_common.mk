@@ -14,6 +14,7 @@ PRODUCT_PACKAGES += \
     OmarchySystemUIOverlay \
     OmarchySettingsOverlay \
     OmarchyOverviewOverlay \
+    OmarchyPermissionsOverlay \
     OmarchyCore \
     OmarchyCode \
     omarchy_codex_cli \

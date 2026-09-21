@@ -1,0 +1,6 @@
+runtime_resource_overlay {
+    name: "OmarchyPermissionsOverlay",
+    certificate: "platform",
+    system_ext_specific: true,
+    sdk_version: "current",
+}

@@ -54,7 +54,7 @@ cp "$source_root/device/omarchy/permissions/privapp-permissions-omarchy.xml" \
 cp "$source_root/device/omarchy/permissions/omarchy-home.xml" \
   "$result/system_ext/etc/preferred-apps/omarchy-home.xml"
 if [[ -n "$overlay_dir" ]]; then
-  for module in OmarchyBoot OmarchyFramework OmarchySystemUI OmarchySettings OmarchyOverview; do
+  for module in OmarchyBoot OmarchyFramework OmarchySystemUI OmarchySettings OmarchyOverview OmarchyPermissions; do
     [[ -f "$overlay_dir/$module.apk" ]] || { echo "Missing $module.apk" >&2; exit 1; }
     mkdir -p "$result/system_ext/overlay/$module"
     cp "$overlay_dir/$module.apk" "$result/system_ext/overlay/$module/$module.apk"
