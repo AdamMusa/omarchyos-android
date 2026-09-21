@@ -152,6 +152,13 @@ public final class OmarchyPluginManagerService extends Service {
         }
     };
 
+    private final android.content.BroadcastReceiver mPaletteReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context context, Intent intent) {
+            if (mThemes != null && !mThemeWorker.isShutdown())
+                mThemeWorker.execute(() -> mThemes.maintainPalettePriority(UserHandle.myUserId()));
+        }
+    };
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -172,6 +179,11 @@ public final class OmarchyPluginManagerService extends Service {
         mState = new PluginStateStore(contexts.deviceProtected);
         mEvents = new PluginEventDispatcher(contexts.deviceProtected);
         mThemes = new ThemeController(contexts.deviceProtected);
+        android.content.IntentFilter paletteFilter = new android.content.IntentFilter(Intent.ACTION_OVERLAY_CHANGED);
+        paletteFilter.addDataScheme("package");
+        paletteFilter.addDataSchemeSpecificPart("android", android.os.PatternMatcher.PATTERN_LITERAL);
+        registerReceiver(mPaletteReceiver, paletteFilter, android.content.Context.RECEIVER_EXPORTED);
+        mThemeWorker.execute(() -> mThemes.maintainPalettePriority(UserHandle.myUserId()));
         mRegistry.refresh();
         ensureDefaultTheme(UserHandle.myUserId());
         notifyHostReady(UserHandle.myUserId());
@@ -204,6 +216,7 @@ public final class OmarchyPluginManagerService extends Service {
 
     @Override
     public void onDestroy() {
+        unregisterReceiver(mPaletteReceiver);
         getContentResolver().unregisterContentObserver(mSetupObserver);
         if (mRoles != null) mRoles.removeOnRoleHoldersChangedListenerAsUser(mHomeRoleListener,
                 android.os.Process.myUserHandle());

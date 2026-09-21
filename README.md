@@ -48,7 +48,8 @@ see [device support and validation](#verification-and-device-support).
   theme palettes and artwork, and retain downloaded themes through shell updates.
   The bundled catalog is available offline; refresh and downloads require internet.
 - **System color integration:** themes apply shell colors, Android light/dark mode,
-  system dynamic colors, and Omarchy app colors through Android resource overlays.
+  exact Android surface and text colors, and Omarchy app colors through per-user
+  resource overlays. Text colors retain readable contrast.
   Third-party apps decide whether to follow system colors.
 - **Safe theme imports:** community themes supply color data and images. Their
   repository scripts, desktop installers, and executable hooks are not run. A

@@ -47,6 +47,30 @@ final class ThemeController {
         return active;
     }
 
+    /** Android generates its dynamic overlay asynchronously after a palette request. */
+    synchronized void maintainPalettePriority(int userId) {
+        if (!preferences(userId).getString(KEY_ACTIVE, "").startsWith("omarchy.mobile.")) return;
+        OverlayManager manager = mContext.getSystemService(OverlayManager.class);
+        if (manager == null) return;
+        OverlayIdentifier identifier = new OverlayIdentifier("os.omarchy.core", "mobile_system_palette_u" + userId);
+        try {
+            List<OverlayInfo> overlays = manager.getOverlayInfosForTarget("android", UserHandle.of(userId));
+            OverlayInfo selected = null, lastEnabled = null;
+            for (OverlayInfo overlay : overlays) {
+                if (overlay.isEnabled()) lastEnabled = overlay;
+                if (identifier.equals(overlay.getOverlayIdentifier())) selected = overlay;
+            }
+            if (selected != null && selected.isEnabled() && selected != lastEnabled) {
+                // Enabling through a transaction also promotes the overlay. Do this
+                // only when its order changed, so our own broadcast is a no-op.
+                manager.commit(new OverlayManagerTransaction.Builder()
+                        .setEnabled(identifier, true, userId).build());
+            }
+        } catch (RuntimeException failure) {
+            Log.w(TAG, "Unable to retain the selected system palette", failure);
+        }
+    }
+
     synchronized boolean apply(PluginRecord plugin, int userId) {
         if (plugin == null || !plugin.isTheme() || plugin.seedColors.isEmpty()) {
             return false;
@@ -100,10 +124,13 @@ final class ThemeController {
                 overlayManager.setEnabledExclusiveInCategory(
                         overlayPackage, UserHandle.of(userId));
             }
-            OverlayIdentifier mobile = new OverlayIdentifier("os.omarchy.core", "mobile_palette_u" + userId);
-            if (overlayManager.getOverlayInfo(mobile, UserHandle.of(userId)) != null) {
-                overlayManager.commit(new OverlayManagerTransaction.Builder().setEnabled(mobile, false, userId).build());
+            OverlayManagerTransaction.Builder cleanup = new OverlayManagerTransaction.Builder();
+            for (String name : new String[]{"mobile_palette_u", "mobile_system_palette_u", "mobile_status_palette_u"}) {
+                OverlayIdentifier mobile = new OverlayIdentifier("os.omarchy.core", name + userId);
+                if (overlayManager.getOverlayInfo(mobile, UserHandle.of(userId)) != null)
+                    cleanup.setEnabled(mobile, false, userId);
             }
+            overlayManager.commit(cleanup.build());
             preferences.edit().remove(KEY_PENDING).apply();
             return true;
         } catch (RuntimeException exception) {
@@ -165,6 +192,27 @@ final class ThemeController {
             OverlayManagerTransaction.Builder transaction = new OverlayManagerTransaction.Builder()
                     .registerFabricatedOverlay(overlay.build())
                     .setEnabled(new OverlayIdentifier("os.omarchy.core", "mobile_palette_u" + userId), true, userId);
+            FabricatedOverlay.Builder framework = new FabricatedOverlay.Builder(
+                    "os.omarchy.core", "mobile_system_palette_u" + userId, "android");
+            for (java.util.Map.Entry<String, Integer> entry : SystemPalette.colors(bg, fg, accent,
+                    paletteColor(palette, "red", "accent")).entrySet()) {
+                if (context.getResources().getIdentifier(entry.getKey(), "color", "android") != 0)
+                    framework.setResourceValue("android:color/" + entry.getKey(),
+                            TypedValue.TYPE_INT_COLOR_ARGB8, entry.getValue());
+            }
+            transaction.registerFabricatedOverlay(framework.build()).setEnabled(
+                    new OverlayIdentifier("os.omarchy.core", "mobile_system_palette_u" + userId), true, userId);
+            FabricatedOverlay.Builder systemUi = new FabricatedOverlay.Builder(
+                    "os.omarchy.core", "mobile_status_palette_u" + userId, "com.android.systemui");
+            int text = SystemPalette.readable(fg, bg);
+            for (String token : new String[]{"dark_mode_icon_color_single_tone", "light_mode_icon_color_single_tone",
+                    "dark_mode_icon_color_dual_tone_fill", "light_mode_icon_color_dual_tone_fill", "status_bar_clock_color"})
+                systemUi.setResourceValue("com.android.systemui:color/" + token, TypedValue.TYPE_INT_COLOR_ARGB8, text);
+            for (String token : new String[]{"dark_mode_icon_color_dual_tone_background", "light_mode_icon_color_dual_tone_background"})
+                systemUi.setResourceValue("com.android.systemui:color/" + token, TypedValue.TYPE_INT_COLOR_ARGB8,
+                        SystemPalette.blend(bg, text, .3));
+            transaction.registerFabricatedOverlay(systemUi.build()).setEnabled(
+                    new OverlayIdentifier("os.omarchy.core", "mobile_status_palette_u" + userId), true, userId);
             // Migrate the early preview's shared identifier to a separate overlay per user.
             OverlayIdentifier legacy = new OverlayIdentifier("os.omarchy.core", "mobile_palette");
             if (overlays.getOverlayInfo(legacy, UserHandle.of(userId)) != null) transaction.setEnabled(legacy, false, userId);
