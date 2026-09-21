@@ -61,3 +61,37 @@ cropped when Android rasterizes the icon at its system-selected size.
 The v10 image includes the vector correction and passes built-in Home protection
 and the full native navbar/navigation check. The boot-gap limitation above still
 applies; those functional checks are not proof of an uninterrupted visual handoff.
+
+## Reproducible boot evidence
+
+Reboot a development emulator and capture until the actual Home-frame signal:
+
+```sh
+python3 packages/apps/OmarchyShell/tools/capture-system-boot.py \
+  --serial emulator-5556 --size 540x1200 --output out/boot-check
+```
+
+Use a new output directory. The tool verifies that the kernel boot ID changes,
+records with a host-clock timeout, and preserves raw log bytes. It saves a
+screenshot at Home's readiness signal and another after settling. It never
+unlocks the device or treats the readiness log as proof of a correct picture.
+Inspect the video and both screenshots; also compare the actual emulator window
+when available. The encoder can lag or omit the final frames at full resolution.
+
+The v17 check reproduced a wallpaper flash followed by a black interval and then
+the completed Home. The reduced-resolution video contains the black interval at
+media timestamps 33.002–35.195 seconds. Its independent screenshot taken at the
+Home-ready signal is also black. Logs report Home ready at 47.695 seconds, before
+the activity receives its native status-bar insets at 49.315 seconds. This is
+evidence that Qt's initial frame count alone releases startup too early; it is
+not proof of the whole rendering cause. Local evidence is under
+`out/mobile-check/native-v17-boot-scaled` (the initial recorder named its
+signal-time screenshot `home.png`).
+
+Individual host-clock observations were 56.704 seconds to the Home signal while
+recording at full resolution, 37.627 seconds without recording, and 50.233 seconds
+while recording at 540x1200. These are single diagnostic runs of `adb reboot` on
+the same image, not a startup benchmark or a measurement of physical-phone boot
+time. Recording perturbs the experiment. The Mac was locked, so direct host-window
+inspection was unavailable; neither the boot gap nor overall startup latency is
+declared resolved by these measurements.
