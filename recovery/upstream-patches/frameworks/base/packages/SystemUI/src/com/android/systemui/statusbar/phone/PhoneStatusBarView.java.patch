@@ -85,6 +85,7 @@
 +        private final android.widget.TextView controls;
 +        private boolean compactClock;
 +        private boolean backMounted;
++        private Runnable beforeOpenPanel;
 +        private final com.android.systemui.shared.system.TaskStackChangeListener taskListener =
 +                new com.android.systemui.shared.system.TaskStackChangeListener() {
 +            @Override public void onTaskStackChanged() { updateBackMount(); }
@@ -116,6 +117,9 @@
 +
 +        public OmarchyBar(Context context) { this(context, null); }
 +
++        /** A modal host must release its window before opening another surface. */
++        public void setBeforeOpenPanel(Runnable action) { beforeOpenPanel = action; }
++
 +        private OmarchyBar(Context context, PhoneStatusBarView statusBar) {
 +            super(context);
 +            this.statusBar = statusBar;
@@ -143,6 +147,7 @@
 +            clock.setOnClickListener(view -> openOmarchyPanel("calendar"));
 +            controls.setOnClickListener(view -> openOmarchyPanel("settings"));
 +            controls.setOnLongClickListener(view -> {
++                if (beforeOpenPanel != null) beforeOpenPanel.run();
 +                getContext().getSystemService(android.app.StatusBarManager.class).expandSettingsPanel(null);
 +                return true;
 +            });
@@ -158,6 +163,7 @@
 +        }
 +
 +        private void openOmarchyPanel(String panel) {
++            if (beforeOpenPanel != null) beforeOpenPanel.run();
 +            if (statusBar == null) getContext().getSystemService(android.app.StatusBarManager.class).collapsePanels();
 +            // Resolve the selected Home normally, preserving a user's alternative
 +            // launcher. Omarchy consumes the extra only for its built-in panels.

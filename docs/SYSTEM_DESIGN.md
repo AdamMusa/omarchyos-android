@@ -16,6 +16,12 @@ lifecycle, input, accessibility and security infrastructure.
   Home gestures retain their normal Android behavior. The ordinary battery, transport and notification icon row is omitted.
   Notifications remain in the shade. Active-call/recording chips and privacy
   indicators retain their Android lifecycle and visibility.
+- Native Compose bottom sheets host the same Omarchy bar in their modal window.
+  The bar remains fixed when a service panel grows to full height; only its body
+  scrolls or drags. Back goes to the modal, while logo, clock and gear dismiss it
+  before opening the corresponding Home panel. Long-pressing its gear dismisses
+  the modal before opening Quick Settings. Products without Omarchy retain
+  the original bottom-sheet layout.
 - The gesture indicator uses the current Omarchy accent as a thin line, including
   the Launcher3 taskbar used by current phone builds. Android continues to handle Back, Home, overview and gesture animations.
 - Native service pages omit the separate Android back/title header. Back lives
@@ -36,7 +42,9 @@ lifecycle, input, accessibility and security infrastructure.
   colors, SystemUI contrast colors and Omarchy tokens in one transaction. Both
   light and dark resource variants use the chosen palette, so applications cannot
   switch the system bar back to a stock palette. Text roles meet 4.5:1 contrast;
-  imported colors with insufficient contrast receive black or white text.
+  colors with insufficient contrast are adjusted toward black or white only as
+  far as needed, retaining their hue. See [THEME_VALIDATION.md](THEME_VALIDATION.md)
+  for the selected-palette upgrade check.
 
 The platform cannot force arbitrary third-party app content to use Omarchy fonts
 or layouts. App-owned toolbars remain app-owned. This design changes OS-owned UI;
@@ -97,6 +105,13 @@ The repeatable navigation check is documented in
 this incremental build is not a clean full-source build or physical-device
 qualification. The remaining boot-transition limitation is recorded in
 [BOOT_STARTUP.md](BOOT_STARTUP.md).
+
+The service-navigation check was repeated on the v16 image after introducing the
+modal host. Home, five service pages, nested Bluetooth pairing, overview, the
+notification shade, Quick Settings and tile editing retained matching navbar
+control bounds. Scrolling kept the bar fixed, Back returned through the nested
+service to Home, and SystemUI kept its process. The local result is
+`out/mobile-check/native-v16-navigation-check.log`.
 
 The native power menu uses Omarchy outlines and compact corners. Long-pressing
 Power opens this menu by default while preserving any explicit user preference

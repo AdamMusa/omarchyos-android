@@ -38,8 +38,15 @@ This checks compact and expanded panels, media-volume key and slider-touch chang
 accessible slider ranges, and Done/Back dismissal. It temporarily changes the
 media level and extends the panel timeout, restoring both in cleanup. Run on a
 development emulator with no active media playback.
-The compact panel must retain the Omarchy navbar; the expanded modal keeps the
-underlying bar visually present while Android confines accessibility to the modal.
+Both panels must expose one Omarchy navbar with matching control positions. The
+expanded modal hosts the shared native bar inside its own accessibility window:
+its Back button must dismiss the panel, and logo, gear and clock must close the
+modal before opening Home's menu, phone settings menu or calendar. The test saves
+those destinations for visual inspection as well as checking the resumed Home.
+Long-pressing the gear must also dismiss the modal before opening Quick Settings;
+the check verifies that the shade receives focus and no volume rows remain above it.
+At large text sizes, the check scrolls the volume rows to reach all five streams
+and confirms the navbar stays fixed while the body moves.
 
 The notification tap/action logs `notification result=opened` or `action`.
 Permission callbacks log Android's result codes (`-1` denied, `0` granted).

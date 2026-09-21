@@ -47,6 +47,18 @@ def capture(name, current):
         subprocess.run(adb + ['exec-out', 'screencap', '-p'], stdout=image,
                        check=True, timeout=30)
 
+def navigation(current):
+    controls = {}
+    for description in ['Omarchy menu', 'Omarchy settings', 'Back']:
+        matches = [n for n in current if n['description'] == description]
+        assert len(matches) == 1, (description, matches)
+        assert matches[0]['clickable'], matches[0]
+        controls[description] = matches[0]
+    clocks = [n for n in current if re.fullmatch(r'(?:\w+ )?\d{2}:\d{2}', n['text'])]
+    assert len(clocks) == 1 and clocks[0]['clickable'], clocks
+    controls['clock'] = clocks[0]
+    return controls
+
 def launch_probe():
     shell('am', 'force-stop', 'os.omarchy.uicheck')
     shell('am', 'start', '-W', '-n', 'os.omarchy.uicheck/.ProbeActivity',
@@ -91,6 +103,7 @@ try:
     shell('settings', 'put', 'secure', 'volume_dialog_dismiss_timeout', '60000')
     launch_probe()
     compact = open_panel()
+    reference_bar = navigation(compact)
     assert volume()[0] == original, 'Opening the panel changed media volume'
     capture('compact', compact)
     target = original + 1 if original < maximum else original - 1
@@ -101,10 +114,38 @@ try:
     tap(next(n for n in nodes() if n['id'] == 'com.android.systemui:id/volume_dialog_settings'))
     time.sleep(1)
     expanded = nodes()
+    expanded_bar = navigation(expanded)
+    for name, reference in reference_bar.items():
+        assert expanded_bar[name]['bounds'] == reference['bounds'], (name, reference, expanded_bar[name])
     sliders = {n['description']: n for n in expanded if n['class'] == 'android.widget.SeekBar'}
-    assert {'Media', 'Call', 'Ring', 'Notification', 'Alarm'} <= sliders.keys(), sliders
-    assert sliders['Media']['range']['current'] == original, sliders['Media']
     capture('expanded', expanded)
+    expected_streams = {'Media', 'Call', 'Ring', 'Notification', 'Alarm'}
+    seen_streams = set(sliders)
+    if not expected_streams <= seen_streams:
+        # At large font sizes the fixed navbar leaves fewer rows in the first
+        # viewport. Verify the remaining streams can be reached by scrolling.
+        left, top, right, _ = map(int, sliders['Media']['bounds'].split())
+        # Begin within the last visible row, not the fixed footer above Done.
+        bottom = max(int(n['bounds'].split()[1]) for n in sliders.values()) - 40
+        x = (left + right) // 2
+        for _ in range(3):
+            shell('input', 'swipe', str(x), str(bottom), str(x), str(top), '350')
+            time.sleep(.3)
+            scrolled = nodes()
+            seen_streams.update(n['description'] for n in scrolled
+                                if n['class'] == 'android.widget.SeekBar')
+            for name, reference in reference_bar.items():
+                assert navigation(scrolled)[name]['bounds'] == reference['bounds']
+            if expected_streams <= seen_streams:
+                break
+        capture('expanded-scrolled', scrolled)
+        assert expected_streams <= seen_streams, seen_streams
+        for _ in range(3):
+            shell('input', 'swipe', str(x), str(top), str(x), str(bottom), '350')
+        time.sleep(.3)
+        expanded = nodes()
+        sliders = {n['description']: n for n in expanded if n['class'] == 'android.widget.SeekBar'}
+    assert sliders['Media']['range']['current'] == original, sliders['Media']
     # Exercise the actual track as well as hardware keys: styling must preserve
     # touch input and the native stream's accessible value.
     left, top, right, bottom = map(int, sliders['Media']['bounds'].split())
@@ -127,16 +168,55 @@ try:
     tap(next(n for n in compact if n['id'] == 'com.android.systemui:id/volume_dialog_settings'))
     time.sleep(1)
     assert any(n['text'] == 'Done' for n in nodes()), 'Expanded panel did not reopen'
+    tap(navigation(nodes())['Back'])
+    time.sleep(.5)
+    assert not any(n['class'] == 'android.widget.SeekBar' for n in nodes()), 'Navbar Back did not close the panel'
+    focus = next(line for line in shell('dumpsys', 'window').splitlines() if 'mCurrentFocus=' in line)
+    assert 'os.omarchy.uicheck/' in focus, ('Navbar Back navigated away from the calling app', focus)
+    compact = open_panel()
+    tap(next(n for n in compact if n['id'] == 'com.android.systemui:id/volume_dialog_settings'))
+    time.sleep(1)
     shell('input', 'keyevent', 'BACK')
     time.sleep(.5)
     assert not any(n['class'] == 'android.widget.SeekBar' for n in nodes()), 'Back did not close the panel'
     focus = next(line for line in shell('dumpsys', 'window').splitlines() if 'mCurrentFocus=' in line)
     assert 'os.omarchy.uicheck/' in focus, ('Back navigated away from the calling app', focus)
+    for action in ['Omarchy menu', 'Omarchy settings', 'clock']:
+        launch_probe()
+        compact = open_panel()
+        tap(next(n for n in compact if n['id'] == 'com.android.systemui:id/volume_dialog_settings'))
+        time.sleep(1)
+        tap(navigation(nodes())[action])
+        time.sleep(1)
+        current = nodes()
+        assert not any(n['class'] == 'android.widget.SeekBar' for n in current), ('Modal remained open', action)
+        activity = shell('dumpsys', 'activity', 'activities')
+        assert any('topResumedActivity=' in line and 'os.omarchy.shell/' in line
+                   for line in activity.splitlines()), (action, activity[-2000:])
+        capture('navigate-' + action.replace(' ', '-').lower(), current)
+        shell('input', 'keyevent', 'BACK')
+    launch_probe()
+    compact = open_panel()
+    tap(next(n for n in compact if n['id'] == 'com.android.systemui:id/volume_dialog_settings'))
+    time.sleep(1)
+    gear = navigation(nodes())['Omarchy settings']
+    left, top, right, bottom = map(int, gear['bounds'].split())
+    x, y = str((left + right) // 2), str((top + bottom) // 2)
+    shell('input', 'swipe', x, y, x, y, '800')
+    time.sleep(1)
+    current = nodes()
+    assert not any(n['class'] == 'android.widget.SeekBar' and n['description'] in expected_streams
+                   for n in current), 'Gear long-press left the volume modal over Quick Settings'
+    focus = next(line for line in shell('dumpsys', 'window').splitlines() if 'mCurrentFocus=' in line)
+    assert 'NotificationShade' in focus, ('Gear long-press did not open Quick Settings', focus)
+    capture('navigate-quick-settings', current)
+    shell('cmd', 'statusbar', 'collapse')
     assert shell('pidof', 'com.android.systemui') == ui_pid, 'SystemUI restarted'
     assert volume()[0] == original, 'Media volume was not restored'
     print('PASS: native compact and expanded volume controls; accessible slider ranges; '
           'volume keys and slider touch change and restore media level; '
-          'Done and Back dismiss; SystemUI stable')
+          'Done, navbar Back and hardware Back dismiss; '
+          'one matching modal navbar opens Home menu/settings/calendar and Quick Settings; SystemUI stable')
 finally:
     try:
         if volume()[0] != original:

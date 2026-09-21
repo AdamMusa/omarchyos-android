@@ -49,6 +49,7 @@ order=(
   frameworks/base/packages/SystemUI/src/com/android/systemui/navigationbar/gestural/NavigationHandle.java.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/volume/dialog/sliders/ui/VolumeDialogSliderViewBinder.kt.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java.patch
+  frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/statusbar/phone/SystemUIDialogFactoryExt.kt.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/pipeline/shared/ui/composable/StatusBarRoot.kt.patch
   frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/theme/PlatformTheme.kt.patch
   frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/PlatformButtons.kt.patch

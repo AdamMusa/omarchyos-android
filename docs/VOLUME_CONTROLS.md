@@ -44,20 +44,40 @@ on a 320dp-wide display, including native stream changes and Done/Back dismissal
 It also passes after applying Catppuccin Latte through the phone's theme picker;
 the light surface and readable text update without losing the new control shapes.
 
-The light-theme screenshot exposes a separate palette-fidelity issue: Latte's
-blue accent has about 4.34:1 contrast against its background, so the existing
-`SystemPalette.readable` fallback replaces it with black to meet 4.5:1. A
-contrast adjustment that retains the accent's hue is still needed; the functional
-light-theme pass does not establish exact palette fidelity.
+The v15 light-theme check exposed an accent-fidelity issue: Latte's blue was
+replaced with black to meet 4.5:1 contrast. Core 41, included in v16, corrects
+this by minimally darkening the blue instead. Its automatic upgrade and native
+resource values are recorded in [THEME_VALIDATION.md](THEME_VALIDATION.md).
 
-At enlarged text size, the expanded panel becomes full height and covers the
-Omarchy navbar. Its body scrolls and its bottom actions remain reachable, but
-keeping the same navbar visible and usable inside that modal is still required.
-The output description also retains Android's single-line marquee. These are
-remaining layout issues, not completed navbar or large-text design work.
+The v16 image fixes the expanded modal covering the Omarchy navbar. The native
+Compose bottom-sheet host mounts the shared bar above its body, with the same
+control bounds as the ordinary SystemUI bar. Navbar Back closes the modal and
+returns to the calling app. Logo, gear and clock dismiss it before opening the
+Omarchy menu, phone settings menu and calendar; screenshots confirm all three
+destinations. The test also verifies hardware Back, Done, slider touch and volume
+keys without restarting SystemUI.
+
+The modal check passes at normal font size and at 200% text on a 320dp-wide
+display. At large text sizes, its body scrolls to reach the Alarm row while the
+bar and bottom actions remain fixed. The output description still uses Android's
+single-line marquee; replacing that behavior remains separate layout work.
+The dark-theme landscape check also confirms matching compact/modal bar bounds
+and navbar Back returning to the calling app. Landscape stream scrolling and
+physical-device audio routing are outside that targeted check.
+
+The v17 image additionally fixes long-pressing the modal gear: the dialog now
+closes before Quick Settings opens. Previously the shade opened behind it. The
+final regression check confirms the shade receives focus, no volume sliders
+remain above it, and the same navbar is visible. Compact/expanded stream readback,
+slider touch, volume keys, Done, both Back paths, and all three Home-panel
+destinations pass on the installed dark-theme image without a SystemUI restart.
+The installed SystemUI hash matches the rebuilt APK.
 
 Local screenshots and logs are under `out/mobile-check/native-v15-volume` and
-`native-v15-volume-large` and `native-v15-volume-light`, with their adjacent
-`-check.log` files. These checks
+`native-v15-volume-large` and `native-v15-volume-light`. The modal-navbar checks
+are in `native-v16-volume-light`, `native-v16-volume-large`, and
+`native-v16-volume-landscape`, with adjacent
+`-check.log` files. Final shortcut evidence is in `native-v17-volume` and
+`native-v17-volume-check.log`. These checks
 do not qualify Bluetooth audio, physical hardware keys or a complete phone's
 audio stack.
