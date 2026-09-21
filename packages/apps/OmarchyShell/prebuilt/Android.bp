@@ -20,3 +20,33 @@ android_app_import {
         enabled: false,
     },
 }
+
+// Bash is an executable, not a shared library. APK installs extract it with
+// execute permission, but system app libraries are installed as 0644. Install
+// the same bundled binary in bin/ so the built-in Home can scan its plugins.
+python_binary_host {
+    name: "omarchy_extract_bash",
+    main: "extract-bash.py",
+    srcs: ["extract-bash.py"],
+}
+
+genrule {
+    name: "omarchy_bash_from_apk",
+    tools: ["omarchy_extract_bash"],
+    srcs: ["OmarchyShell.apk"],
+    out: ["bash"],
+    cmd: "$(location omarchy_extract_bash) $(in) $(out)",
+}
+
+cc_prebuilt_binary {
+    name: "omarchy_bash",
+    stem: "bash",
+    system_ext_specific: true,
+    compile_multilib: "64",
+    arch: {
+        arm64: { srcs: [":omarchy_bash_from_apk"] },
+    },
+    strip: { none: true },
+    check_elf_files: false,
+    static_executable: true,
+}

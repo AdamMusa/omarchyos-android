@@ -40,6 +40,8 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     for name in libs:
         (pathlib.Path(sys.argv[2]) / pathlib.Path(name).name).write_bytes(archive.read(name))
 PY
+python3 "$source_root/packages/apps/OmarchyShell/prebuilt/extract-bash.py" \
+  "$apk" "$result/system_ext/bin/bash"
 cp "$source_root/device/omarchy/permissions/privapp-permissions-omarchy.xml" \
   "$result/system_ext/etc/permissions/privapp-permissions-omarchy.xml"
 cp "$source_root/device/omarchy/permissions/omarchy-home.xml" \

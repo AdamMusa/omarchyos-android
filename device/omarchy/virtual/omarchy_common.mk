@@ -57,6 +57,7 @@ PRODUCT_MANUFACTURER := OmarchyOS
 # app format.
 PRODUCT_PACKAGES += \
     OmarchyShell \
+    omarchy_bash \
     Launcher3QuickStep
 
 # Gesture navigation, not three buttons: back, home and recents then work over

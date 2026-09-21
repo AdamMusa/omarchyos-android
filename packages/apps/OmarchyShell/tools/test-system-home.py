@@ -31,4 +31,5 @@ launchers = shell('cmd', 'package', 'query-activities', '--brief',
                   '-p', 'os.omarchy.shell')
 assert 'OmarchyActivity' not in launchers, 'Home must not appear as an ordinary app launcher'
 assert shell('pm', 'path', 'com.android.launcher3').startswith('package:'), 'Overview provider missing'
+assert shell('/system_ext/bin/bash', '-c', "'[[ ${BASH_VERSINFO[0]} -ge 5 ]] && printf bash-ready'").strip() == 'bash-ready', 'System Bash missing or not executable'
 print('PASS: privileged system Home, base APK present, default Home resolves, no app-drawer entry, overview retained')

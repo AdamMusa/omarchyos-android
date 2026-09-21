@@ -9,3 +9,8 @@ application — it needs `qt-cmake`, `androiddeployqt` and gradle, none of which
 exist inside the platform build. The import still signs it with the platform
 certificate and installs it as a privileged `system_ext` app, so from the
 device's point of view there is no difference from a Soong-built shell.
+
+The product also installs `omarchy_bash` in `/system_ext/bin/bash`, extracted
+from that same APK. It must be a system executable: native libraries in a system
+app directory are not executable files. Home uses Bash to discover its plugins;
+omitting this module leaves the startup curtain waiting for a wallpaper.
