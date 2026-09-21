@@ -10,7 +10,7 @@ sdk_tools="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 framework="$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
 mkdir -p "$output/classes" "$output/dex"
 "$sdk_tools/aapt2" link -o "$output/unsigned.apk" --manifest "$source_dir/AndroidManifest.xml" -I "$framework"
-javac -source 8 -target 8 -cp "$framework" -d "$output/classes" "$source_dir/ProbeActivity.java"
+javac -source 8 -target 8 -cp "$framework" -d "$output/classes" "$source_dir/"*.java
 find "$output/classes" -name '*.class' -print0 | xargs -0 "$sdk_tools/d8" --lib "$framework" --output "$output/dex"
 (cd "$output/dex" && zip -q "$output/unsigned.apk" classes.dex)
 "$sdk_tools/zipalign" -f 4 "$output/unsigned.apk" "$output/aligned.apk"

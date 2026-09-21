@@ -2,6 +2,9 @@ package os.omarchy.uicheck;
 import android.app.*;
 import android.content.Intent;
 import android.os.Bundle;
+import android.media.AudioManager;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 public class ProbeActivity extends Activity {
  public void onCreate(Bundle state) {
@@ -24,6 +27,21 @@ public class ProbeActivity extends Activity {
    android.util.Log.i("OmarchyUiCheck","notification result="+mode);
   } else if ("dialog".equals(mode)) {
    new AlertDialog.Builder(this).setTitle("Omarchy system dialog").setMessage("Native dialogs should follow the selected Omarchy palette and typography.").setNegativeButton("Cancel",(d,w)->finish()).setPositiveButton("Done",(d,w)->finish()).show();
+  } else if ("volume".equals(mode)) {
+   AudioManager audio=getSystemService(AudioManager.class);
+   setVolumeControlStream(AudioManager.STREAM_MUSIC);
+   LinearLayout layout=new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL);
+   layout.setFitsSystemWindows(true);
+   setContentView(layout);
+   body.setText("Volume validation: opening the panel leaves media volume unchanged.");
+   layout.addView(body,new LinearLayout.LayoutParams(-1,-2));
+   Button show=new Button(this); show.setText("Show native volume controls");
+   layout.addView(show,new LinearLayout.LayoutParams(-1,-2));
+   show.setOnClickListener(v -> {
+    int before=audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+    audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_SAME,AudioManager.FLAG_SHOW_UI);
+    android.util.Log.i("OmarchyUiCheck","volume before="+before+" after="+audio.getStreamVolume(AudioManager.STREAM_MUSIC));
+   });
   } else requestPermissions(new String[]{"android.permission.RECORD_AUDIO"},17);
  }
  public void onRequestPermissionsResult(int request,String[] permissions,int[] results) {
