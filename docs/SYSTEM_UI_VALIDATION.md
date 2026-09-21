@@ -27,6 +27,10 @@ dependencies; a clean full-source build remains unverified.
 The later v6 light-theme stress pass exposed a Home decor initialization crash
 and an independent `TaskSnapshotPersister` failure in `system_server` when the
 emulator could not CPU-map a graphics buffer. Shell version 6 fixes the decor
-crash and passes dark/light theme relaunch checks. The snapshot recovery and
-Home starting-window framework changes still require validation in the next
-system image; the earlier v6 navigation pass is not a general stability claim.
+crash and passes dark/light theme relaunch checks. The v7 image also passes a synthetic GPU-only snapshot regression against its
+installed services.jar: direct CPU mapping fails, but guarded conversion
+completes. Catppuccin Latte navbar colors and geometry now pass across Home,
+Wi-Fi, Overview, notifications, Quick Settings and tile editing without a
+system_server restart. Home version 6 runs from its base system package. These
+checks cover this regression, not general device stability. The cold-boot
+handoff still requires further work; see BOOT_STARTUP.md.

@@ -1,0 +1,23 @@
+*** Begin Patch
+*** Update File: frameworks/base/services/core/java/com/android/server/wm/TaskSnapshotConvertUtil.java
+@@
+-        return mustPersistByHardwareRender(snapshot)
+-                ? copyToSwBitmapReadBack(snapshot)
+-                : copyToSwBitmapDirect(width, height, pixelFormat, snapshot);
++        try {
++            if (!mustPersistByHardwareRender(snapshot)) {
++                try {
++                    return copyToSwBitmapDirect(width, height, pixelFormat, snapshot);
++                } catch (RuntimeException failure) {
++                    // Some graphics buffers cannot be CPU-mapped by ImageReader.
++                    // Retry through the existing GPU readback path instead of
++                    // killing system_server for a disposable task thumbnail.
++                    Slog.w(TAG, "Direct task snapshot conversion failed; retrying readback", failure);
++                }
++            }
++            return copyToSwBitmapReadBack(snapshot);
++        } catch (RuntimeException failure) {
++            Slog.w(TAG, "Unable to convert task snapshot; skipping thumbnail", failure);
++            return null;
++        }
+*** End Patch

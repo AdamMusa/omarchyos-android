@@ -98,8 +98,15 @@ build_image "$result/product" \
   "$product/obj/PACKAGING/product_intermediates/product_image_info.txt" \
   "$result/product.img" "$product/system"
 
-# Reuse matching unchanged partitions. All signing uses emulator test keys.
-for part in system system_dlkm vendor vendor_boot; do
+# Framework services are fork-owned too; package their rebuilt files instead of
+# silently reusing an older system image. All signing uses emulator test keys.
+cp -a --reflink=auto "$product/system" "$result/system"
+build_image "$result/system" \
+  "$product/obj/PACKAGING/system_intermediates/system_image_info.txt" \
+  "$result/system.img" "$result/system"
+
+# Reuse matching unchanged hardware partitions.
+for part in system_dlkm vendor vendor_boot; do
   ln -s "$product/$part.img" "$result/$part.img"
 done
 python3 - "$product/obj/PACKAGING/superimage_debug_intermediates/misc_info.txt" "$result" <<'PY'

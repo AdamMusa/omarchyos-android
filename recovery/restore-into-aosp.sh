@@ -39,6 +39,7 @@ order=(
   packages/apps/Settings/AndroidManifest.xml.patch
   packages/apps/Settings/res/values/strings.xml.patch
   packages/apps/Settings/src/com/android/settings/FallbackHome.java.patch
+  frameworks/base/services/core/java/com/android/server/wm/TaskSnapshotConvertUtil.java.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/qs/panels/ui/viewmodel/toolbar/EditModeButtonViewModel.kt.patch
   frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsRadius.kt.patch
   frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsShape.kt.patch
