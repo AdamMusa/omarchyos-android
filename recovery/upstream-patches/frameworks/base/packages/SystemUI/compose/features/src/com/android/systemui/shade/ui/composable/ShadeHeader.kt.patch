@@ -1,6 +1,22 @@
 *** Begin Patch
 *** Update File: frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt
 @@
+ import androidx.compose.animation.core.Animatable
+ import androidx.compose.animation.core.CubicBezierEasing
+ import androidx.compose.animation.core.tween
++import androidx.compose.foundation.background
+ import androidx.compose.foundation.basicMarquee
+ import androidx.compose.foundation.clickable
+ import androidx.compose.foundation.isSystemInDarkTheme
+@@
+ import com.android.systemui.scene.shared.model.Scenes
+ import com.android.systemui.shade.ui.composable.ShadeHeader.Values.ClockScale
+ import com.android.systemui.shade.ui.viewmodel.ShadeHeaderViewModel
++import com.android.systemui.statusbar.phone.PhoneStatusBarView
+ import com.android.systemui.statusbar.phone.StatusBarLocation
+ import com.android.systemui.statusbar.phone.domain.interactor.IsAreaDark
+ import com.android.systemui.statusbar.pipeline.battery.ui.composable.BatteryWithEstimate
+@@
          val textColor: Color
              @Composable
              @ReadOnlyComposable
@@ -19,6 +35,78 @@
      }
  
      object TestTags {
+         const val Root = "shade_header_root"
+         const val BatteryTestTag = "battery_meter_composable_view"
++    }
++}
++
++/** Reuse Home's native layout and actions instead of maintaining a second navbar. */
++@Composable
++private fun ContentScope.OmarchyShadeHeader(
++    viewModel: ShadeHeaderViewModel,
++    modifier: Modifier = Modifier,
++) {
++    Box(
++        modifier = modifier
++            .fillMaxWidth()
++            .height(viewModel.statusBarHeightPx.toDp(LocalContext.current).dp)
++            .background(MaterialTheme.colorScheme.surface)
++            .sysuiResTag(ShadeHeader.TestTags.Root)
++    ) {
++        AndroidView(
++            factory = { context -> PhoneStatusBarView.OmarchyBar(context) },
++            update = { bar ->
++                bar.refreshColors()
++                bar.setShadePrivacyVisible(viewModel.isPrivacyChipVisible)
++            },
++            modifier = Modifier.fillMaxSize(),
++        )
++        if (viewModel.isPrivacyChipVisible) {
++            PrivacyChip(
++                privacyList = viewModel.privacyItems,
++                onClick = viewModel::onPrivacyChipClicked,
++                modifier = Modifier.align(Alignment.CenterEnd).padding(horizontal = 8.dp),
++            )
++        }
+     }
+ }
+ 
+@@
+     isSplitShade: Boolean,
+     modifier: Modifier = Modifier,
+ ) {
++    if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)) {
++        OmarchyShadeHeader(viewModel, modifier)
++        return
++    }
++
+     val cutoutLocation = LocalDisplayCutout.current().location
+     val horizontalPadding =
+         max(LocalScreenCornerRadius.current / 2f, Shade.Dimensions.HorizontalPadding)
+@@
+     viewModel: ShadeHeaderViewModel,
+     modifier: Modifier = Modifier,
+ ) {
++    if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)) {
++        OmarchyShadeHeader(viewModel, modifier)
++        return
++    }
++
+     val useExpandedFormat by remember { derivedStateOf { shouldUseExpandedFormat(layoutState) } }
+ 
+     val textColor = ShadeHeader.Colors.textColor
+@@
+     showClock: Boolean,
+     modifier: Modifier = Modifier,
+ ) {
++    if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)) {
++        OmarchyShadeHeader(viewModel, modifier)
++        return
++    }
++
+     val horizontalPadding =
+         maxOf(
+             LocalScreenCornerRadius.current / 2f,
 @@
      textColor: Color = MaterialTheme.colorScheme.onSurface,
      chipHighlightModel: ChipHighlightModel? = null,

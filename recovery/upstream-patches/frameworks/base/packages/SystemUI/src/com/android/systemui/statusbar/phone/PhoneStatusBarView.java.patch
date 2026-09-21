@@ -26,7 +26,7 @@
 +        if (isOmarchyStyle()) {
 +            setClipToPadding(false);
 +            findViewById(R.id.system_icons).setVisibility(View.GONE);
-+            mOmarchyBar = new OmarchyBar(getContext());
++            mOmarchyBar = new OmarchyBar(getContext(), this);
 +            addView(mOmarchyBar, 0, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 +            View clock = findViewById(R.id.clock);
 +            clock.getLayoutParams().width = 0;
@@ -76,7 +76,9 @@
          Insets fetchInsets();
      }
 +    /** Omarchy's global bar lives in SystemUI, sharing Android's shade and keyguard. */
-+    private final class OmarchyBar extends FrameLayout {
++    public static final class OmarchyBar extends FrameLayout {
++        private final PhoneStatusBarView statusBar;
++        private boolean shadePrivacyVisible;
 +        private final com.android.systemui.navigationbar.views.buttons.KeyButtonView back;
 +        private final android.widget.TextView home;
 +        private final android.widget.TextClock clock;
@@ -104,16 +106,20 @@
 +        private void updateBackMount() {
 +            java.util.List<android.app.ActivityManager.RunningTaskInfo> tasks =
 +                    android.app.ActivityTaskManager.getInstance().getTasks(1);
-+            boolean mounted = !tasks.isEmpty() && tasks.get(0).getActivityType()
-+                    != android.app.WindowConfiguration.ACTIVITY_TYPE_HOME;
++            boolean mounted = statusBar == null || (!tasks.isEmpty() && tasks.get(0).getActivityType()
++                    != android.app.WindowConfiguration.ACTIVITY_TYPE_HOME);
 +            if (backMounted != mounted) {
 +                backMounted = mounted;
 +                requestLayout();
 +            }
 +        }
 +
-+        OmarchyBar(Context context) {
++        public OmarchyBar(Context context) { this(context, null); }
++
++        private OmarchyBar(Context context, PhoneStatusBarView statusBar) {
 +            super(context);
++            this.statusBar = statusBar;
++            setForceDarkAllowed(false);
 +            setClipChildren(true);
 +            back = new com.android.systemui.navigationbar.views.buttons.KeyButtonView(context, null);
 +            back.setCode(android.view.KeyEvent.KEYCODE_BACK);
@@ -144,7 +150,15 @@
 +            setClockFormat(false);
 +        }
 +
++        public void setShadePrivacyVisible(boolean visible) {
++            if (shadePrivacyVisible != visible) {
++                shadePrivacyVisible = visible;
++                requestLayout();
++            }
++        }
++
 +        private void openOmarchyPanel(String panel) {
++            if (statusBar == null) getContext().getSystemService(android.app.StatusBarManager.class).collapsePanels();
 +            // Resolve the selected Home normally, preserving a user's alternative
 +            // launcher. Omarchy consumes the extra only for its built-in panels.
 +            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_MAIN)
@@ -168,9 +182,31 @@
 +            return view;
 +        }
 +
-+        void refreshColors() {
++        public void refreshColors() {
 +            int foreground = getResources().getColor(com.android.internal.R.color.system_on_surface_dark, getContext().getTheme());
 +            int background = getResources().getColor(com.android.internal.R.color.system_surface_dark, getContext().getTheme());
++            try {
++                // Shade contexts can retain Android's generated palette. The
++                // navbar uses the selected user's canonical Omarchy tokens.
++                Context palette = getContext().createPackageContextAsUser("os.omarchy.core", 0,
++                        android.os.UserHandle.of(android.app.ActivityManager.getCurrentUser()));
++                android.content.res.Resources colors = palette.getResources();
++                int surfaceId = colors.getIdentifier("omarchy_surface", "color", "os.omarchy.core");
++                int textId = colors.getIdentifier("omarchy_text", "color", "os.omarchy.core");
++                if (surfaceId != 0 && textId != 0) {
++                    background = colors.getColor(surfaceId, palette.getTheme());
++                    foreground = colors.getColor(textId, palette.getTheme());
++                }
++            } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
++                // Android's semantic colors remain usable during recovery.
++            }
++            if (com.android.internal.graphics.ColorUtils.calculateContrast(foreground, background) < 4.5) {
++                foreground = com.android.internal.graphics.ColorUtils.calculateContrast(
++                        android.graphics.Color.WHITE, background) >=
++                        com.android.internal.graphics.ColorUtils.calculateContrast(
++                                android.graphics.Color.BLACK, background)
++                        ? android.graphics.Color.WHITE : android.graphics.Color.BLACK;
++            }
 +            setBackgroundColor(background);
 +            back.setImageDrawable(com.android.systemui.navigationbar.views.buttons.KeyButtonDrawable.create(
 +                    new android.view.ContextThemeWrapper(getContext(),
@@ -236,13 +272,14 @@
 +            clock.layout(cx, Math.max(0, (height - ch) / 2), cx + cw, Math.min(height, (height + ch) / 2));
 +            // Keep Android's active-call/recording chips above this bar and give
 +            // them space. Privacy dots remain owned by SystemUI's event pipeline.
-+            View startContent = PhoneStatusBarView.this.findViewById(R.id.status_bar_start_side_content);
-+            boolean chipVisible = startContent != null && startContent.getWidth() > buttonWidth;
++            View startContent = statusBar == null ? null : statusBar.findViewById(R.id.status_bar_start_side_content);
++            boolean chipVisible = shadePrivacyVisible || (startContent != null && startContent.getWidth() > buttonWidth);
 +            back.setVisibility(chipVisible || !backMounted ? View.INVISIBLE : View.VISIBLE);
 +            home.setVisibility(chipVisible ? View.INVISIBLE : View.VISIBLE);
 +            clock.setVisibility(chipVisible ? View.INVISIBLE : View.VISIBLE);
-+            if (PhoneStatusBarView.this.getViewRootImpl() != null)
-+                PhoneStatusBarView.this.updateTouchableRegion(mTouchableRegion);
++            controls.setVisibility(shadePrivacyVisible ? View.INVISIBLE : View.VISIBLE);
++            if (statusBar != null && statusBar.getViewRootImpl() != null)
++                statusBar.updateTouchableRegion(statusBar.mTouchableRegion);
 +        }
 +    }
  }

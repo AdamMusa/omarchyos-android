@@ -1,0 +1,55 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/qs/ui/composable/QuickSettingsScene.kt
+@@
+             scene(Edit) {
+                 Element(Edit.rootElementKey, Modifier) {
+                     GridAnchor()
+-                    EditMode(
+-                        viewModel.qsContainerViewModel.editModeViewModel,
+-                        Modifier.testTag("edit_mode_scene")
+-                            .padding(horizontal = QuickSettingsShade.Dimensions.HorizontalPadding)
+-                            .padding(
+-                                top =
+-                                    headerViewModel.statusBarHeightPx.toDp(LocalContext.current).dp
+-                            ),
+-                    )
++                    val isOmarchy = android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)
++                    Column(Modifier.fillMaxSize()) {
++                        if (isOmarchy) {
++                            CollapsedShadeHeader(viewModel = headerViewModel, isSplitShade = false)
++                        }
++                        EditMode(
++                            viewModel.qsContainerViewModel.editModeViewModel,
++                            Modifier.weight(1f).testTag("edit_mode_scene")
++                                .padding(horizontal = QuickSettingsShade.Dimensions.HorizontalPadding)
++                                .padding(
++                                    top = if (isOmarchy) 0.dp else
++                                        headerViewModel.statusBarHeightPx.toDp(LocalContext.current).dp
++                                ),
++                        )
++                    }
+                 }
+             }
+         }
+@@
+             modifier =
+                 Modifier.fillMaxSize().overscroll(verticalOverscrollEffect).padding(navBarInsets),
+         ) {
++            val isOmarchy = android.os.Build.BRAND.equals("Omarchy", ignoreCase = true)
++            if (isOmarchy) {
++                // Keep the shared navbar fixed while the service content scrolls.
++                CollapsedShadeHeader(viewModel = headerViewModel, isSplitShade = false)
++            }
+             Box(modifier = Modifier.fillMaxSize().weight(1f)) {
+                 Column(
+                     modifier =
+@@
+                             .align(Alignment.TopCenter)
+                             .sysuiResTag("expanded_qs_scroll_view")
+                 ) {
+-                    with(LocalWindowSizeClass.current) {
++                    if (!isOmarchy) with(LocalWindowSizeClass.current) {
+                         when {
+                             isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) ->
+                                 CollapsedShadeHeader(
+*** End Patch
