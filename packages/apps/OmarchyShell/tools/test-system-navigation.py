@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Runtime integration check for the native bar on Home and Android services."""
 import argparse,json,os,re,subprocess,time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--serial', default=os.environ.get('ANDROID_SERIAL'))
@@ -30,6 +31,25 @@ for action in ['WIFI_SETTINGS','BLUETOOTH_SETTINGS','BATTERY_SAVER_SETTINGS','DI
  for name in ['Omarchy menu','Omarchy settings']:
   assert current[name]['bounds']==home[name]['bounds'],(name,home,current)
  assert current['clock']['bounds']==home['clock']['bounds'],(home,current)
+ if action == 'BLUETOOTH_SETTINGS':
+  # A nested service must pop one level, keeping Back mounted until Home.
+  shell('uiautomator','dump','/data/local/tmp/omarchy-navigation.xml')
+  page=ET.fromstring(shell('cat','/data/local/tmp/omarchy-navigation.xml'))
+  pair=next(n for n in page.iter('node') if n.get('text')=='Pair new device')
+  x,y,r,b=map(int,re.findall(r'\d+',pair.get('bounds')))
+  shell('input','tap',str((x+r)//2),str((y+b)//2));time.sleep(.5)
+  nested=bar(probe())
+  assert 'Back' in nested,nested
+  for name in ['Omarchy menu','Omarchy settings','clock','Back']:
+   assert nested[name]['bounds']==current[name]['bounds'],(name,current,nested)
+  state=shell('dumpsys','activity','activities')
+  assert any('topResumedActivity=' in l and 'com.android.settings/.SubSettings ' in l for l in state.splitlines()),state[-3000:]
+  x,y,r,b=map(int,nested['Back']['bounds'].split())
+  shell('input','tap',str((x+r)//2),str((y+b)//2));time.sleep(.5)
+  state=shell('dumpsys','activity','activities')
+  assert any('topResumedActivity=' in l and 'ConnectedDeviceDashboardActivity ' in l for l in state.splitlines()),state[-3000:]
+  assert 'Back' in bar(probe()),'Back unmounted before returning Home'
+  records['BLUETOOTH_PAIRING']=nested
  x,y,r,b=map(int,current['Back']['bounds'].split());shell('input','tap',str((x+r)//2),str((y+b)//2))
  time.sleep(.5)
  state=shell('dumpsys','activity','activities')
@@ -38,4 +58,4 @@ for action in ['WIFI_SETTINGS','BLUETOOTH_SETTINGS','BATTERY_SAVER_SETTINGS','DI
  records[action]=current
 assert shell('pidof','com.android.systemui').strip()==original_pid,'SystemUI restarted'
 print(json.dumps(records,indent=2))
-print('PASS: one native bar across Home and five services; fixed logo/gear/clock bounds; Back mounts only in service tasks and returns Home; SystemUI process stable')
+print('PASS: one native bar across Home, five services and nested Bluetooth pairing; fixed logo/gear/clock bounds; Back pops one level and unmounts on Home; SystemUI process stable')

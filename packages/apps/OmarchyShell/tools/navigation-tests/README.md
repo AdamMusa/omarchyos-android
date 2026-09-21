@@ -3,7 +3,9 @@
 This development-device test opens five Settings services, reads the native
 SystemUI accessibility tree, and presses Back. It checks the fixed logo, clock,
 and gear positions, conditional Back, return to Home, and SystemUI process
-stability. It does not install an app or become part of the product.
+stability. It also opens Bluetooth pairing and checks that Back returns one level
+to Connected devices while remaining mounted, then disappears on Home. It does
+not pair a device, install an app or become part of the product.
 
 Compile `NativeBarProbe.java` with `javac` against an Android SDK `android.jar`,
 then convert all generated class files to `classes.dex` with that SDK's `d8`.
