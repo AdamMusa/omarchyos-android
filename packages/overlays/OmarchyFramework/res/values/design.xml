@@ -1,4 +1,6 @@
 <resources>
+    <!-- Offer native power actions by default. Explicit user preferences remain authoritative. -->
+    <integer name="config_longPressOnPowerBehavior">1</integer>
     <string name="config_headlineFontFamily" translatable="false">omarchy-ui</string>
     <string name="config_headlineFontFamilyMedium" translatable="false">omarchy-ui</string>
     <string name="config_bodyFontFamily" translatable="false">omarchy-ui</string>

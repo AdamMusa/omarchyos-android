@@ -97,3 +97,8 @@ The repeatable navigation check is documented in
 this incremental build is not a clean full-source build or physical-device
 qualification. The remaining boot-transition limitation is recorded in
 [BOOT_STARTUP.md](BOOT_STARTUP.md).
+
+The native power menu uses Omarchy outlines and compact corners. Long-pressing
+Power opens this menu by default while preserving any explicit user preference
+for an assistant. See [POWER_MENU.md](POWER_MENU.md) for the implementation and
+non-destructive runtime check.
