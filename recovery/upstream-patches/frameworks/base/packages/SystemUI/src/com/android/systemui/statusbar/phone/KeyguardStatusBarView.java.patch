@@ -5,11 +5,18 @@
          mSystemIconsContainer = findViewById(R.id.system_icons_container);
          mSystemIcons = findViewById(R.id.system_icons);
 +        if (!android.os.SystemProperties.get("ro.omarchy.shell", "").isEmpty()) {
-+            // Keep user switching, carrier/emergency information and privacy
-+            // indicators; omit the stock transport/battery strip on keyguard.
++            // The shared Omarchy bar owns the header. User switching and
++            // privacy indicators keep their separate Android lifecycles.
 +            mSystemIcons.setVisibility(View.GONE);
 +        }
          mMultiUserAvatar = findViewById(R.id.multi_user_avatar);
          mCarrierLabel = findViewById(R.id.keyguard_carrier_text);
++        if (!android.os.SystemProperties.get("ro.omarchy.shell", "").isEmpty()) {
++            // Do not draw the stock carrier label over the Omarchy menu.
++            // Emergency dialing remains in the native keyguard bouncer.
++            mCarrierLabel.setVisibility(View.GONE);
++        }
          mCutoutSpace = findViewById(R.id.cutout_space_view);
+         mStatusIconArea = findViewById(R.id.status_icon_area);
+         mStatusIconContainer = findViewById(R.id.statusIcons);
 *** End Patch

@@ -2,6 +2,8 @@ package os.omarchy.shell;
 
 import android.content.Context;
 import android.content.Intent;
+import android.app.WallpaperManager;
+import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -66,6 +68,10 @@ public final class ThemeRepository {
                 else Files.deleteIfExists(new File(current, "background").toPath());
             } catch (Exception ignored) { }
             publish();
+            // Migrate the native wallpaper once; never reset a user's separate
+            // wallpaper choice merely because Home was restarted.
+            try { applyWallpaper(activeDirectory(), false); }
+            catch (Exception e) { android.util.Log.w("OmarchyThemes", "Native theme wallpaper unavailable", e); }
         });
     }
     public String state() { return state; }
@@ -92,6 +98,32 @@ public final class ThemeRepository {
         File file = new File(dir, "background.png");
         if (!file.isFile()) file = new File(bundled.getParentFile(), "mobile-themes/wallpapers/" + dir.getName() + ".jpg");
         return file;
+    }
+    /** Runs on the theme worker. Android owns cropping, storage and lock security. */
+    private void applyWallpaper(File dir, boolean explicitApply) throws Exception {
+        File image = wallpaper(dir);
+        String background = ThemePalette.parse(read(new File(dir, "colors.toml"))).colors.get("background");
+        String revision = dir.getCanonicalPath() + ":" + image.lastModified() + ":" + image.length() + ":" + background;
+        android.content.SharedPreferences preferences = context.getSharedPreferences("native-theme-wallpaper", Context.MODE_PRIVATE);
+        if (!explicitApply && revision.equals(preferences.getString("revision", ""))) return;
+        WallpaperManager manager = WallpaperManager.getInstance(context);
+        if (!manager.isWallpaperSupported() || !manager.isSetWallpaperAllowed()) {
+            throw new IOException("Wallpaper changes are unavailable for this user.");
+        }
+        int flags = WallpaperManager.FLAG_SYSTEM | WallpaperManager.FLAG_LOCK;
+        if (image.isFile()) {
+            try (InputStream stream = new FileInputStream(image)) {
+                manager.setStream(stream, null, false, flags);
+            }
+        } else {
+            // A palette-only community theme must not retain another theme's art.
+            Bitmap solid = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888);
+            try {
+                solid.eraseColor(Color.parseColor(background));
+                manager.setBitmap(solid, null, false, flags);
+            } finally { solid.recycle(); }
+        }
+        preferences.edit().putString("revision", revision).apply();
     }
     private JSONObject describe(File dir, boolean builtIn) throws Exception {
         ThemePalette p = ThemePalette.parse(read(new File(dir, "colors.toml")));
@@ -232,7 +264,14 @@ public final class ThemeRepository {
                 File background=wallpaper(dir);
                 if (background.isFile()) link(new File(current,"background"),background);
                 else Files.deleteIfExists(new File(current,"background").toPath());
-                finish(null,"Theme applied.");
+                // Palette and shell are already committed. Report an artwork
+                // failure separately rather than pretending the palette rolled back.
+                try {
+                    applyWallpaper(dir, true);
+                    finish(null,"Theme applied.");
+                } catch (Exception wallpaperFailure) {
+                    finish(new IOException("Theme applied, but Android could not update the wallpaper. Apply again to retry.", wallpaperFailure), "");
+                }
             } catch(Exception e) {
                 if (systemApplied && previous != null) {
                     try { applySystem(previousId,previous); File dir=directory(previousId); link(new File(current,"theme"),dir); if(wallpaper(dir).isFile()) link(new File(current,"background"),wallpaper(dir)); }

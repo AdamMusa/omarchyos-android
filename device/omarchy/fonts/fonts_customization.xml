@@ -12,6 +12,11 @@
         <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
         <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
     </family>
+    <!-- Android's animated default lock clock keeps its lifecycle and layout. -->
+    <family customizationType="new-named-family" name="google-sans-flex-clock">
+        <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
+        <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
+    </family>
     <family customizationType="new-named-family" name="variable-display-large">
         <font weight="400" style="normal">JetBrainsMonoNerdFont-Regular.ttf</font>
         <font weight="700" style="normal">JetBrainsMonoNerdFont-Bold.ttf</font>
