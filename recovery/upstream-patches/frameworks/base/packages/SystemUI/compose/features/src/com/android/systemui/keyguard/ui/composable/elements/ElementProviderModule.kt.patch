@@ -1,0 +1,24 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/keyguard/ui/composable/elements/ElementProviderModule.kt
+@@
+ package com.android.systemui.keyguard.ui.composable.elements
+ 
+ import com.android.systemui.plugins.keyguard.ui.composable.elements.LockscreenElementProvider
++import com.android.systemui.CoreStartable
++import dagger.multibindings.ClassKey
++import dagger.multibindings.IntoMap
+ import dagger.Binds
+ import dagger.Module
+ import dagger.multibindings.IntoSet
+ 
+ @Module
+ interface ElementProviderModule {
++    @Binds
++    @IntoMap
++    @ClassKey(NotificationStackElementProvider::class)
++    fun notificationStackStartable(impl: NotificationStackElementProvider): CoreStartable
++
+     @Binds
+     @IntoSet
+     fun rootElementProvider(impl: LockscreenRootElementProvider): LockscreenElementProvider
+*** End Patch

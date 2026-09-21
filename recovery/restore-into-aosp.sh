@@ -48,6 +48,8 @@ order=(
   frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/pipeline/shared/ui/composable/StatusBarRoot.kt.patch
   frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/theme/PlatformTheme.kt.patch
   frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt.patch
+  frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/keyguard/ui/composable/elements/ElementProviderModule.kt.patch
+  frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/keyguard/ui/composable/elements/NotificationStackElementProvider.kt.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java.patch
   frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/widget/scaffold/SettingsTopAppBar.kt.patch
   packages/apps/Settings/src/com/android/settings/core/SettingsBaseActivity.java.patch

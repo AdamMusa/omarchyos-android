@@ -1,0 +1,42 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/keyguard/ui/composable/elements/NotificationStackElementProvider.kt
+@@
+ import com.android.systemui.statusbar.notification.stack.ui.viewbinder.SharedNotificationContainerBinder
+ import com.android.systemui.statusbar.notification.stack.ui.viewmodel.NotificationsPlaceholderViewModel
+ import com.android.systemui.statusbar.notification.stack.ui.viewmodel.SharedNotificationContainerViewModel
++import com.android.systemui.CoreStartable
++import com.android.systemui.scene.shared.flag.SceneContainerFlag
+ import dagger.Lazy
+ import javax.inject.Inject
+ import kotlin.collections.List
+@@
+     @ShadeDisplayAware private val context: Context,
+     private val stackScrollView: Lazy<NotificationScrollView>,
+     private val viewModelFactory: NotificationsPlaceholderViewModel.Factory,
+-    sharedNotificationContainer: SharedNotificationContainer,
+-    sharedNotificationContainerViewModel: SharedNotificationContainerViewModel,
+-    stackScrollLayout: NotificationStackScrollLayout,
+-    sharedNotificationContainerBinder: SharedNotificationContainerBinder,
+-) : LockscreenElementProvider {
++    private val sharedNotificationContainer: SharedNotificationContainer,
++    private val sharedNotificationContainerViewModel: SharedNotificationContainerViewModel,
++    private val stackScrollLayout: NotificationStackScrollLayout,
++    private val sharedNotificationContainerBinder: SharedNotificationContainerBinder,
++) : LockscreenElementProvider, CoreStartable {
+     override val elements: List<LockscreenElement> by lazy { listOf(NotificationElement()) }
+ 
+     private inner class NotificationElement : LockscreenElement {
+@@
+         }
+     }
+ 
+-    init {
++    override fun start() {
++        if (!SceneContainerFlag.isEnabled) return
++        // Notifications also belong to the unlocked shade. Initialize their
++        // shared container at SystemUI startup, even when keyguard is disabled
++        // and no lockscreen composable is ever requested.
+         // This scene container section moves the NSSL to the SharedNotificationContainer.
+         // This also requires that SharedNotificationContainer gets moved to the
+         // SceneWindowRootView by the SceneWindowRootViewBinder. Prior to Scene Container,
+*** End Patch
