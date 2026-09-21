@@ -34,3 +34,10 @@ reaches the completed frame and removes that window. FallbackHome now launches
 the resolved Home before finishing. The cold-boot recording still contains a
 black interval before the shell activity's curtain appears; these changes improve
 the curtain's visibility but do not yet eliminate the earlier handoff gap.
+
+A source trace identifies another part of the gap: Android's
+`ActivityRecord.getStartingWindowType` excludes Home activities from normal
+splash starting windows. The shell's configured splash therefore cannot cover
+the interval before its activity creates the native curtain. An Omarchy-only
+framework change needs its own build and cold-boot validation; it has not yet
+been applied.
