@@ -1,0 +1,25 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/volume/panel/component/volume/ui/composable/VolumeSlider.kt
+@@
+ import androidx.compose.ui.platform.testTag
++import androidx.compose.ui.res.dimensionResource
+@@
+-import com.android.systemui.volume.panel.component.volume.ui.composable.InternalDimensions.SliderTrackRoundedCorner
+@@
+     materialSliderColors: SliderColors = SystemUISliderColors.Defaults,
+ ) {
++    val trackCorner = dimensionResource(R.dimen.volume_dialog_background_square_corner_radius)
+     Column(
+@@
+-                    cornerSize = CornerSize(SliderTrackRoundedCorner),
++                    cornerSize = CornerSize(trackCorner),
+@@
+-                            trackCornerSize = SliderTrackRoundedCorner,
++                            trackCornerSize = trackCorner,
+@@
+-private object InternalDimensions {
+-    val SliderTrackRoundedCorner = 12.dp
+-}
+-
+ data class VolumeSliderDimensions(
+*** End Patch

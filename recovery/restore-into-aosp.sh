@@ -47,9 +47,12 @@ order=(
   frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsShape.kt.patch
   frameworks/base/packages/SettingsLib/Spa/spa/src/com/android/settingslib/spa/framework/theme/SettingsTheme.kt.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/navigationbar/gestural/NavigationHandle.java.patch
+  frameworks/base/packages/SystemUI/src/com/android/systemui/volume/dialog/sliders/ui/VolumeDialogSliderViewBinder.kt.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/statusbar/pipeline/shared/ui/composable/StatusBarRoot.kt.patch
   frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/theme/PlatformTheme.kt.patch
+  frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/PlatformButtons.kt.patch
+  frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/volume/panel/component/volume/ui/composable/VolumeSlider.kt.patch
   frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt.patch
   frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/qs/ui/composable/QuickSettingsScene.kt.patch
   frameworks/base/packages/SystemUI/compose/features/src/com/android/systemui/keyguard/ui/composable/elements/ElementProviderModule.kt.patch

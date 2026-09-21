@@ -1,0 +1,12 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/src/com/android/systemui/volume/dialog/sliders/ui/VolumeDialogSliderViewBinder.kt
+@@
+ import androidx.compose.ui.platform.ComposeView
++import androidx.compose.ui.res.dimensionResource
+@@
+                 trackSize = dimensions.trackSize,
++                // Share the native volume controls' corner resource. Its platform
++                // default is 12dp; product overlays can theme both controls together.
++                trackCornerSize = dimensionResource(R.dimen.volume_dialog_background_square_corner_radius),
+             )
+*** End Patch

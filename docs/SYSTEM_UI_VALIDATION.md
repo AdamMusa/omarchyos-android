@@ -11,6 +11,7 @@ overlay installation. Emulator validation does not qualify physical phone hardwa
 | Native notifications | The v6 rebuilt image renders notification rows after a cold boot with keyguard disabled, before opening the lock screen. Native content and action taps pass. The scene notification container now initializes at SystemUI startup instead of waiting for keyguard composition; footer controls use the compact Omarchy shape. |
 | Permission prompts | The v6 system image renders outlined Omarchy action buttons, compact corners and monospace text. Native Deny and Only this time callbacks pass; denial remains reachable at 200% text size and under Catppuccin Latte. Version-qualified styles are retained in the built overlay, and obscured-touch filtering stays in the native permission layout. |
 | Power menu | The v14 image defaults long-press Power to native Global Actions and renders compact outlined action buttons. The power-menu check passes action presence, Back dismissal, user-preference override and stable SystemUI. Visual checks confirm complete wrapped labels at 200% text size in compact portrait and landscape layouts. See POWER_MENU.md. |
+| Volume controls | The v15 image renders compact corners on the native ringer selection, compact/expanded slider tracks and Settings/Done buttons. Native keys, slider touch, accessible ranges and Done/Back dismissal pass at normal and 200% text sizes and with Catppuccin Latte. The enlarged expanded modal still covers the navbar, its output description retains a marquee, and Latte's accent falls back to black for contrast; see VOLUME_CONTROLS.md for the remaining work. |
 | Framework dialogs | The v6 native AlertDialog renders Omarchy typography and surfaces; its Done action dismisses normally. |
 | Lock screen | The v4 image removes the carrier/navbar overlap and registers the native clock font family with JetBrains Mono. Applying Tokyo Night and Catppuccin Latte updates Android's lock wallpaper; restarting Home preserves the wallpaper ID. Opening the Omarchy menu while securely locked does not bypass keyguard, and entering the correct PIN unlocks normally. The temporary emulator PIN was removed after testing. |
 | Boot handoff | The v9 cold-boot recording still contains a black interval before Home. The native curtain draws and is removed after the first complete Home frame; the earlier handoff gap remains unresolved. See BOOT_STARTUP.md. |
@@ -19,6 +20,12 @@ overlay installation. Emulator validation does not qualify physical phone hardwa
 
 The local QA app in `packages/apps/OmarchyShell/tools/system-ui-tests` exercises
 native notification, permission and dialog paths. It is not included in the OS.
+
+After the volume changes and dark/light theme checks, the v15 image also passes
+the full shared-navbar regression again: Home, five services, nested Bluetooth
+pairing, Overview, notifications, Quick Settings and tile editing, with correct
+Back behavior and no SystemUI process restart. The full-height volume modal
+exception above remains open.
 
 The recovered Mac checkout currently reports 17 missing-source/fork-branch
 failures from `./omarchy test`. These are unresolved checks, not passes. Native

@@ -5,6 +5,10 @@
     <dimen name="notification_scrim_corner_radius">4dp</dimen>
     <dimen name="global_actions_corner_radius">4dp</dimen>
     <dimen name="volume_dialog_background_corner_radius">4dp</dimen>
+    <dimen name="volume_dialog_background_square_corner_radius">4dp</dimen>
+    <dimen name="volume_dialog_horizontal_background_corner_radius">4dp</dimen>
+    <dimen name="volume_dialog_floating_slider_background_corner_radius">4dp</dimen>
+    <dimen name="volume_dialog_ringer_selected_button_background_radius">4dp</dimen>
     <dimen name="bottom_sheet_corner_radius">4dp</dimen>
     <dimen name="biometric_prompt_content_corner_radius">4dp</dimen>
     <dimen name="media_output_dialog_corner_radius">4dp</dimen>

@@ -1,0 +1,13 @@
+*** Begin Patch
+*** Update File: frameworks/base/packages/SystemUI/compose/core/src/com/android/compose/PlatformButtons.kt
+@@
+-    shape: Shape = ButtonDefaults.shape,
++    shape: Shape = if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true))
++        MaterialTheme.shapes.small else ButtonDefaults.shape,
+@@
+         border = border,
+         contentPadding = ButtonPaddings,
++        shape = if (android.os.Build.BRAND.equals("Omarchy", ignoreCase = true))
++            MaterialTheme.shapes.small else ButtonDefaults.shape,
+         onClick = onClick,
+*** End Patch
