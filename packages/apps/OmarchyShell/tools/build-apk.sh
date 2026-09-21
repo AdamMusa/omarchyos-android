@@ -24,5 +24,8 @@ fi
   -DOMARCHY_DREAM_BINARY="$B/screensaver-native/aarch64-linux-android/release/libomarchy_dream.so"
 
 cmake --build "$B" -j"${JOBS:-6}"
+# The mobile staging step changes non-QML asset files too. Qt's generated depfile
+# may not contain newly added assets; refresh deployment after every staging run.
+touch "$B/android-omarchyshell-deployment-settings.json"
 cmake --build "$B" --target apk
 find "$B" -name "*.apk" -printf "%p %k KB\n"
