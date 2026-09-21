@@ -35,9 +35,29 @@ the resolved Home before finishing. The cold-boot recording still contains a
 black interval before the shell activity's curtain appears; these changes improve
 the curtain's visibility but do not yet eliminate the earlier handoff gap.
 
-A source trace identifies another part of the gap: Android's
-`ActivityRecord.getStartingWindowType` excludes Home activities from normal
-splash starting windows. The shell's configured splash therefore cannot cover
-the interval before its activity creates the native curtain. An Omarchy-only
-framework change needs its own build and cold-boot validation; it has not yet
-been applied.
+Android suppresses Home splash windows in two places:
+`ActivityRecord.getStartingWindowType` in the framework and
+`PhoneStartingWindowTypeAlgorithm` in WindowManager Shell. Enabling the first
+alone in v7 still leaves a black interval in the cold-boot recording. Both
+policies must permit the configured Omarchy Home, gated by the Omarchy product
+brand and `ro.omarchy.shell`; other launchers retain Android's default policy.
+Both policy changes are present in the v9 image. Its logs confirm Android creates
+and transfers the Omarchy starting surface, and Home reaches its first complete
+frame. A cold-boot recording still shows a black interval earlier in the handoff;
+this does not establish a continuous boot transition.
+
+For incremental builds, rebuild `wm_shell_protolog_src` as well as
+`WindowManager-Shell` and `SystemUI`. The phone algorithm is compiled from that
+generated source archive; rebuilding its consumer against a cached archive can
+silently retain the old Home policy. Verify the Omarchy gate in the generated
+source and compiled class before assembling an image.
+
+Shell version 7 explicitly requests the icon splash style. Without this, Android
+inherits the solid-color starting style from the direct-boot Home and omits the
+Omarchy artwork. The splash asset uses a square vector with an internal safe area
+so the complete wordmark scales together; fixed-size layer-list children can be
+cropped when Android rasterizes the icon at its system-selected size.
+
+The v10 image includes the vector correction and passes built-in Home protection
+and the full native navbar/navigation check. The boot-gap limitation above still
+applies; those functional checks are not proof of an uninterrupted visual handoff.

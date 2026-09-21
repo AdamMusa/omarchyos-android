@@ -5,14 +5,14 @@ overlay installation. Emulator validation does not qualify physical phone hardwa
 
 | Surface | Evidence and remaining work |
 | --- | --- |
-| Built-in Home | The v6 emulator image launches the privileged base APK and installed Bash executable. Omarchy Core also resolves to its base system APK. `test-system-home.py` checks default Home and package protection. |
-| Home and service navbar | The v6 navigation check passes Home, five Settings services, nested Bluetooth pairing, Overview, notifications, Quick Settings and tile editing. Back pops nested pages and disappears on Home; logo, clock and gear keep their bounds. |
+| Built-in Home | The v10 emulator image launches Shell version 7 from its privileged base APK with the installed Bash executable. Omarchy Core also resolves to its base system APK. `test-system-home.py --check-app-info` passes the default-Home/package checks and confirms native Settings disables Disable and omits ordinary Uninstall. |
+| Home and service navbar | The v10 navigation check passes Home, five Settings services, nested Bluetooth pairing, Overview, notifications, Quick Settings and tile editing. Back pops nested pages and disappears on Home; logo, clock and gear keep their bounds. |
 | Quick Settings/shade header | Home and the shade reuse the same native OmarchyBar. The v6 screenshot checks confirm identical Tokyo Night navbar colors and control bounds across Home, Wi-Fi, Overview, notifications, Quick Settings and tile editing. The navbar stays outside the scrolling Quick Settings body. Privacy indicators retain their native path. Compact 320dp-width checks at 200% font scale pass without overlapping or duplicate controls, including tile editing; service and shade layouts also pass in landscape. Home remains portrait-oriented. |
 | Native notifications | The v6 rebuilt image renders notification rows after a cold boot with keyguard disabled, before opening the lock screen. Native content and action taps pass. The scene notification container now initializes at SystemUI startup instead of waiting for keyguard composition; footer controls use the compact Omarchy shape. |
 | Permission prompts | The v6 system image renders outlined Omarchy action buttons, compact corners and monospace text. Native Deny and Only this time callbacks pass; denial remains reachable at 200% text size and under Catppuccin Latte. Version-qualified styles are retained in the built overlay, and obscured-touch filtering stays in the native permission layout. |
 | Framework dialogs | The v6 native AlertDialog renders Omarchy typography and surfaces; its Done action dismisses normally. |
 | Lock screen | The v4 image removes the carrier/navbar overlap and registers the native clock font family with JetBrains Mono. Applying Tokyo Night and Catppuccin Latte updates Android's lock wallpaper; restarting Home preserves the wallpaper ID. Opening the Omarchy menu while securely locked does not bypass keyguard, and entering the correct PIN unlocks normally. The temporary emulator PIN was removed after testing. |
-| Boot handoff | The v6 cold-boot recording still contains a black interval before Home. The native curtain draws and is removed after the first complete Home frame; the earlier handoff gap remains unresolved. See BOOT_STARTUP.md. |
+| Boot handoff | The v9 cold-boot recording still contains a black interval before Home. The native curtain draws and is removed after the first complete Home frame; the earlier handoff gap remains unresolved. See BOOT_STARTUP.md. |
 | Overview | The v6 image retains native Overview and shows the same Omarchy navbar. Its colors and control bounds match Home, and Back returns normally. |
 | Screensaver | Native Omarchy `ttfx` animation and wake were validated; see [SCREENSAVER.md](SCREENSAVER.md). |
 
@@ -31,6 +31,18 @@ crash and passes dark/light theme relaunch checks. The v7 image also passes a sy
 installed services.jar: direct CPU mapping fails, but guarded conversion
 completes. Catppuccin Latte navbar colors and geometry now pass across Home,
 Wi-Fi, Overview, notifications, Quick Settings and tile editing without a
-system_server restart. Home version 6 runs from its base system package. These
+system_server restart. The later v9 image passes the same snapshot regression
+with Shell version 7 in its base system package. These
 checks cover this regression, not general device stability. The cold-boot
 handoff still requires further work; see BOOT_STARTUP.md.
+
+A later v7 idle period during host compilation ended in an Android watchdog
+restart at 02:06 on September 21. The watchdog named CpuMonitorService (74-second
+handler delay), and its report recorded CPU pressure `some avg10=91.76`, with no
+memory pressure. The thread dump was in native message polling; it did not show
+the earlier task-snapshot exception or an Omarchy stack. Host contention is a
+possible contributor, not a proven root cause. The v9 unloaded navigation, secure
+PIN and snapshot checks retained the boot
+process IDs for system_server and SystemUI with an empty crash buffer. That short
+run does not explain or rule out the v7 watchdog event. Do not disable or relax
+the watchdog to hide it.

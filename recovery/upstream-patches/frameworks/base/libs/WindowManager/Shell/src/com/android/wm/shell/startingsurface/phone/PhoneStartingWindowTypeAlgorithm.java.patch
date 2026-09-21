@@ -1,0 +1,14 @@
+*** Begin Patch
+*** Update File: frameworks/base/libs/WindowManager/Shell/src/com/android/wm/shell/startingsurface/phone/PhoneStartingWindowTypeAlgorithm.java
+@@
+-        final boolean topIsHome = windowInfo.taskInfo.topActivityType == ACTIVITY_TYPE_HOME;
++        final android.content.pm.ActivityInfo activityInfo = windowInfo.targetActivityInfo != null
++                ? windowInfo.targetActivityInfo : windowInfo.taskInfo.topActivityInfo;
++        final boolean omarchyHome = "Omarchy".equalsIgnoreCase(android.os.Build.BRAND)
++                && activityInfo != null
++                && activityInfo.packageName.equals(
++                        android.os.SystemProperties.get("ro.omarchy.shell"));
++        // Match ActivityRecord: the built-in Omarchy Home has a branded splash.
++        final boolean topIsHome = windowInfo.taskInfo.topActivityType == ACTIVITY_TYPE_HOME
++                && !omarchyHome;
+*** End Patch

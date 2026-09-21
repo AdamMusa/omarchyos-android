@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android's starting window uses the OS boot color, without an app icon. -->
+    <!-- Keep Omarchy artwork visible through Android's Home handoff. -->
     <style name="OmarchyShellTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
         <!-- Opaque: this is the home screen, and a translucent window shows
              the previously focused app through it for the frame or two before
@@ -9,6 +9,7 @@
         <item name="android:windowBackground">@drawable/omarchy_boot_background</item>
         <item name="android:windowSplashScreenBackground">#07090F</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/omarchy_boot_splash</item>
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
         <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">false</item>

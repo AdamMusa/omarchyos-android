@@ -1,0 +1,22 @@
+*** Begin Patch
+*** Update File: frameworks/base/services/core/java/com/android/server/wm/ActivityRecord.java
+@@
+-        final boolean isActivityHome = isActivityTypeHome();
++        // The built-in Omarchy Home has a branded starting window that covers
++        // native shell initialization. Keep the usual Home behavior elsewhere.
++        final boolean suppressHomeSplash = isActivityTypeHome()
++                && !("Omarchy".equalsIgnoreCase(android.os.Build.BRAND)
++                        && packageName.equals(android.os.SystemProperties.get("ro.omarchy.shell")));
+         if ((newTask || !processRunning || (taskSwitch && !activityCreated))
+-                && !isActivityHome) {
++                && !suppressHomeSplash) {
+             return STARTING_WINDOW_TYPE_SPLASH_SCREEN;
+@@
+-                if (!isActivityHome) {
++                if (!suppressHomeSplash) {
+                     return STARTING_WINDOW_TYPE_SPLASH_SCREEN;
+                 }
+             }
+-            if (!activityAllDrawn && !isActivityHome) {
++            if (!activityAllDrawn && !suppressHomeSplash) {
+*** End Patch
