@@ -63,3 +63,9 @@ changing without a Qt engine in the Dream process.
 Battery life, long-duration display behavior, accessibility, and secured-device
 transitions still require physical-device validation. See
 [startup and remaining performance work](PERFORMANCE.md) for broader limitations.
+
+The upstream native engine was also checked after installation: frames changed
+while running, touch ended the dream and returned to Home, and disabling animator
+scaling produced identical static frames. The original animation setting was
+restored after that check. The emulator light sensor was set to normal indoor
+light; Android can select its separate low-light clock when the sensor reads dark.
