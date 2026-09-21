@@ -18,10 +18,12 @@ def shell(*command):
 package = shell('dumpsys', 'package', 'os.omarchy.shell')
 flags = re.search(r'^\s+flags=\[([^\]]+)\]', package, re.M)
 assert flags and 'SYSTEM' in flags[1].split(), 'Omarchy is not a system package'
+assert 'UPDATED_SYSTEM_APP' not in flags[1].split(), 'Validate the base image without a data APK update masking it'
 private = re.search(r'^\s+privateFlags=\[([^\]]+)\]', package, re.M)
 assert private and 'PRIVILEGED' in private[1], 'Omarchy is not privileged'
 path = '/system_ext/priv-app/OmarchyShell/OmarchyShell.apk'
 assert shell('test', '-f', path) == '', 'Base system APK missing'
+assert shell('pm', 'path', 'os.omarchy.shell').strip() == 'package:' + path, 'Home is not running from the base system APK'
 assert '/system_ext/priv-app/OmarchyShell' in package, 'PackageManager did not scan the system APK'
 home = shell('cmd', 'package', 'resolve-activity', '--brief',
              '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.HOME')
