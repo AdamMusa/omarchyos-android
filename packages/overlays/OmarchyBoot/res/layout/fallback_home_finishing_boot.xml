@@ -1,0 +1,9 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/omarchy_boot_background">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="center" android:translationY="72dp"
+        android:padding="24dp" android:gravity="center" android:fontFamily="monospace"
+        android:textColor="#69E6C5" android:textSize="14sp"
+        android:text="@string/omarchy_starting" />
+</FrameLayout>

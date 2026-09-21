@@ -10,6 +10,7 @@ QtObject {
 
   // Set once by the host's Main.qml.
   property Item container: null
+  property bool backgroundReady: false
 
   readonly property var layerItems: ({})
 

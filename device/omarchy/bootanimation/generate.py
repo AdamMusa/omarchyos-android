@@ -22,6 +22,8 @@ VIOLET = (164, 145, 255)
 
 def font(size: int) -> ImageFont.FreeTypeFont:
     candidates = (
+        Path(__file__).resolve().parents[3]
+        / "packages/apps/OmarchyShell/fonts/JetBrainsMonoNerdFont-Regular.ttf",
         "/System/Library/Fonts/Menlo.ttc",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
         "/usr/share/fonts/dejavu/DejaVuSansMono.ttf",
@@ -35,9 +37,12 @@ def font(size: int) -> ImageFont.FreeTypeFont:
 def render_frame(lines: list[str], reveal: float, phase: float) -> Image.Image:
     canvas = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND)
     draw = ImageDraw.Draw(canvas)
-    logo_font = font(21)
+    size = 21
+    while max(draw.textlength(line, font=font(size)) for line in lines) > WIDTH * 0.82:
+        size -= 1
+    logo_font = font(size)
     small_font = font(22)
-    line_height = 31
+    line_height = round(size * 1.48)
     widest = max(draw.textlength(line, font=logo_font) for line in lines)
     origin_x = round((WIDTH - widest) / 2)
     origin_y = round((HEIGHT - len(lines) * line_height) / 2) - 90
@@ -57,7 +62,7 @@ def render_frame(lines: list[str], reveal: float, phase: float) -> Image.Image:
                           for index in range(3))
             draw.text((x, y), character, fill=color, font=logo_font)
 
-    status = "MOBILE SHELL  /  VERIFIED ANDROID"
+    status = "Starting Omarchy…"
     status_width = draw.textlength(status, font=small_font)
     status_y = origin_y + len(lines) * line_height + 72
     draw.text(((WIDTH - status_width) / 2, status_y), status,

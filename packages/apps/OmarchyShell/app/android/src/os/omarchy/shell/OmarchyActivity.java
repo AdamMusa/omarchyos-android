@@ -41,6 +41,9 @@ public class OmarchyActivity extends QtActivity {
     private final Set<SurfaceView> mSeen = new HashSet<>();
     private String mZMode = "";
     private int mSweeps = 0;
+    private BootCurtain mBootCurtain;
+    private android.window.SplashScreenView mSplash;
+    private boolean mHomeReady;
 
     public static OmarchyActivity get() { return sInstance; }
 
@@ -48,19 +51,61 @@ public class OmarchyActivity extends QtActivity {
     public void onCreate(Bundle savedInstanceState) {
         sInstance = this;
         super.onCreate(savedInstanceState);
-        // The theme already asks for a transparent window background; this makes
-        // sure nothing Qt's own theme handling does puts an opaque one back.
+        // Qt's SurfaceView needs a transparent activity background. The opaque
+        // curtain is a child above that surface, so rendering can start below it.
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        mBootCurtain = new BootCurtain(this);
+        // Qt replaces the activity content while loading its native libraries.
+        // Attach to the decor instead so that replacement cannot cover/remove it.
+        ((ViewGroup) getWindow().getDecorView()).addView(mBootCurtain, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        getSplashScreen().setOnExitAnimationListener(splash -> {
+            mSplash = splash;
+            // Qt can report a window before its scene has a complete frame.
+            // Retain Android's Omarchy starting surface through that interval.
+            if (mHomeReady) {
+                splash.remove();
+                mSplash = null;
+            }
+        });
+        mHandler.postDelayed(() -> {
+            if (mBootCurtain != null && !mHomeReady) {
+                Log.e(TAG, "Home startup exceeded 15 seconds; keeping recovery navigation available");
+                mBootCurtain.showDelay();
+            }
+        }, 15000);
         takeOverTheScreen();
         mZMode = readMarker();
         Log.i(TAG, "activity: surface z mode = '" + mZMode + "'");
         scheduleSweep();
     }
 
+    /** Called only after Qt swaps a frame containing the bar and wallpaper. */
+    public static void onShellFrameReady() {
+        OmarchyActivity activity = sInstance;
+        if (activity == null) return;
+        activity.mHandler.post(() -> {
+            if (sInstance != activity || activity.mHomeReady) return;
+            activity.mHomeReady = true;
+            if (activity.mBootCurtain != null) {
+                ViewGroup parent = (ViewGroup) activity.mBootCurtain.getParent();
+                if (parent != null) parent.removeView(activity.mBootCurtain);
+                activity.mBootCurtain = null;
+            }
+            if (activity.mSplash != null) {
+                activity.mSplash.remove();
+                activity.mSplash = null;
+            }
+            activity.reportFullyDrawn();
+            Log.i(TAG, "Home frame ready; boot curtain removed");
+        });
+    }
+
     @Override
     public void onDestroy() {
         if (sInstance == this) sInstance = null;
         mHandler.removeCallbacksAndMessages(null);
+        if (mSplash != null) mSplash.remove();
         super.onDestroy();
     }
 
@@ -125,6 +170,7 @@ public class OmarchyActivity extends QtActivity {
             @Override public void run() {
                 try {
                     sweep(getWindow().getDecorView());
+                    if (mBootCurtain != null) mBootCurtain.bringToFront();
                 } catch (Exception e) {
                     Log.w(TAG, "activity: surface sweep failed", e);
                 }

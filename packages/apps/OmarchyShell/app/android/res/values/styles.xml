@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- No system decorations: the shell draws its own bar and background,
-         and the window starts transparent so Omarchy's background plugin is
-         what shows through during startup. -->
+    <!-- Android's starting window uses the OS boot color, without an app icon. -->
     <style name="OmarchyShellTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
         <!-- Opaque: this is the home screen, and a translucent window shows
              the previously focused app through it for the frame or two before
              Qt's surface draws. The transparency was only ever a workaround
              for a blank screen whose real cause was Window.FullScreen. -->
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@drawable/omarchy_boot_background</item>
+        <item name="android:windowSplashScreenBackground">#07090F</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/omarchy_boot_splash</item>
+        <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>

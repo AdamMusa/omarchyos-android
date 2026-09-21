@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape><solid android:color="#07090F" /></shape></item>
+    <item android:drawable="@drawable/omarchy_boot_mark" android:gravity="center" android:width="288dp" android:height="72dp" />
+</layer-list>

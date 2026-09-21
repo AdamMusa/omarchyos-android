@@ -148,12 +148,23 @@ int main(int argc, char *argv[])
         if (!window) continue;
         window->setPersistentSceneGraph(false);
         window->setPersistentGraphics(false);
+        QObject::connect(window, &QQuickWindow::frameSwapped, window, [window] {
+            if (!window->property("shellContentReady").toBool()) return;
+            const int frames = window->property("omarchyReadyFrames").toInt();
+            if (frames >= 2) return;
+            window->setProperty("omarchyReadyFrames", frames + 1);
+            if (frames == 0) window->update();
+            else QJniObject::callStaticMethod<void>(
+                "os/omarchy/shell/OmarchyActivity", "onShellFrameReady", "()V");
+        }, Qt::QueuedConnection);
         QObject::connect(&app, &QGuiApplication::applicationStateChanged, window,
                          [window](Qt::ApplicationState state) {
             if (state == Qt::ApplicationSuspended || state == Qt::ApplicationHidden)
                 window->releaseResources();
-            else if (state == Qt::ApplicationActive)
+            else if (state == Qt::ApplicationActive) {
+                window->setProperty("omarchyReadyFrames", 0);
                 window->update();
+            }
         });
     }
 #endif

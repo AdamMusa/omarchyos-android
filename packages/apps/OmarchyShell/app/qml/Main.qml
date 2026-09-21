@@ -20,6 +20,22 @@ Window {
   color: "#101010"
   title: "Omarchy"
 
+  // Only release Android's boot curtain after the shell's own surfaces exist.
+  property bool shellContentReady: false
+  Timer {
+    interval: 32
+    running: !window.shellContentReady
+    repeat: true
+    onTriggered: {
+      var shell = shellLoader.item
+      if (shell && shell.bar && shell.pluginRegistry && !shell.pluginRegistry.scanning
+          && ShellSurfaceRoot.backgroundReady) {
+        window.shellContentReady = true
+        window.requestUpdate()
+      }
+    }
+  }
+
   Item {
     id: surfaceContainer
     anchors.fill: parent

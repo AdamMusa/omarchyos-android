@@ -18,6 +18,8 @@ Item {
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       cache: false
+      onStatusChanged: ShellSurfaceRoot.backgroundReady = status !== Image.Loading
+      Component.onCompleted: ShellSurfaceRoot.backgroundReady = status !== Image.Loading
     }
   }
 }

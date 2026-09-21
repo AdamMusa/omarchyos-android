@@ -1,0 +1,39 @@
+*** Begin Patch
+*** Update File: packages/apps/Settings/src/com/android/settings/FallbackHome.java
+@@
+     private int mProgressTimeout;
+ 
+     private boolean mProvisioned;
++    private final boolean mOmarchy = "Omarchy".equalsIgnoreCase(android.os.Build.BRAND);
+     private WallpaperManager mWallManager;
+ 
+     private final Runnable mProgressTimeoutRunnable = () -> {
+@@
+                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+         }
+ 
+-        mWallManager = getSystemService(WallpaperManager.class);
+-        if (mWallManager == null) {
++        if (mOmarchy) {
++            // Draw the OS identity immediately, including before user storage
++            // unlocks. The normal delayed progress view leaves a blank interval.
++            setContentView(R.layout.fallback_home_finishing_boot);
++        }
++        mWallManager = mOmarchy ? null : getSystemService(WallpaperManager.class);
++        if (mWallManager == null && !mOmarchy) {
+             Log.w(TAG, "Wallpaper manager isn't ready, can't listen to color changes!");
+-        } else {
++        } else if (!mOmarchy) {
+             loadWallpaperColors(flags);
+         }
+         getWindow().getDecorView().setSystemUiVisibility(flags);
+@@
+     @Override
+     protected void onResume() {
+         super.onResume();
+-        if (mProvisioned) {
++        if (mProvisioned && !mOmarchy) {
+             mHandler.postDelayed(mProgressTimeoutRunnable, mProgressTimeout);
+         }
+     }
+*** End Patch

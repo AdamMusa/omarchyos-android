@@ -38,6 +38,7 @@ order=(
   packages/apps/OmarchyCode/src/com/android/terminal/TerminalView.java.patch
   packages/apps/Settings/AndroidManifest.xml.patch
   packages/apps/Settings/res/values/strings.xml.patch
+  packages/apps/Settings/src/com/android/settings/FallbackHome.java.patch
   frameworks/base/packages/SystemUI/src/com/android/systemui/qs/panels/ui/viewmodel/toolbar/EditModeButtonViewModel.kt.patch
   device/generic/goldfish/build/tools/mk_combined_img.py.patch
   device/generic/goldfish/sepolicy/system_ext/private/platform_app.te.patch

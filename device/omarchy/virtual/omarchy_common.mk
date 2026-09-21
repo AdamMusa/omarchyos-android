@@ -9,6 +9,7 @@ PRODUCT_SOONG_NAMESPACES += \
 PRODUCT_PACKAGE_OVERLAYS += device/omarchy/overlay
 
 PRODUCT_PACKAGES += \
+    OmarchyBootOverlay \
     OmarchyCore \
     OmarchyCode \
     omarchy_codex_cli \

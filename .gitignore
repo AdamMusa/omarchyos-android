@@ -5,3 +5,6 @@
 /.idea/
 *.swp
 *.log
+
+# Generated from the checked-in Omarchy boot artwork.
+/device/omarchy/bootanimation/bootanimation.zip

@@ -1,0 +1,18 @@
+<resources>
+    <!-- Keep Android's direct-boot Home, replace only its appearance. -->
+    <style name="FallbackHome" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@drawable/omarchy_boot_background</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">#07090F</item>
+        <item name="android:navigationBarColor">#07090F</item>
+        <item name="android:windowSplashScreenBackground">#07090F</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/omarchy_boot_splash</item>
+    </style>
+    <style name="FallbackHome.SetupWizard" parent="FallbackHome" />
+</resources>

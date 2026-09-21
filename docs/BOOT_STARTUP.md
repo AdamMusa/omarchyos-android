@@ -1,0 +1,22 @@
+# Omarchy startup surfaces
+
+The boot animation, Android's direct-boot Home, the starting window and the Qt
+startup curtain share Omarchy artwork. The direct-boot Home keeps Android's
+unlock and Home-role behavior, but draws immediately instead of waiting for a
+progress timeout or a wallpaper service.
+
+The shell keeps an opaque native curtain above Qt while assets, plugins and the
+wallpaper become ready. Two completed Qt frame swaps release the curtain and
+report Home fully drawn. A wallpaper load error permits the existing solid-color
+fallback; it does not leave startup waiting forever. After 15 seconds the curtain
+announces that startup is taking longer. System navigation remains available.
+
+The original screensaver artwork is used for the wordmark. The generated boot
+animation is a build artifact; generate it before a normal AOSP build. The
+incremental emulator image tool generates its own copy in the output partition.
+The boot overlay must be installed in the system image and active during direct
+boot. A sideloaded development overlay is not an equivalent test.
+
+Validate a cold boot and a Home process restart, inspect the first-frame log,
+and record the transition from boot animation through Home. Keep testing secure
+lock/unlock separately; boot branding must not bypass authentication.
